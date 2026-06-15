@@ -64,6 +64,28 @@ export const COMPLIANCE_DIRECTIVES = [
   "(CSP, HSTS), rate limit, e siga OWASP Top 10. Nunca commit de segredos.",
 ].join("\n");
 
+export const DESIGN_DIRECTIVES = [
+  "**Design System nativo: shadcn/ui** — toda interface React/Next/Vite/TanStack",
+  "deve ser construída em cima de **shadcn/ui + Radix + Tailwind CSS**. Use os",
+  "componentes (Button, Card, Dialog, Form, Input, Select, Tabs, Sheet, Sonner,",
+  "DropdownMenu, etc.) instalados via `npx shadcn@latest add <component>`.",
+  "",
+  "Regras de design:",
+  "1. **Nunca** hardcode cores (`text-white`, `bg-[#fff]`) — use tokens semânticos",
+  "   (`bg-background`, `text-foreground`, `bg-primary`, `text-muted-foreground`).",
+  "2. Defina tokens em `src/styles.css`/`index.css` via `@theme` (Tailwind v4) ou",
+  "   variáveis CSS HSL/OKLCH (v3). Suporte light + dark mode.",
+  "3. Use `lucide-react` para ícones; nunca use `Sparkles` como logo do app.",
+  "4. Layouts responsivos (mobile-first), acessíveis (WCAG AA, labels, foco visível,",
+  "   ARIA correto) e com microinterações sutis (framer-motion quando fizer sentido).",
+  "5. Para chat/IA, use **AI Elements** (`bun x ai-elements@latest add ...`) sobre",
+  "   shadcn — Conversation, Message, PromptInput, Tool, Shimmer.",
+  "6. Tipografia distintiva: evite Inter/Poppins padrão; combine display + body.",
+  "7. Componentes pequenos e reutilizáveis em `src/components/`; variantes via `cva`.",
+  "8. Sempre verifique contraste, estados (hover/focus/disabled/loading/error) e",
+  "   responsividade antes de finalizar.",
+].join("\n");
+
 export function buildStacksBlock(): string {
   const list = SUPPORTED_STACKS
     .map(g => `**${g.label}:** ${g.items.join(", ")}`)
@@ -75,6 +97,9 @@ export function buildStacksBlock(): string {
     "ao problema; não restrinja respostas a um único ecossistema.",
     "",
     list,
+    "",
+    "# Design System (obrigatório)",
+    DESIGN_DIRECTIVES,
     "",
     "# Compliance, qualidade e segurança",
     COMPLIANCE_DIRECTIVES,
