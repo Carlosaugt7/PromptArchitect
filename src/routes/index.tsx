@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Sparkles, Plus, Globe, Send, History, MessageSquare, Settings, Users,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
-  ChevronDown, Database, ScrollText, Eye, X, Crown,
+  ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText, Image as ImageIcon, FileType2,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -48,22 +48,42 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [agents, setAgents] = useState<AgentsState>({ leadId: "orchestrator", activeIds: ["orchestrator"] });
   const [sending, setSending] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setAgents(loadAgentsState()); }, []);
 
   const lead = AGENTS.find(a => a.id === agents.leadId);
   const activeCount = agents.activeIds.length;
 
+  async function handleFiles(list: FileList | null) {
+    if (!list) return;
+    const next: Attachment[] = [];
+    for (const file of Array.from(list)) {
+      const kind = detectKind(file);
+      if (!kind) { toast.error(`Tipo não suportado: ${file.name}`); continue; }
+      if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} excede 10MB`); continue; }
+      const isText = kind === "md";
+      const content = isText ? await file.text() : await fileToDataUrl(file);
+      next.push({ id: crypto.randomUUID(), name: file.name, size: file.size, kind, content });
+    }
+    setAttachments(prev => [...prev, ...next]);
+  }
+
   async function handleSend() {
     const text = input.trim();
-    if (!text || sending) return;
+    if ((!text && attachments.length === 0) || sending) return;
     const sel = loadSelection();
     if (!sel) { toast.error("Selecione um modelo no seletor da caixa de envio"); return; }
     setSending(true);
     try {
-      const { usage } = await sendChat(sel, [{ role: "user", content: text }]);
+      const mdParts = attachments.filter(a => a.kind === "md").map(a => `\n\n--- Anexo: ${a.name} ---\n${a.content}`);
+      const otherParts = attachments.filter(a => a.kind !== "md").map(a => `\n[Anexo ${a.kind}: ${a.name} (${Math.round(a.size/1024)}KB)]`);
+      const fullText = text + mdParts.join("") + otherParts.join("");
+      const { usage } = await sendChat(sel, [{ role: "user", content: fullText }]);
       addTokens(usage.total);
       setInput("");
+      setAttachments([]);
       toast.success(`Resposta recebida · ${usage.total} tokens (${usage.prompt}+${usage.completion})`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
@@ -158,6 +178,19 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               onOpenAgents={() => setAgentsOpen(true)}
             />
           </div>
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-1 pb-1">
+              {attachments.map(a => (
+                <span key={a.id} className="flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-2 py-1 text-[11px]">
+                  {a.kind === "image" ? <ImageIcon className="h-3 w-3" /> : a.kind === "pdf" ? <FileType2 className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                  <span className="max-w-[140px] truncate">{a.name}</span>
+                  <button onClick={() => setAttachments(p => p.filter(x => x.id !== a.id))} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
               <button
@@ -166,6 +199,21 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
                 className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
                 <Plus className="h-4 w-4" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.md,text/markdown"
+                className="hidden"
+                onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title="Anexar imagens, PDF ou Markdown"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Paperclip className="h-4 w-4" />
               </button>
               <IconBtn><Globe className="h-4 w-4" /></IconBtn>
             </div>
@@ -309,4 +357,24 @@ function WorkTab({ active, onClick, icon, children }: { active: boolean; onClick
       {active && <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)]" />}
     </button>
   );
+}
+
+/* ---------------- ATTACHMENTS ---------------- */
+type AttachmentKind = "image" | "pdf" | "md";
+interface Attachment { id: string; name: string; size: number; kind: AttachmentKind; content: string; }
+
+function detectKind(file: File): AttachmentKind | null {
+  if (file.type.startsWith("image/")) return "image";
+  if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return "pdf";
+  if (file.type === "text/markdown" || /\.md$/i.test(file.name)) return "md";
+  return null;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
 }
