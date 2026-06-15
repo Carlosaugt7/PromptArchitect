@@ -34,6 +34,13 @@ function ChatPanel() {
   const [tab, setTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [agentsOpen, setAgentsOpen] = useState(false);
+  const [agents, setAgents] = useState<AgentsState>({ leadId: "orchestrator", activeIds: ["orchestrator"] });
+
+  useEffect(() => { setAgents(loadAgentsState()); }, []);
+
+  const lead = AGENTS.find(a => a.id === agents.leadId);
+  const activeCount = agents.activeIds.length;
 
   return (
     <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl">
@@ -45,16 +52,40 @@ function ChatPanel() {
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
-        <button
-          onClick={() => setSettingsOpen(true)}
-          title="Configurar provedores de LLM"
-          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        >
-          <Settings className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setAgentsOpen(true)}
+            title="Equipe de agentes"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <Users className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            title="Configurar provedores de LLM"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
+      <button
+        onClick={() => setAgentsOpen(true)}
+        className="mx-3 mt-3 flex items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-left hover:bg-card/70 transition-colors"
+      >
+        <Crown className="h-3.5 w-3.5 text-primary shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium truncate">{lead?.name ?? "Sem coordenador"}</p>
+          <p className="text-[10px] text-muted-foreground truncate">
+            {activeCount} agente(s) ativo(s) · clique para gerenciar
+          </p>
+        </div>
+        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+      </button>
+
       <LlmSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <AgentsDialog open={agentsOpen} onOpenChange={setAgentsOpen} onSaved={setAgents} />
 
       <div className="flex items-center gap-1 px-3 pt-3">
         <TabButton active={tab === "chat"} onClick={() => setTab("chat")} icon={<MessageSquare className="h-4 w-4" />}>
