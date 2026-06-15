@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { AutoDebugPanel } from "@/components/AutoDebugPanel";
+import { startAutoDebug } from "@/lib/auto-debug";
 
 function NotFoundComponent() {
   return (
@@ -116,9 +118,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => { startAutoDebug(); }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <AutoDebugPanel />
       <Toaster richColors theme="dark" position="bottom-right" />
     </QueryClientProvider>
   );
