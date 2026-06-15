@@ -48,22 +48,42 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [agents, setAgents] = useState<AgentsState>({ leadId: "orchestrator", activeIds: ["orchestrator"] });
   const [sending, setSending] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setAgents(loadAgentsState()); }, []);
 
   const lead = AGENTS.find(a => a.id === agents.leadId);
   const activeCount = agents.activeIds.length;
 
+  async function handleFiles(list: FileList | null) {
+    if (!list) return;
+    const next: Attachment[] = [];
+    for (const file of Array.from(list)) {
+      const kind = detectKind(file);
+      if (!kind) { toast.error(`Tipo não suportado: ${file.name}`); continue; }
+      if (file.size > 10 * 1024 * 1024) { toast.error(`${file.name} excede 10MB`); continue; }
+      const isText = kind === "md";
+      const content = isText ? await file.text() : await fileToDataUrl(file);
+      next.push({ id: crypto.randomUUID(), name: file.name, size: file.size, kind, content });
+    }
+    setAttachments(prev => [...prev, ...next]);
+  }
+
   async function handleSend() {
     const text = input.trim();
-    if (!text || sending) return;
+    if ((!text && attachments.length === 0) || sending) return;
     const sel = loadSelection();
     if (!sel) { toast.error("Selecione um modelo no seletor da caixa de envio"); return; }
     setSending(true);
     try {
-      const { usage } = await sendChat(sel, [{ role: "user", content: text }]);
+      const mdParts = attachments.filter(a => a.kind === "md").map(a => `\n\n--- Anexo: ${a.name} ---\n${a.content}`);
+      const otherParts = attachments.filter(a => a.kind !== "md").map(a => `\n[Anexo ${a.kind}: ${a.name} (${Math.round(a.size/1024)}KB)]`);
+      const fullText = text + mdParts.join("") + otherParts.join("");
+      const { usage } = await sendChat(sel, [{ role: "user", content: fullText }]);
       addTokens(usage.total);
       setInput("");
+      setAttachments([]);
       toast.success(`Resposta recebida · ${usage.total} tokens (${usage.prompt}+${usage.completion})`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
