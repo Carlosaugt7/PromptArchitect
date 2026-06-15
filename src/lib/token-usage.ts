@@ -7,10 +7,13 @@ export interface TokenBudget {
   monthlyLimit: number;
   /** tokens consumidos no período atual */
   used: number;
+  /** custo acumulado em USD no período atual */
+  costUsd: number;
   /** ISO yyyy-mm do período corrente */
   period: string;
   updatedAt: number;
 }
+
 
 const KEY = "omniforge.tokens.usage";
 const EVENT = "omniforge:tokens-changed";
