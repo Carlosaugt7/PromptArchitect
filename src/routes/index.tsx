@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Sparkles, Plus, Globe, Send, History, MessageSquare, Settings, Users,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
-  ChevronDown, Database, ScrollText, Eye, X, Crown,
+  ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText, Image as ImageIcon, FileType2,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
