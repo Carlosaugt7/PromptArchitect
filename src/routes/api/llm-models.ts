@@ -56,9 +56,9 @@ export const Route = createFileRoute("/api/llm-models")({
             }
           }
 
-          return json({ error: lastError }, 502);
+          return json({ error: lastError });
         } catch (err) {
-          return json({ error: err instanceof Error ? err.message : "Erro desconhecido" }, 500);
+          return json({ error: err instanceof Error ? err.message : "Erro desconhecido" });
         }
       },
     },
