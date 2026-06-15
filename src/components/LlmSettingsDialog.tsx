@@ -280,23 +280,56 @@ function ProviderForm({
 
       {models.length > 0 && (
         <div className="rounded-lg border border-border bg-background/40 p-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 gap-2">
             <span className="text-xs font-medium text-muted-foreground">
-              {models.length} modelos disponíveis
+              {models.length} modelos · {(saved?.enabled?.length ?? 0)} habilitados na tela de dev
             </span>
-            {saved && (
-              <span className="text-[10px] text-muted-foreground">
-                atualizado {new Date(saved.updatedAt).toLocaleString("pt-BR")}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                className="text-[11px] text-primary hover:underline"
+                onClick={() => {
+                  const next: ProvidersState = {
+                    ...state,
+                    [providerId]: { ...(saved ?? { apiKey, baseUrl, models, updatedAt: Date.now() }), enabled: [...models] },
+                  };
+                  onChange(next);
+                }}
+              >Todos</button>
+              <button
+                className="text-[11px] text-muted-foreground hover:underline"
+                onClick={() => {
+                  if (!saved) return;
+                  const next: ProvidersState = { ...state, [providerId]: { ...saved, enabled: [] } };
+                  onChange(next);
+                }}
+              >Nenhum</button>
+            </div>
           </div>
           <div className="max-h-48 overflow-y-auto flex flex-wrap gap-1.5">
-            {models.map((m) => (
-              <span key={m} className="rounded-md border border-border bg-card px-2 py-1 text-[11px] font-mono">
-                {m}
-              </span>
-            ))}
+            {models.map((m) => {
+              const on = saved?.enabled?.includes(m) ?? false;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => {
+                    const base = saved ?? { apiKey, baseUrl, models, updatedAt: Date.now() };
+                    const enabled = new Set(base.enabled ?? []);
+                    if (enabled.has(m)) enabled.delete(m); else enabled.add(m);
+                    onChange({ ...state, [providerId]: { ...base, enabled: [...enabled] } });
+                  }}
+                  className={`rounded-md border px-2 py-1 text-[11px] font-mono transition-colors ${
+                    on ? "border-primary/60 bg-primary/15 text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {on && <Check className="inline h-3 w-3 mr-1" />}{m}
+                </button>
+              );
+            })}
           </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            Clique para marcar quais modelos aparecerão no seletor da caixa de mensagens.
+          </p>
         </div>
       )}
     </div>
