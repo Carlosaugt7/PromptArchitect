@@ -284,13 +284,38 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
         <TabButton active={tab === "history"} onClick={() => setTab("history")} icon={<History className="h-4 w-4" />}>
           Histórico {history.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({history.length})</span>}
         </TabButton>
-        <button
-          onClick={startNew}
-          title="Nova conversa"
-          className="ml-auto grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        >
-          <MessageCirclePlus className="h-4 w-4" />
-        </button>
+        <div className="ml-auto flex items-center gap-0.5">
+          {conversation.messages.length > 0 && (
+            <>
+              <button
+                onClick={handleRegenerate}
+                disabled={sending}
+                title="Regenerar última resposta"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40"
+              >
+                <RotateCw className="h-4 w-4" />
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button title="Exportar conversa" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => exportConversation("md")}>Exportar como .md</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportConversation("json")}>Exportar como .json</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          <button
+            onClick={startNew}
+            title="Nova conversa"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <MessageCirclePlus className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
@@ -310,6 +335,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           </div>
         )}
       </div>
+
 
       <div className="border-t border-border p-3">
         <div className="surface rounded-2xl border border-border p-2.5 focus-within:border-primary/50 focus-within:glow transition-all">
