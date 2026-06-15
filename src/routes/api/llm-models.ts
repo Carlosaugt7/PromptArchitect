@@ -36,7 +36,13 @@ export const Route = createFileRoute("/api/llm-models")({
           let lastError = "Não foi possível detectar modelos nesse endpoint";
 
           for (const target of attempts) {
-            const res = await fetch(target, { headers });
+            let res: Response;
+            try {
+              res = await fetch(target, { headers });
+            } catch (e) {
+              lastError = `Falha de rede ao chamar ${target}: ${e instanceof Error ? e.message : String(e)}`;
+              continue;
+            }
             const text = await res.text();
             if (!res.ok) {
               lastError = `${res.status} ${res.statusText}: ${text.slice(0, 220)}`;
@@ -56,9 +62,9 @@ export const Route = createFileRoute("/api/llm-models")({
             }
           }
 
-          return json({ error: lastError }, 502);
+          return json({ error: lastError });
         } catch (err) {
-          return json({ error: err instanceof Error ? err.message : "Erro desconhecido" }, 500);
+          return json({ error: err instanceof Error ? err.message : "Erro desconhecido" });
         }
       },
     },
