@@ -121,6 +121,13 @@ function ChatPanel() {
             rows={2}
             className="w-full resize-none bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground/70 focus:outline-none"
           />
+          <div className="px-1 pb-1">
+            <ChatComposerSelectors
+              agents={agents}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onOpenAgents={() => setAgentsOpen(true)}
+            />
+          </div>
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
               <IconBtn><Plus className="h-4 w-4" /></IconBtn>
