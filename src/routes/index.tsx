@@ -460,3 +460,87 @@ function fileToDataUrl(file: File): Promise<string> {
     r.readAsDataURL(file);
   });
 }
+
+/* ---------------- CHAT VIEWS ---------------- */
+function EmptyChat() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center text-center px-2">
+      <div className="relative mb-5">
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-2xl opacity-40" />
+        <div className="relative grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] glow">
+          <Sparkles className="h-6 w-6 text-primary-foreground" strokeWidth={2.5} />
+        </div>
+      </div>
+      <h2 className="font-display text-lg font-semibold mb-1.5">Forje sua próxima ideia</h2>
+      <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px]">
+        Descreva o que deseja construir e a OmniForge gera a aplicação para você em tempo real.
+      </p>
+    </div>
+  );
+}
+
+function MessageBubble({ m, streaming }: { m: ChatMessage; streaming?: boolean }) {
+  const isUser = m.role === "user";
+  return (
+    <div className={`flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
+      <div className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${
+        isUser ? "bg-primary text-primary-foreground" : "bg-card/60 border border-border"
+      }`}>
+        {m.content}
+        {streaming && <span className="ml-0.5 inline-block w-1.5 h-3 bg-current animate-pulse align-middle" />}
+      </div>
+      {m.images && m.images.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {m.images.map((src, i) => (
+            <img key={i} src={src} alt="" className="h-16 w-16 rounded-md object-cover border border-border" />
+          ))}
+        </div>
+      )}
+      {m.files && m.files.length > 0 && (
+        <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+          {m.files.map((n, i) => <span key={i} className="rounded bg-card/40 px-1.5 py-0.5">{n}</span>)}
+        </div>
+      )}
+      {!isUser && m.tokens != null && (
+        <div className="text-[10px] text-muted-foreground px-1">
+          {m.model} · {m.tokens} tok · {formatUsd(m.costUsd ?? 0)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HistoryList({ list, activeId, onOpen }: { list: Conversation[]; activeId: string; onOpen: (c: Conversation) => void }) {
+  if (list.length === 0) {
+    return <div className="text-center text-sm text-muted-foreground py-8">Nenhuma conversa salva ainda.</div>;
+  }
+  return (
+    <div className="flex flex-col gap-1">
+      {list.map(c => (
+        <div
+          key={c.id}
+          className={`group flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors cursor-pointer ${
+            c.id === activeId ? "border-primary/50 bg-accent" : "border-border bg-card/40 hover:bg-card/70"
+          }`}
+          onClick={() => onOpen(c)}
+        >
+          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium truncate">{c.title}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {c.messages.length} msg · {new Date(c.updatedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+            </p>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
+            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+            title="Excluir"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
