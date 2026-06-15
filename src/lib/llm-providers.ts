@@ -131,3 +131,48 @@ export async function sendChat(
   return { text: data.text ?? "", usage: data.usage ?? { prompt: 0, completion: 0, total: 0 } };
 }
 
+/** Versão streaming. Chama onDelta para cada chunk; resolve com texto + usage. */
+export async function sendChatStream(
+  selection: ModelSelection,
+  messages: { role: "user" | "assistant" | "system"; content: string }[],
+  onDelta: (chunk: string) => void,
+  system?: string,
+): Promise<ChatResult> {
+  const state = loadProviders();
+  const saved = state[selection.provider];
+  if (!saved?.apiKey) throw new Error("Configure o provedor em Configurações → LLM");
+  const res = await fetch("/api/llm-chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider: selection.provider, apiKey: saved.apiKey, baseUrl: saved.baseUrl,
+      model: selection.model, system, messages, stream: true,
+    }),
+  });
+  if (!res.ok || !res.body) {
+    const t = await res.text().catch(() => "");
+    throw new Error(t || `${res.status} ${res.statusText}`);
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", text = "";
+  let usage: ChatUsage = { prompt: 0, completion: 0, total: 0 };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i: number;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, i).trim();
+      buf = buf.slice(i + 1);
+      if (!line) continue;
+      const j = JSON.parse(line) as { delta?: string; usage?: ChatUsage; error?: string };
+      if (j.error) throw new Error(j.error);
+      if (j.delta) { text += j.delta; onDelta(j.delta); }
+      if (j.usage) usage = j.usage;
+    }
+  }
+  return { text, usage };
+}
+
+
