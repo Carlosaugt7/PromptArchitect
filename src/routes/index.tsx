@@ -77,7 +77,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { theme, toggleTheme } = useTheme();
-  const { density, toggleDensity } = useDensity();
+  
 
   const [currentModel, setCurrentModel] = useState(() => loadSelection());
   useEffect(() => {
@@ -329,10 +329,6 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           <button onClick={toggleTheme} title={theme === "dark" ? "Tema claro" : "Tema escuro"}
             className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <button onClick={toggleDensity} title={density === "cozy" ? "Modo compacto" : "Modo confortável"}
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
-            {density === "cozy" ? <Rows3 className="h-4 w-4" /> : <Rows4 className="h-4 w-4" />}
           </button>
           <button onClick={() => setAgentsOpen(true)} title="Equipe de agentes"
             className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
