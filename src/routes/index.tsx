@@ -12,6 +12,9 @@ import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import { TokenMeter } from "@/components/TokenMeter";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, type ImportedProject } from "@/lib/project-import";
+import { loadSelection, sendChat } from "@/lib/llm-providers";
+import { addTokens } from "@/lib/token-usage";
+import { toast } from "sonner";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({
@@ -44,11 +47,30 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [agents, setAgents] = useState<AgentsState>({ leadId: "orchestrator", activeIds: ["orchestrator"] });
+  const [sending, setSending] = useState(false);
 
   useEffect(() => { setAgents(loadAgentsState()); }, []);
 
   const lead = AGENTS.find(a => a.id === agents.leadId);
   const activeCount = agents.activeIds.length;
+
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || sending) return;
+    const sel = loadSelection();
+    if (!sel) { toast.error("Selecione um modelo no seletor da caixa de envio"); return; }
+    setSending(true);
+    try {
+      const { usage } = await sendChat(sel, [{ role: "user", content: text }]);
+      addTokens(usage.total);
+      setInput("");
+      toast.success(`Resposta recebida · ${usage.total} tokens (${usage.prompt}+${usage.completion})`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl">
@@ -124,6 +146,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             placeholder="Descreva o que você quer construir…"
             rows={2}
             className="w-full resize-none bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground/70 focus:outline-none"
@@ -146,7 +169,11 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               </button>
               <IconBtn><Globe className="h-4 w-4" /></IconBtn>
             </div>
-            <button className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition">
+            <button
+              onClick={handleSend}
+              disabled={sending || !input.trim()}
+              className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Send className="h-4 w-4" />
             </button>
           </div>

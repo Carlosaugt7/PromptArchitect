@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiLlmModelsRouteImport } from './routes/api/llm-models'
+import { Route as ApiLlmChatRouteImport } from './routes/api/llm-chat'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,30 +23,39 @@ const ApiLlmModelsRoute = ApiLlmModelsRouteImport.update({
   path: '/api/llm-models',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLlmChatRoute = ApiLlmChatRouteImport.update({
+  id: '/api/llm-chat',
+  path: '/api/llm-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/llm-models'
+  fullPaths: '/' | '/api/llm-chat' | '/api/llm-models'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/llm-models'
-  id: '__root__' | '/' | '/api/llm-models'
+  to: '/' | '/api/llm-chat' | '/api/llm-models'
+  id: '__root__' | '/' | '/api/llm-chat' | '/api/llm-models'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiLlmChatRoute: typeof ApiLlmChatRoute
   ApiLlmModelsRoute: typeof ApiLlmModelsRoute
 }
 
@@ -65,11 +75,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLlmModelsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/llm-chat': {
+      id: '/api/llm-chat'
+      path: '/api/llm-chat'
+      fullPath: '/api/llm-chat'
+      preLoaderRoute: typeof ApiLlmChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiLlmChatRoute: ApiLlmChatRoute,
   ApiLlmModelsRoute: ApiLlmModelsRoute,
 }
 export const routeTree = rootRouteImport
