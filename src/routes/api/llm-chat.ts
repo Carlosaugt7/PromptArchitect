@@ -9,14 +9,16 @@ const cors = {
 
 type Provider = "openai" | "anthropic" | "google" | "deepseek" | "openrouter" | "custom";
 
+type Part =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "file"; file: { filename: string; file_data: string } };
+
+interface Msg { role: "user" | "assistant" | "system"; content: string | Part[] }
+
 interface Body {
-  provider: Provider;
-  apiKey: string;
-  baseUrl: string;
-  model: string;
-  system?: string;
-  stream?: boolean;
-  messages: { role: "user" | "assistant" | "system"; content: string }[];
+  provider: Provider; apiKey: string; baseUrl: string; model: string;
+  system?: string; stream?: boolean; messages: Msg[];
 }
 
 export const Route = createFileRoute("/api/llm-chat")({
@@ -26,69 +28,10 @@ export const Route = createFileRoute("/api/llm-chat")({
       POST: async ({ request }) => {
         try {
           const body = (await request.json()) as Body;
-          const { provider, apiKey, baseUrl, model, system, messages, stream } = body;
-          if (!provider || !apiKey || !baseUrl || !model || !messages?.length) {
+          if (!body.provider || !body.apiKey || !body.baseUrl || !body.model || !body.messages?.length) {
             return json({ error: "Parâmetros obrigatórios ausentes" }, 400);
           }
-          if (stream) return streamResponse(body);
-
-          const base = baseUrl.replace(/\/+$/, "");
-
-          if (provider === "anthropic") {
-            const res = await fetch(`${base}/messages`, {
-              method: "POST",
-              headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-              body: JSON.stringify({ model, max_tokens: 4096, system, messages: messages.filter(m => m.role !== "system") }),
-            });
-            const data = await res.json();
-            if (!res.ok) return json({ error: data?.error?.message ?? `${res.status}` }, res.status);
-            const text = (data.content ?? []).map((c: any) => c.text).filter(Boolean).join("\n");
-            const usage = {
-              prompt: data.usage?.input_tokens ?? 0,
-              completion: data.usage?.output_tokens ?? 0,
-              total: (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0),
-            };
-            return json({ text, usage });
-          }
-
-          if (provider === "google") {
-            const url = `${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-            const res = await fetch(url, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({
-                systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-                contents: messages.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-              }),
-            });
-            const data = await res.json();
-            if (!res.ok) return json({ error: data?.error?.message ?? `${res.status}` }, res.status);
-            const text = (data.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text).filter(Boolean).join("\n");
-            const u = data.usageMetadata ?? {};
-            const usage = {
-              prompt: u.promptTokenCount ?? 0,
-              completion: u.candidatesTokenCount ?? 0,
-              total: u.totalTokenCount ?? ((u.promptTokenCount ?? 0) + (u.candidatesTokenCount ?? 0)),
-            };
-            return json({ text, usage });
-          }
-
-          const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
-          const res = await fetch(`${base}/chat/completions`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-            body: JSON.stringify({ model, messages: all }),
-          });
-          const data = await res.json();
-          if (!res.ok) return json({ error: data?.error?.message ?? `${res.status}` }, res.status);
-          const text = data.choices?.[0]?.message?.content ?? "";
-          const u = data.usage ?? {};
-          const usage = {
-            prompt: u.prompt_tokens ?? 0,
-            completion: u.completion_tokens ?? 0,
-            total: u.total_tokens ?? ((u.prompt_tokens ?? 0) + (u.completion_tokens ?? 0)),
-          };
-          return json({ text, usage });
+          return body.stream ? streamResponse(body, request.signal) : nonStream(body);
         } catch (err) {
           return json({ error: err instanceof Error ? err.message : "Erro desconhecido" }, 500);
         }
@@ -101,22 +44,122 @@ function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", ...cors } });
 }
 
-/* ---------------- STREAMING ---------------- */
+/* ---------- Provider mapping ---------- */
 
-async function streamResponse(body: Body): Promise<Response> {
+function parseDataUrl(url: string): { mediaType: string; base64: string } | null {
+  const m = /^data:([^;]+);base64,(.+)$/.exec(url);
+  return m ? { mediaType: m[1], base64: m[2] } : null;
+}
+
+function partsToAnthropic(content: string | Part[]): any[] {
+  if (typeof content === "string") return [{ type: "text", text: content }];
+  return content.map(p => {
+    if (p.type === "text") return { type: "text", text: p.text };
+    if (p.type === "image_url") {
+      const d = parseDataUrl(p.image_url.url);
+      return d
+        ? { type: "image", source: { type: "base64", media_type: d.mediaType, data: d.base64 } }
+        : { type: "image", source: { type: "url", url: p.image_url.url } };
+    }
+    const d = parseDataUrl(p.file.file_data);
+    return d
+      ? { type: "document", source: { type: "base64", media_type: d.mediaType, data: d.base64 } }
+      : { type: "text", text: `[Arquivo ${p.file.filename}]` };
+  });
+}
+
+function partsToGoogle(content: string | Part[]): any[] {
+  if (typeof content === "string") return [{ text: content }];
+  return content.map(p => {
+    if (p.type === "text") return { text: p.text };
+    if (p.type === "image_url") {
+      const d = parseDataUrl(p.image_url.url);
+      return d ? { inline_data: { mime_type: d.mediaType, data: d.base64 } } : { text: p.image_url.url };
+    }
+    const d = parseDataUrl(p.file.file_data);
+    return d ? { inline_data: { mime_type: d.mediaType, data: d.base64 } } : { text: `[Arquivo ${p.file.filename}]` };
+  });
+}
+
+/* ---------- Non-streaming ---------- */
+
+async function nonStream(body: Body): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = baseUrl.replace(/\/+$/, "");
-  const encoder = new TextEncoder();
+
+  if (provider === "anthropic") {
+    const r = await fetch(`${base}/messages`, {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model, max_tokens: 4096, system,
+        messages: messages.filter(m => m.role !== "system").map(m => ({ role: m.role, content: partsToAnthropic(m.content) })),
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) return json({ error: d?.error?.message ?? `${r.status}` }, r.status);
+    const text = (d.content ?? []).map((c: any) => c.text).filter(Boolean).join("\n");
+    return json({ text, usage: anthropicUsage(d.usage) });
+  }
+
+  if (provider === "google") {
+    const url = `${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const r = await fetch(url, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+        contents: messages.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: partsToGoogle(m.content) })),
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) return json({ error: d?.error?.message ?? `${r.status}` }, r.status);
+    const text = (d.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text).filter(Boolean).join("\n");
+    return json({ text, usage: googleUsage(d.usageMetadata) });
+  }
+
+  const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
+  const r = await fetch(`${base}/chat/completions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({ model, messages: all }),
+  });
+  const d = await r.json();
+  if (!r.ok) return json({ error: d?.error?.message ?? `${r.status}` }, r.status);
+  return json({ text: d.choices?.[0]?.message?.content ?? "", usage: openaiUsage(d.usage) });
+}
+
+function anthropicUsage(u: any) {
+  const p = u?.input_tokens ?? 0, c = u?.output_tokens ?? 0;
+  return { prompt: p, completion: c, total: p + c };
+}
+function googleUsage(u: any) {
+  const p = u?.promptTokenCount ?? 0, c = u?.candidatesTokenCount ?? 0;
+  return { prompt: p, completion: c, total: u?.totalTokenCount ?? p + c };
+}
+function openaiUsage(u: any) {
+  const p = u?.prompt_tokens ?? 0, c = u?.completion_tokens ?? 0;
+  return { prompt: p, completion: c, total: u?.total_tokens ?? p + c };
+}
+
+/* ---------- Streaming ---------- */
+
+async function streamResponse(body: Body, signal: AbortSignal): Promise<Response> {
+  const { provider, apiKey, baseUrl, model, system, messages } = body;
+  const base = baseUrl.replace(/\/+$/, "");
+  const enc = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      const send = (obj: unknown) => controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
       try {
         if (provider === "anthropic") {
           const r = await fetch(`${base}/messages`, {
-            method: "POST",
+            method: "POST", signal,
             headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-            body: JSON.stringify({ model, max_tokens: 4096, system, stream: true, messages: messages.filter(m => m.role !== "system") }),
+            body: JSON.stringify({
+              model, max_tokens: 4096, system, stream: true,
+              messages: messages.filter(m => m.role !== "system").map(m => ({ role: m.role, content: partsToAnthropic(m.content) })),
+            }),
           });
           if (!r.ok || !r.body) { send({ error: `${r.status} ${await r.text()}` }); return controller.close(); }
           let usage = { prompt: 0, completion: 0, total: 0 };
@@ -138,11 +181,11 @@ async function streamResponse(body: Body): Promise<Response> {
         if (provider === "google") {
           const url = `${base}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
           const r = await fetch(url, {
-            method: "POST",
+            method: "POST", signal,
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-              contents: messages.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+              contents: messages.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: partsToGoogle(m.content) })),
             }),
           });
           if (!r.ok || !r.body) { send({ error: `${r.status} ${await r.text()}` }); return controller.close(); }
@@ -152,23 +195,16 @@ async function streamResponse(body: Body): Promise<Response> {
               const j = JSON.parse(evt);
               const text = (j.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text).filter(Boolean).join("");
               if (text) send({ delta: text });
-              if (j.usageMetadata) {
-                usage = {
-                  prompt: j.usageMetadata.promptTokenCount ?? usage.prompt,
-                  completion: j.usageMetadata.candidatesTokenCount ?? usage.completion,
-                  total: j.usageMetadata.totalTokenCount ?? usage.total,
-                };
-              }
+              if (j.usageMetadata) usage = googleUsage(j.usageMetadata);
             } catch {}
           });
           send({ usage });
           return controller.close();
         }
 
-        // OpenAI-compatível
         const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
         const r = await fetch(`${base}/chat/completions`, {
-          method: "POST",
+          method: "POST", signal,
           headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
           body: JSON.stringify({ model, messages: all, stream: true, stream_options: { include_usage: true } }),
         });
@@ -180,17 +216,15 @@ async function streamResponse(body: Body): Promise<Response> {
             const j = JSON.parse(evt);
             const delta = j.choices?.[0]?.delta?.content;
             if (delta) send({ delta });
-            if (j.usage) usage = {
-              prompt: j.usage.prompt_tokens ?? 0,
-              completion: j.usage.completion_tokens ?? 0,
-              total: j.usage.total_tokens ?? 0,
-            };
+            if (j.usage) usage = openaiUsage(j.usage);
           } catch {}
         });
         send({ usage });
         controller.close();
       } catch (e) {
-        send({ error: e instanceof Error ? e.message : "stream error" });
+        if ((e as Error).name !== "AbortError") {
+          send({ error: e instanceof Error ? e.message : "stream error" });
+        }
         controller.close();
       }
     },

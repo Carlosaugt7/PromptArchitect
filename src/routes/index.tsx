@@ -4,23 +4,26 @@ import {
   Sparkles, Plus, Globe, Send, History, MessageSquare, Settings, Users,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText,
-  Image as ImageIcon, FileType2, Trash2, MessageCirclePlus,
+  Image as ImageIcon, FileType2, Trash2, MessageCirclePlus, Square, RotateCw, Download,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
 import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
 import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import { TokenMeter } from "@/components/TokenMeter";
+import { Markdown } from "@/components/Markdown";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, type ImportedProject } from "@/lib/project-import";
-import { loadSelection, sendChatStream } from "@/lib/llm-providers";
+import { loadSelection, sendChatStream, type WireMessage, type ContentPart } from "@/lib/llm-providers";
 import { addTokens } from "@/lib/token-usage";
 import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
 import {
   loadConversations, saveConversation, deleteConversation, newConversation,
   subscribeConversations, titleFrom, type Conversation, type ChatMessage,
 } from "@/lib/chat-history";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+
 
 
 export const Route = createFileRoute("/")({
@@ -60,6 +63,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [streaming, setStreaming] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => { setAgents(loadAgentsState()); }, []);
   useEffect(() => {
@@ -74,14 +78,19 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const activeCount = agents.activeIds.length;
 
   function startNew() {
+    abortRef.current?.abort();
     setConversation(newConversation());
     setStreaming("");
     setTab("chat");
   }
   function openConversation(c: Conversation) {
+    abortRef.current?.abort();
     setConversation(c);
     setStreaming("");
     setTab("chat");
+  }
+  function stopStream() {
+    abortRef.current?.abort();
   }
 
   async function handleFiles(list: FileList | null) {
@@ -98,19 +107,69 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     setAttachments(prev => [...prev, ...next]);
   }
 
+  /** Constrói content parts (vision) para a mensagem do usuário. */
+  function buildUserContent(text: string, atts: Attachment[]): string | ContentPart[] {
+    const mdInline = atts.filter(a => a.kind === "md").map(a => `\n\n--- Anexo: ${a.name} ---\n${a.content}`).join("");
+    const fullText = (text + mdInline).trim();
+    const visual = atts.filter(a => a.kind === "image" || a.kind === "pdf");
+    if (visual.length === 0) return fullText || "(anexos)";
+    const parts: ContentPart[] = [];
+    if (fullText) parts.push({ type: "text", text: fullText });
+    for (const a of visual) {
+      if (a.kind === "image") parts.push({ type: "image_url", image_url: { url: a.content } });
+      else parts.push({ type: "file", file: { filename: a.name, file_data: a.content } });
+    }
+    return parts;
+  }
+
+  async function runTurn(convo: Conversation, userMsgId: string, userContent: string | ContentPart[]) {
+    const sel = loadSelection();
+    if (!sel) { toast.error("Selecione um modelo no seletor da caixa de envio"); return; }
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setSending(true);
+    setStreaming("");
+    try {
+      const wire: WireMessage[] = convo.messages.map(m => ({
+        role: m.role,
+        content: m.id === userMsgId ? userContent : m.content,
+      }));
+      let acc = "";
+      const { usage } = await sendChatStream(sel, wire, (chunk) => {
+        acc += chunk;
+        setStreaming(acc);
+      }, { signal: ctrl.signal });
+      const cost = estimateCostUsd(sel.model, usage.prompt, usage.completion);
+      addTokens(usage.total, cost);
+      const stopped = ctrl.signal.aborted;
+      const assistantMsg: ChatMessage = {
+        id: crypto.randomUUID(), role: "assistant",
+        content: acc + (stopped ? "\n\n_⏹ Interrompido pelo usuário._" : ""),
+        tokens: usage.total, costUsd: cost, model: sel.model, createdAt: Date.now(),
+      };
+      const final: Conversation = { ...convo, messages: [...convo.messages, assistantMsg] };
+      setConversation(final);
+      saveConversation(final);
+      setStreaming("");
+      if (!stopped) toast.success(`${usage.total} tokens · ${formatUsd(cost)} (${sel.model})`);
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") {
+        toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
+      }
+      setStreaming("");
+    } finally {
+      setSending(false);
+      abortRef.current = null;
+    }
+  }
+
   async function handleSend() {
     const text = input.trim();
     if ((!text && attachments.length === 0) || sending) return;
-    const sel = loadSelection();
-    if (!sel) { toast.error("Selecione um modelo no seletor da caixa de envio"); return; }
-
-    const images = attachments.filter(a => a.kind === "image").map(a => a.content);
-    const files = attachments.filter(a => a.kind !== "image").map(a => a.name);
-    const mdParts = attachments.filter(a => a.kind === "md").map(a => `\n\n--- Anexo: ${a.name} ---\n${a.content}`);
-    const otherParts = attachments.filter(a => a.kind === "pdf").map(a => `\n[Anexo pdf: ${a.name} (${Math.round(a.size/1024)}KB)]`);
-    const imgParts = attachments.filter(a => a.kind === "image").map(a => `\n[Anexo image: ${a.name}]`);
-    const fullText = text + mdParts.join("") + otherParts.join("") + imgParts.join("");
-
+    const atts = attachments;
+    const userContent = buildUserContent(text, atts);
+    const images = atts.filter(a => a.kind === "image").map(a => a.content);
+    const files = atts.filter(a => a.kind !== "image").map(a => a.name);
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(), role: "user", content: text || "(anexos)",
       images: images.length ? images : undefined, files: files.length ? files : undefined,
@@ -124,37 +183,53 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     setConversation(convo);
     setInput("");
     setAttachments([]);
-    setSending(true);
-    setStreaming("");
-
-    try {
-      const wire = convo.messages.map(m => ({
-        role: m.role,
-        content: m.id === userMsg.id ? fullText : m.content,
-      }));
-      let acc = "";
-      const { usage } = await sendChatStream(sel, wire, (chunk) => {
-        acc += chunk;
-        setStreaming(acc);
-      });
-      const cost = estimateCostUsd(sel.model, usage.prompt, usage.completion);
-      addTokens(usage.total, cost);
-      const assistantMsg: ChatMessage = {
-        id: crypto.randomUUID(), role: "assistant", content: acc,
-        tokens: usage.total, costUsd: cost, model: sel.model, createdAt: Date.now(),
-      };
-      const final: Conversation = { ...convo, messages: [...convo.messages, assistantMsg] };
-      setConversation(final);
-      saveConversation(final);
-      setStreaming("");
-      toast.success(`${usage.total} tokens · ${formatUsd(cost)} (${sel.model})`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
-      setStreaming("");
-    } finally {
-      setSending(false);
-    }
+    await runTurn(convo, userMsg.id, userContent);
   }
+
+  async function handleRegenerate() {
+    if (sending) return;
+    const msgs = conversation.messages;
+    if (msgs.length < 2) return;
+    // remove última assistente e refaz
+    const lastAssistantIdx = [...msgs].reverse().findIndex(m => m.role === "assistant");
+    if (lastAssistantIdx < 0) return;
+    const cut = msgs.length - 1 - lastAssistantIdx;
+    const trimmed = msgs.slice(0, cut);
+    const lastUser = [...trimmed].reverse().find(m => m.role === "user");
+    if (!lastUser) return;
+    const convo: Conversation = { ...conversation, messages: trimmed };
+    setConversation(convo);
+    await runTurn(convo, lastUser.id, lastUser.content);
+  }
+
+  function exportConversation(format: "md" | "json") {
+    if (conversation.messages.length === 0) { toast.error("Nada para exportar"); return; }
+    const slug = conversation.title.replace(/[^\w\-]+/g, "-").slice(0, 40) || "conversa";
+    let blob: Blob;
+    let ext: string;
+    if (format === "json") {
+      blob = new Blob([JSON.stringify(conversation, null, 2)], { type: "application/json" });
+      ext = "json";
+    } else {
+      const lines = [`# ${conversation.title}`, ""];
+      for (const m of conversation.messages) {
+        lines.push(`## ${m.role === "user" ? "👤 Você" : "🤖 Assistente"}`);
+        lines.push("");
+        lines.push(m.content);
+        if (m.tokens) lines.push(`\n> _${m.model} · ${m.tokens} tok · ${formatUsd(m.costUsd ?? 0)}_`);
+        lines.push("");
+      }
+      blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+      ext = "md";
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
 
 
   return (
@@ -209,13 +284,38 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
         <TabButton active={tab === "history"} onClick={() => setTab("history")} icon={<History className="h-4 w-4" />}>
           Histórico {history.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({history.length})</span>}
         </TabButton>
-        <button
-          onClick={startNew}
-          title="Nova conversa"
-          className="ml-auto grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        >
-          <MessageCirclePlus className="h-4 w-4" />
-        </button>
+        <div className="ml-auto flex items-center gap-0.5">
+          {conversation.messages.length > 0 && (
+            <>
+              <button
+                onClick={handleRegenerate}
+                disabled={sending}
+                title="Regenerar última resposta"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40"
+              >
+                <RotateCw className="h-4 w-4" />
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button title="Exportar conversa" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+                    <Download className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => exportConversation("md")}>Exportar como .md</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportConversation("json")}>Exportar como .json</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          <button
+            onClick={startNew}
+            title="Nova conversa"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          >
+            <MessageCirclePlus className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
@@ -235,6 +335,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           </div>
         )}
       </div>
+
 
       <div className="border-t border-border p-3">
         <div className="surface rounded-2xl border border-border p-2.5 focus-within:border-primary/50 focus-within:glow transition-all">
@@ -299,13 +400,25 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               </button>
               
             </div>
-            <button
-              onClick={handleSend}
-              disabled={sending || !input.trim()}
-              className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send className="h-4 w-4" />
-            </button>
+            {sending ? (
+              <button
+                onClick={stopStream}
+                title="Parar geração"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-destructive text-destructive-foreground hover:opacity-90 transition"
+              >
+                <Square className="h-4 w-4" fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() && attachments.length === 0}
+                title="Enviar"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            )}
+
           </div>
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
@@ -483,12 +596,13 @@ function MessageBubble({ m, streaming }: { m: ChatMessage; streaming?: boolean }
   const isUser = m.role === "user";
   return (
     <div className={`flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
-      <div className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${
-        isUser ? "bg-primary text-primary-foreground" : "bg-card/60 border border-border"
+      <div className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm break-words ${
+        isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-card/60 border border-border"
       }`}>
-        {m.content}
+        {isUser ? m.content : <Markdown>{m.content}</Markdown>}
         {streaming && <span className="ml-0.5 inline-block w-1.5 h-3 bg-current animate-pulse align-middle" />}
       </div>
+
       {m.images && m.images.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {m.images.map((src, i) => (
