@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
+import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { useEffect } from "react";
 
