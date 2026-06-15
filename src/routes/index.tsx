@@ -37,7 +37,7 @@ function OmniForge() {
 }
 
 /* ---------------- CHAT PANEL ---------------- */
-function ChatPanel() {
+function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [tab, setTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
