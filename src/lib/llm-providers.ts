@@ -52,51 +52,23 @@ export function saveProviders(state: ProvidersState) {
 }
 
 /* ---------------- Discovery ---------------- */
+// Chama um proxy server-side para evitar problemas de CORS com endpoints
+// que não liberam o navegador (custom URLs, DeepSeek, OpenRouter, etc.).
 
 export async function fetchModels(
   provider: ProviderId,
   apiKey: string,
   baseUrl: string,
 ): Promise<string[]> {
-  const url = baseUrl.replace(/\/$/, "");
-
-  if (provider === "anthropic") {
-    const res = await fetch(`${url}/models`, {
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-    });
-    if (!res.ok) throw new Error(await readError(res));
-    const json = (await res.json()) as { data: { id: string }[] };
-    return json.data.map((m) => m.id).sort();
-  }
-
-  if (provider === "google") {
-    const res = await fetch(`${url}/models?key=${encodeURIComponent(apiKey)}`);
-    if (!res.ok) throw new Error(await readError(res));
-    const json = (await res.json()) as { models: { name: string; supportedGenerationMethods?: string[] }[] };
-    return json.models
-      .filter((m) => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes("generateContent"))
-      .map((m) => m.name.replace(/^models\//, ""))
-      .sort();
-  }
-
-  // OpenAI-compatível: OpenAI, DeepSeek, OpenRouter, Custom
-  const res = await fetch(`${url}/models`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
+  const res = await fetch("/api/llm-models", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ provider, apiKey, baseUrl }),
   });
-  if (!res.ok) throw new Error(await readError(res));
-  const json = (await res.json()) as { data: { id: string }[] };
-  return json.data.map((m) => m.id).sort();
+  const data = (await res.json().catch(() => ({}))) as { models?: string[]; error?: string };
+  if (!res.ok || data.error) {
+    throw new Error(data.error ?? `${res.status} ${res.statusText}`);
+  }
+  return data.models ?? [];
 }
 
-async function readError(res: Response): Promise<string> {
-  try {
-    const text = await res.text();
-    return `${res.status} ${res.statusText}: ${text.slice(0, 200)}`;
-  } catch {
-    return `${res.status} ${res.statusText}`;
-  }
-}
