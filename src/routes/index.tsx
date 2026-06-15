@@ -136,7 +136,13 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           </div>
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
-              <IconBtn><Plus className="h-4 w-4" /></IconBtn>
+              <button
+                onClick={onOpenImport}
+                title="Importar projeto (pasta ou GitHub)"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
               <IconBtn><Globe className="h-4 w-4" /></IconBtn>
             </div>
             <button className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition">
