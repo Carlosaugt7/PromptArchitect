@@ -400,13 +400,25 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               </button>
               
             </div>
-            <button
-              onClick={handleSend}
-              disabled={sending || !input.trim()}
-              className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send className="h-4 w-4" />
-            </button>
+            {sending ? (
+              <button
+                onClick={stopStream}
+                title="Parar geração"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-destructive text-destructive-foreground hover:opacity-90 transition"
+              >
+                <Square className="h-4 w-4" fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() && attachments.length === 0}
+                title="Enviar"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="h-4 w-4" />
+              </button>
+            )}
+
           </div>
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
