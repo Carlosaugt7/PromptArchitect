@@ -19,6 +19,7 @@ export interface Conversation {
   title: string;
   messages: ChatMessage[];
   updatedAt: number;
+  pinned?: boolean;
 }
 
 const KEY = "omniforge.chat.history";
@@ -29,7 +30,8 @@ export function loadConversations(): Conversation[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as Conversation[];
+    const list = JSON.parse(raw) as Conversation[];
+    return sortConversations(list);
   } catch { return []; }
 }
 
@@ -48,14 +50,36 @@ export function subscribeConversations(cb: () => void): () => void {
   };
 }
 
+function sortConversations(list: Conversation[]): Conversation[] {
+  return [...list].sort((a, b) => {
+    if (!!b.pinned !== !!a.pinned) return b.pinned ? 1 : -1;
+    return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+  });
+}
+
 export function saveConversation(c: Conversation) {
-  const list = loadConversations().filter(x => x.id !== c.id);
-  list.unshift({ ...c, updatedAt: Date.now() });
-  persist(list.slice(0, 100));
+  const others = loadConversations().filter(x => x.id !== c.id);
+  const next = sortConversations([{ ...c, updatedAt: Date.now() }, ...others]).slice(0, 100);
+  persist(next);
 }
 
 export function deleteConversation(id: string) {
   persist(loadConversations().filter(c => c.id !== id));
+}
+
+export function renameConversation(id: string, title: string) {
+  const list = loadConversations().map(c => c.id === id ? { ...c, title: title.trim() || c.title } : c);
+  persist(list);
+}
+
+export function togglePinned(id: string) {
+  const list = loadConversations().map(c => c.id === id ? { ...c, pinned: !c.pinned } : c);
+  persist(sortConversations(list));
+}
+
+export function importConversation(c: Conversation) {
+  const list = [c, ...loadConversations().filter(x => x.id !== c.id)];
+  persist(sortConversations(list).slice(0, 100));
 }
 
 export function newConversation(): Conversation {
@@ -65,4 +89,55 @@ export function newConversation(): Conversation {
 export function titleFrom(text: string): string {
   const t = text.trim().replace(/\s+/g, " ");
   return t.length > 60 ? t.slice(0, 57) + "…" : t || "Nova conversa";
+}
+
+export function searchConversations(list: Conversation[], q: string): Conversation[] {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return list;
+  return list.filter(c =>
+    c.title.toLowerCase().includes(needle) ||
+    c.messages.some(m => m.content.toLowerCase().includes(needle))
+  );
+}
+
+/** Tenta importar de string .json ou .md. Lança em caso de formato inválido. */
+export function parseImportedConversation(raw: string, filename: string): Conversation {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("{")) {
+    const data = JSON.parse(trimmed) as Partial<Conversation>;
+    if (!Array.isArray(data.messages)) throw new Error("JSON inválido: faltando 'messages'");
+    return {
+      id: data.id || crypto.randomUUID(),
+      title: data.title || filename.replace(/\.\w+$/, ""),
+      messages: data.messages as ChatMessage[],
+      pinned: data.pinned,
+      updatedAt: Date.now(),
+    };
+  }
+  // Markdown: cabeçalhos "## 👤 Você" / "## 🤖 Assistente" (formato do export)
+  const lines = trimmed.split(/\r?\n/);
+  let title = filename.replace(/\.\w+$/, "");
+  if (lines[0]?.startsWith("# ")) { title = lines[0].slice(2).trim(); lines.shift(); }
+  const messages: ChatMessage[] = [];
+  let role: "user" | "assistant" | null = null;
+  let buf: string[] = [];
+  const flush = () => {
+    if (role && buf.length) {
+      const content = buf.join("\n").trim();
+      if (content) messages.push({ id: crypto.randomUUID(), role, content, createdAt: Date.now() });
+    }
+    buf = [];
+  };
+  for (const ln of lines) {
+    const h = ln.match(/^##\s+.*?(você|user|usuário|assistente|assistant)/i);
+    if (h) {
+      flush();
+      role = /assist/i.test(h[1]) ? "assistant" : "user";
+    } else if (role) {
+      buf.push(ln);
+    }
+  }
+  flush();
+  if (messages.length === 0) throw new Error("Markdown sem mensagens reconhecidas");
+  return { id: crypto.randomUUID(), title, messages, updatedAt: Date.now() };
 }
