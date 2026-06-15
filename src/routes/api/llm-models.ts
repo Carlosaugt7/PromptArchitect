@@ -83,7 +83,7 @@ function buildModelUrls(provider: Provider, base: URL, apiKey: string) {
   return [...urls];
 }
 
-function buildHeaders(provider: Provider, apiKey: string) {
+function buildHeaders(provider: Provider, apiKey: string): Record<string, string> {
   if (provider === "anthropic") {
     return { "x-api-key": apiKey, "anthropic-version": "2023-06-01", Accept: "application/json" };
   }
