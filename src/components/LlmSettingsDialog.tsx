@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ExternalLink, Eye, EyeOff, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Check, ExternalLink, Eye, EyeOff, Loader2, Save, Sparkles, Trash2, UserCog, ShieldCheck } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import {
   PROVIDERS, type ProviderId, type ProvidersState,
   loadProviders, saveProviders, fetchModels,
 } from "@/lib/llm-providers";
+import { loadDirectives, saveDirectives, type LlmDirectives } from "@/lib/llm-directives";
 
 interface Props {
   open: boolean;
