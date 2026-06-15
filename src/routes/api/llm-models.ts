@@ -75,8 +75,8 @@ function normalizeBaseUrl(raw: string) {
 }
 
 function buildModelUrls(provider: Provider, base: URL, apiKey: string) {
-  if (provider === "google") return [`${base.toString()}/models?key=${encodeURIComponent(apiKey)}`];
-  const clean = base.toString();
+  const clean = base.toString().replace(/\/$/, "");
+  if (provider === "google") return [`${clean}/models?key=${encodeURIComponent(apiKey)}`];
   if (/\/models$/i.test(base.pathname)) return [clean];
   const urls = new Set<string>([`${clean}/models`]);
   if (!/\/v\d+(beta)?$/i.test(base.pathname)) urls.add(`${clean}/v1/models`);
