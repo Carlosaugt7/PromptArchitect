@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Zap, RotateCcw, Pencil, Check } from "lucide-react";
+import { Zap, RotateCcw, Pencil, Check, DollarSign } from "lucide-react";
 import {
   loadTokens, subscribeTokens, formatTokens, setMonthlyLimit, resetTokens,
   type TokenBudget,
 } from "@/lib/token-usage";
+import { formatUsd } from "@/lib/llm-pricing";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+
 
 export function TokenMeter() {
   const [b, setB] = useState<TokenBudget>(() => loadTokens());
@@ -45,6 +47,10 @@ export function TokenMeter() {
               </span>
             </>
           )}
+          <span className="ml-1 flex items-center gap-0.5 text-muted-foreground border-l border-border pl-2">
+            <DollarSign className="h-3 w-3" />
+            <span className="tabular-nums">{formatUsd(b.costUsd)}</span>
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72">
@@ -59,6 +65,11 @@ export function TokenMeter() {
                 </span>
               )}
             </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Custo estimado: <strong className="text-foreground tabular-nums">{formatUsd(b.costUsd)}</strong>
+            </div>
+
+
             {hasLimit && (
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div className={`h-full ${tone}`} style={{ width: `${pct}%` }} />
