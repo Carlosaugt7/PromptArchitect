@@ -150,6 +150,7 @@ function DirectivesForm({ field, open }: { field: "agent" | "rules"; open: boole
     </div>
   );
 }
+function ProviderForm({
   providerId, state, onChange,
 }: { providerId: ProviderId; state: ProvidersState; onChange: (s: ProvidersState) => void }) {
   const provider = useMemo(() => PROVIDERS.find((p) => p.id === providerId)!, [providerId]);
