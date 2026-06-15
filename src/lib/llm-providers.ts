@@ -31,12 +31,17 @@ export interface SavedProvider {
   apiKey: string;
   baseUrl: string;
   models: string[];
+  /** modelos marcados pelo usuário para aparecer no seletor da tela de dev */
+  enabled?: string[];
   updatedAt: number;
 }
 
 export type ProvidersState = Partial<Record<ProviderId, SavedProvider>>;
 
 const STORAGE_KEY = "omniforge.llm.providers";
+const SELECTION_KEY = "omniforge.llm.selection";
+
+export interface ModelSelection { provider: ProviderId; model: string; }
 
 export function loadProviders(): ProvidersState {
   if (typeof window === "undefined") return {};
@@ -49,6 +54,31 @@ export function loadProviders(): ProvidersState {
 
 export function saveProviders(state: ProvidersState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+export function loadSelection(): ModelSelection | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SELECTION_KEY);
+    return raw ? (JSON.parse(raw) as ModelSelection) : null;
+  } catch { return null; }
+}
+
+export function saveSelection(sel: ModelSelection | null) {
+  if (!sel) localStorage.removeItem(SELECTION_KEY);
+  else localStorage.setItem(SELECTION_KEY, JSON.stringify(sel));
+}
+
+/** Retorna todos os pares (provider, model) habilitados pelo usuário. */
+export function listEnabledModels(state: ProvidersState = loadProviders()): ModelSelection[] {
+  const out: ModelSelection[] = [];
+  for (const p of PROVIDERS) {
+    const saved = state[p.id];
+    if (!saved?.apiKey) continue;
+    const enabled = saved.enabled?.length ? saved.enabled : saved.models;
+    for (const m of enabled) out.push({ provider: p.id, model: m });
+  }
+  return out;
 }
 
 /* ---------------- Discovery ---------------- */
