@@ -4,23 +4,26 @@ import {
   Sparkles, Plus, Globe, Send, History, MessageSquare, Settings, Users,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText,
-  Image as ImageIcon, FileType2, Trash2, MessageCirclePlus,
+  Image as ImageIcon, FileType2, Trash2, MessageCirclePlus, Square, RotateCw, Download,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
 import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
 import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import { TokenMeter } from "@/components/TokenMeter";
+import { Markdown } from "@/components/Markdown";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, type ImportedProject } from "@/lib/project-import";
-import { loadSelection, sendChatStream } from "@/lib/llm-providers";
+import { loadSelection, sendChatStream, type WireMessage, type ContentPart } from "@/lib/llm-providers";
 import { addTokens } from "@/lib/token-usage";
 import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
 import {
   loadConversations, saveConversation, deleteConversation, newConversation,
   subscribeConversations, titleFrom, type Conversation, type ChatMessage,
 } from "@/lib/chat-history";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+
 
 
 export const Route = createFileRoute("/")({
