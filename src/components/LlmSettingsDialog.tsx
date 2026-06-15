@@ -1,0 +1,227 @@
+import { useEffect, useMemo, useState } from "react";
+import { Check, ExternalLink, Eye, EyeOff, Loader2, Sparkles, Trash2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import {
+  PROVIDERS, type ProviderId, type ProvidersState,
+  loadProviders, saveProviders, fetchModels,
+} from "@/lib/llm-providers";
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved?: (state: ProvidersState) => void;
+}
+
+export function LlmSettingsDialog({ open, onOpenChange, onSaved }: Props) {
+  const [state, setState] = useState<ProvidersState>({});
+  const [tab, setTab] = useState<ProviderId>("openai");
+
+  useEffect(() => {
+    if (open) setState(loadProviders());
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl bg-card border-border">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 font-display">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Configurar provedores de LLM
+          </DialogTitle>
+          <DialogDescription>
+            Conecte suas chaves de API. A OmniForge detecta automaticamente os modelos disponíveis.
+            As chaves ficam armazenadas localmente no seu navegador.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Tabs value={tab} onValueChange={(v) => setTab(v as ProviderId)} className="mt-2">
+          <TabsList className="grid grid-cols-6 bg-muted/40">
+            {PROVIDERS.map((p) => (
+              <TabsTrigger key={p.id} value={p.id} className="text-xs relative">
+                {p.name}
+                {state[p.id]?.apiKey && (
+                  <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-success" />
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {PROVIDERS.map((p) => (
+            <TabsContent key={p.id} value={p.id} className="mt-4">
+              <ProviderForm
+                providerId={p.id}
+                state={state}
+                onChange={(next) => {
+                  setState(next);
+                  saveProviders(next);
+                  onSaved?.(next);
+                }}
+              />
+            </TabsContent>
+          ))}
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ProviderForm({
+  providerId, state, onChange,
+}: { providerId: ProviderId; state: ProvidersState; onChange: (s: ProvidersState) => void }) {
+  const provider = useMemo(() => PROVIDERS.find((p) => p.id === providerId)!, [providerId]);
+  const saved = state[providerId];
+
+  const [apiKey, setApiKey] = useState(saved?.apiKey ?? "");
+  const [baseUrl, setBaseUrl] = useState(saved?.baseUrl ?? provider.defaultBaseUrl);
+  const [showKey, setShowKey] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [models, setModels] = useState<string[]>(saved?.models ?? []);
+
+  useEffect(() => {
+    const s = state[providerId];
+    setApiKey(s?.apiKey ?? "");
+    setBaseUrl(s?.baseUrl ?? provider.defaultBaseUrl);
+    setModels(s?.models ?? []);
+  }, [providerId, state, provider.defaultBaseUrl]);
+
+  async function handleTest() {
+    if (!apiKey.trim()) {
+      toast.error("Informe a chave de API");
+      return;
+    }
+    if (!baseUrl.trim()) {
+      toast.error("Informe a URL base");
+      return;
+    }
+    setLoading(true);
+    try {
+      const list = await fetchModels(providerId, apiKey.trim(), baseUrl.trim());
+      setModels(list);
+      const next: ProvidersState = {
+        ...state,
+        [providerId]: { apiKey: apiKey.trim(), baseUrl: baseUrl.trim(), models: list, updatedAt: Date.now() },
+      };
+      onChange(next);
+      toast.success(`${list.length} modelos detectados em ${provider.name}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Falha ao consultar a API";
+      toast.error(`Erro ao conectar: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleRemove() {
+    const next = { ...state };
+    delete next[providerId];
+    onChange(next);
+    setApiKey(""); setModels([]); setBaseUrl(provider.defaultBaseUrl);
+    toast.success(`${provider.name} desconectado`);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-sm">{provider.name}</h3>
+          {provider.helpUrl && (
+            <a href={provider.helpUrl} target="_blank" rel="noreferrer"
+               className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+              Obter chave <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+        {saved && (
+          <Badge variant="outline" className="text-success border-success/40 bg-success/10">
+            <Check className="h-3 w-3 mr-1" /> Conectado
+          </Badge>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${providerId}-key`}>Chave de API</Label>
+        <div className="relative">
+          <Input
+            id={`${providerId}-key`}
+            type={showKey ? "text" : "password"}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder={provider.keyPlaceholder}
+            className="pr-10 font-mono text-xs"
+          />
+          <button
+            type="button"
+            onClick={() => setShowKey((s) => !s)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${providerId}-url`}>
+          URL base {provider.needsBaseUrl && <span className="text-destructive">*</span>}
+        </Label>
+        <Input
+          id={`${providerId}-url`}
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.target.value)}
+          placeholder={provider.defaultBaseUrl || "https://sua-api.com/v1"}
+          className="font-mono text-xs"
+        />
+        {!provider.needsBaseUrl && (
+          <p className="text-[11px] text-muted-foreground">
+            Padrão do provedor. Altere apenas para usar um proxy compatível.
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 pt-1">
+        <Button
+          onClick={handleTest}
+          disabled={loading}
+          className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow"
+        >
+          {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Detectando…</>
+                   : <>Testar & detectar modelos</>}
+        </Button>
+        {saved && (
+          <Button variant="outline" onClick={handleRemove} className="text-destructive hover:text-destructive">
+            <Trash2 className="h-4 w-4 mr-1.5" /> Remover
+          </Button>
+        )}
+      </div>
+
+      {models.length > 0 && (
+        <div className="rounded-lg border border-border bg-background/40 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              {models.length} modelos disponíveis
+            </span>
+            {saved && (
+              <span className="text-[10px] text-muted-foreground">
+                atualizado {new Date(saved.updatedAt).toLocaleString("pt-BR")}
+              </span>
+            )}
+          </div>
+          <div className="max-h-48 overflow-y-auto flex flex-wrap gap-1.5">
+            {models.map((m) => (
+              <span key={m} className="rounded-md border border-border bg-card px-2 py-1 text-[11px] font-mono">
+                {m}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

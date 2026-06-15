@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  Sparkles, Plus, Globe, Send, History, MessageSquare,
+  Sparkles, Plus, Globe, Send, History, MessageSquare, Settings,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X,
 } from "lucide-react";
+import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,6 +30,7 @@ function OmniForge() {
 function ChatPanel() {
   const [tab, setTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl">
@@ -40,7 +42,16 @@ function ChatPanel() {
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          title="Configurar provedores de LLM"
+          className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
       </div>
+
+      <LlmSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <div className="flex items-center gap-1 px-3 pt-3">
         <TabButton active={tab === "chat"} onClick={() => setTab("chat")} icon={<MessageSquare className="h-4 w-4" />}>
