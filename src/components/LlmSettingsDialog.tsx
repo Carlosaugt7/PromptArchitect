@@ -184,7 +184,7 @@ function ProviderForm({
       setModels(list);
       const next: ProvidersState = {
         ...state,
-        [providerId]: { apiKey: apiKey.trim(), baseUrl: baseUrl.trim(), models: list, updatedAt: Date.now() },
+        [providerId]: { apiKey: apiKey.trim(), baseUrl: baseUrl.trim(), models: list, enabled: list, updatedAt: Date.now() },
       };
       onChange(next);
       toast.success(`${list.length} modelos detectados em ${provider.name}`);
