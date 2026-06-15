@@ -5,7 +5,7 @@ import {
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText,
   FileType2, Trash2, MessageCirclePlus, Square, RotateCw, Download, Upload,
-  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Rows3, Rows4, Columns3,
+  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Columns3,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -28,7 +28,7 @@ import {
   importConversation, parseImportedConversation, searchConversations,
   type Conversation, type ChatMessage,
 } from "@/lib/chat-history";
-import { useTheme, useDensity } from "@/hooks/use-theme";
+import { useTheme } from "@/hooks/use-theme";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
