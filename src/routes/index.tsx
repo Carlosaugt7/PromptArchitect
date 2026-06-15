@@ -24,10 +24,14 @@ export const Route = createFileRoute("/")({
 });
 
 function OmniForge() {
+  const [importOpen, setImportOpen] = useState(false);
+  const [project, setProject] = useState<ImportedProject | null>(null);
+  useEffect(() => { setProject(loadProject()); }, []);
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
-      <ChatPanel />
-      <WorkspacePanel />
+      <ChatPanel onOpenImport={() => setImportOpen(true)} />
+      <WorkspacePanel project={project} onOpenImport={() => setImportOpen(true)} />
+      <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} />
     </div>
   );
 }
