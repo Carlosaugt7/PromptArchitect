@@ -5,7 +5,7 @@ import {
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText,
   FileType2, Trash2, MessageCirclePlus, Square, RotateCw, Download, Upload,
-  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Rows3, Rows4, Columns3,
+  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Columns3,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -28,7 +28,7 @@ import {
   importConversation, parseImportedConversation, searchConversations,
   type Conversation, type ChatMessage,
 } from "@/lib/chat-history";
-import { useTheme, useDensity } from "@/hooks/use-theme";
+import { useTheme } from "@/hooks/use-theme";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
@@ -77,7 +77,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { theme, toggleTheme } = useTheme();
-  const { density, toggleDensity } = useDensity();
+  
 
   const [currentModel, setCurrentModel] = useState(() => loadSelection());
   useEffect(() => {
@@ -329,10 +329,6 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           <button onClick={toggleTheme} title={theme === "dark" ? "Tema claro" : "Tema escuro"}
             className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <button onClick={toggleDensity} title={density === "cozy" ? "Modo compacto" : "Modo confortável"}
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
-            {density === "cozy" ? <Rows3 className="h-4 w-4" /> : <Rows4 className="h-4 w-4" />}
           </button>
           <button onClick={() => setAgentsOpen(true)} title="Equipe de agentes"
             className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
