@@ -55,12 +55,34 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [agents, setAgents] = useState<AgentsState>({ leadId: "orchestrator", activeIds: ["orchestrator"] });
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [conversation, setConversation] = useState<Conversation>(() => newConversation());
+  const [history, setHistory] = useState<Conversation[]>([]);
+  const [streaming, setStreaming] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setAgents(loadAgentsState()); }, []);
+  useEffect(() => {
+    setHistory(loadConversations());
+    return subscribeConversations(() => setHistory(loadConversations()));
+  }, []);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [conversation.messages.length, streaming]);
 
   const lead = AGENTS.find(a => a.id === agents.leadId);
   const activeCount = agents.activeIds.length;
+
+  function startNew() {
+    setConversation(newConversation());
+    setStreaming("");
+    setTab("chat");
+  }
+  function openConversation(c: Conversation) {
+    setConversation(c);
+    setStreaming("");
+    setTab("chat");
+  }
 
   async function handleFiles(list: FileList | null) {
     if (!list) return;
@@ -81,22 +103,59 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     if ((!text && attachments.length === 0) || sending) return;
     const sel = loadSelection();
     if (!sel) { toast.error("Selecione um modelo no seletor da caixa de envio"); return; }
+
+    const images = attachments.filter(a => a.kind === "image").map(a => a.content);
+    const files = attachments.filter(a => a.kind !== "image").map(a => a.name);
+    const mdParts = attachments.filter(a => a.kind === "md").map(a => `\n\n--- Anexo: ${a.name} ---\n${a.content}`);
+    const otherParts = attachments.filter(a => a.kind === "pdf").map(a => `\n[Anexo pdf: ${a.name} (${Math.round(a.size/1024)}KB)]`);
+    const imgParts = attachments.filter(a => a.kind === "image").map(a => `\n[Anexo image: ${a.name}]`);
+    const fullText = text + mdParts.join("") + otherParts.join("") + imgParts.join("");
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(), role: "user", content: text || "(anexos)",
+      images: images.length ? images : undefined, files: files.length ? files : undefined,
+      createdAt: Date.now(),
+    };
+    const convo: Conversation = {
+      ...conversation,
+      title: conversation.messages.length === 0 ? titleFrom(text || files[0] || "Conversa") : conversation.title,
+      messages: [...conversation.messages, userMsg],
+    };
+    setConversation(convo);
+    setInput("");
+    setAttachments([]);
     setSending(true);
+    setStreaming("");
+
     try {
-      const mdParts = attachments.filter(a => a.kind === "md").map(a => `\n\n--- Anexo: ${a.name} ---\n${a.content}`);
-      const otherParts = attachments.filter(a => a.kind !== "md").map(a => `\n[Anexo ${a.kind}: ${a.name} (${Math.round(a.size/1024)}KB)]`);
-      const fullText = text + mdParts.join("") + otherParts.join("");
-      const { usage } = await sendChat(sel, [{ role: "user", content: fullText }]);
-      addTokens(usage.total);
-      setInput("");
-      setAttachments([]);
-      toast.success(`Resposta recebida · ${usage.total} tokens (${usage.prompt}+${usage.completion})`);
+      const wire = convo.messages.map(m => ({
+        role: m.role,
+        content: m.id === userMsg.id ? fullText : m.content,
+      }));
+      let acc = "";
+      const { usage } = await sendChatStream(sel, wire, (chunk) => {
+        acc += chunk;
+        setStreaming(acc);
+      });
+      const cost = estimateCostUsd(sel.model, usage.prompt, usage.completion);
+      addTokens(usage.total, cost);
+      const assistantMsg: ChatMessage = {
+        id: crypto.randomUUID(), role: "assistant", content: acc,
+        tokens: usage.total, costUsd: cost, model: sel.model, createdAt: Date.now(),
+      };
+      const final: Conversation = { ...convo, messages: [...convo.messages, assistantMsg] };
+      setConversation(final);
+      saveConversation(final);
+      setStreaming("");
+      toast.success(`${usage.total} tokens · ${formatUsd(cost)} (${sel.model})`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
+      setStreaming("");
     } finally {
       setSending(false);
     }
   }
+
 
   return (
     <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl">
