@@ -178,6 +178,19 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               onOpenAgents={() => setAgentsOpen(true)}
             />
           </div>
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-1 pb-1">
+              {attachments.map(a => (
+                <span key={a.id} className="flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-2 py-1 text-[11px]">
+                  {a.kind === "image" ? <ImageIcon className="h-3 w-3" /> : a.kind === "pdf" ? <FileType2 className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                  <span className="max-w-[140px] truncate">{a.name}</span>
+                  <button onClick={() => setAttachments(p => p.filter(x => x.id !== a.id))} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
               <button
@@ -186,6 +199,21 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
                 className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
                 <Plus className="h-4 w-4" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf,.md,text/markdown"
+                className="hidden"
+                onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                title="Anexar imagens, PDF ou Markdown"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Paperclip className="h-4 w-4" />
               </button>
               <IconBtn><Globe className="h-4 w-4" /></IconBtn>
             </div>
