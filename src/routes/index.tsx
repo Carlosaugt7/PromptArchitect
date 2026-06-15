@@ -146,6 +146,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             placeholder="Descreva o que você quer construir…"
             rows={2}
             className="w-full resize-none bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground/70 focus:outline-none"
@@ -168,7 +169,11 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               </button>
               <IconBtn><Globe className="h-4 w-4" /></IconBtn>
             </div>
-            <button className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition">
+            <button
+              onClick={handleSend}
+              disabled={sending || !input.trim()}
+              className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Send className="h-4 w-4" />
             </button>
           </div>
