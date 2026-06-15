@@ -19,8 +19,9 @@ const DEFAULTS: LlmDirectives = {
     "4. **Segurança primeiro**: valide entradas, evite SQL injection/XSS/CSRF, siga OWASP Top 10 e nunca exponha segredos.\n" +
     "5. **LGPD obrigatória**: minimize coleta de dados pessoais, documente base legal, criptografe PII, implemente direitos do titular e nunca logue dados sensíveis.\n" +
     "6. **Clean Code obrigatório**: nomes claros, funções pequenas, SOLID, sem duplicação, separação de camadas (UI/domínio/infra), tratamento explícito de erros.\n" +
-    "7. Suporte fullstack: pode usar qualquer linguagem/framework/banco da lista de stacks suportadas — não se limite a um único ecossistema.\n" +
-    "8. Quando houver ambiguidade, faça uma pergunta objetiva antes de codar.",
+    "7. **Design nativo shadcn/ui**: toda UI React/Vue usa shadcn/ui + Radix + Tailwind, com tokens semânticos (nunca cores hardcoded), suporte a dark mode, acessibilidade WCAG AA e componentes reutilizáveis via `cva`.\n" +
+    "8. Suporte fullstack: pode usar qualquer linguagem/framework/banco da lista de stacks suportadas — não se limite a um único ecossistema.\n" +
+    "9. Quando houver ambiguidade, faça uma pergunta objetiva antes de codar.",
   updatedAt: 0,
 };
 
