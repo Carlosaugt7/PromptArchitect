@@ -9,6 +9,7 @@ import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
 import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
 import { ImportProjectDialog } from "@/components/ImportProjectDialog";
+import { TokenMeter } from "@/components/TokenMeter";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, type ImportedProject } from "@/lib/project-import";
 import { useEffect } from "react";
@@ -204,6 +205,7 @@ function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | 
         </div>
 
         <div className="flex items-center gap-2">
+          <TokenMeter />
           <div className="flex items-center rounded-lg border border-border bg-card/50 p-0.5">
             <ViewportBtn active><Monitor className="h-4 w-4" /></ViewportBtn>
             <ViewportBtn><Smartphone className="h-4 w-4" /></ViewportBtn>
