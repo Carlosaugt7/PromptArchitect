@@ -8,7 +8,9 @@ import {
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
 import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
+import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
+import { loadProject, type ImportedProject } from "@/lib/project-import";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({
@@ -22,16 +24,20 @@ export const Route = createFileRoute("/")({
 });
 
 function OmniForge() {
+  const [importOpen, setImportOpen] = useState(false);
+  const [project, setProject] = useState<ImportedProject | null>(null);
+  useEffect(() => { setProject(loadProject()); }, []);
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
-      <ChatPanel />
-      <WorkspacePanel />
+      <ChatPanel onOpenImport={() => setImportOpen(true)} />
+      <WorkspacePanel project={project} onOpenImport={() => setImportOpen(true)} />
+      <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} />
     </div>
   );
 }
 
 /* ---------------- CHAT PANEL ---------------- */
-function ChatPanel() {
+function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [tab, setTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -130,7 +136,13 @@ function ChatPanel() {
           </div>
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
-              <IconBtn><Plus className="h-4 w-4" /></IconBtn>
+              <button
+                onClick={onOpenImport}
+                title="Importar projeto (pasta ou GitHub)"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
               <IconBtn><Globe className="h-4 w-4" /></IconBtn>
             </div>
             <button className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition">
@@ -176,16 +188,17 @@ function IconBtn({ children }: { children: React.ReactNode }) {
 }
 
 /* ---------------- WORKSPACE PANEL ---------------- */
-function WorkspacePanel() {
+function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | null; onOpenImport: () => void }) {
   const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
 
   return (
     <section className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm">
+          <button onClick={onOpenImport} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="font-medium text-muted-foreground">Sem projeto</span>
+            <span className="font-medium">{project ? project.name : "Sem projeto"}</span>
+            {project && <span className="text-[10px] text-muted-foreground">· {project.files.length} arq.</span>}
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </div>
