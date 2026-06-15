@@ -47,7 +47,28 @@ export function TokenMeter() {
               </span>
             </>
           )}
+          <span className="ml-1 flex items-center gap-0.5 text-muted-foreground border-l border-border pl-2">
+            <DollarSign className="h-3 w-3" />
+            <span className="tabular-nums">{formatUsd(b.costUsd)}</span>
+          </span>
         </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72">
+        <div className="space-y-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Período: {b.period}</div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-2xl font-semibold tabular-nums">{formatTokens(b.used)}</span>
+              {hasLimit && (
+                <span className="text-sm text-muted-foreground">
+                  de {formatTokens(b.monthlyLimit)} ({formatTokens(remaining)} restantes)
+                </span>
+              )}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Custo estimado: <strong className="text-foreground tabular-nums">{formatUsd(b.costUsd)}</strong>
+            </div>
+
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72">
         <div className="space-y-3">
