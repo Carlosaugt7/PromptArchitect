@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Zap, RotateCcw, Pencil, Check } from "lucide-react";
+import { Zap, RotateCcw, Pencil, Check, DollarSign } from "lucide-react";
 import {
   loadTokens, subscribeTokens, formatTokens, setMonthlyLimit, resetTokens,
   type TokenBudget,
 } from "@/lib/token-usage";
+import { formatUsd } from "@/lib/llm-pricing";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+
 
 export function TokenMeter() {
   const [b, setB] = useState<TokenBudget>(() => loadTokens());
