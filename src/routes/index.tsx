@@ -12,6 +12,9 @@ import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import { TokenMeter } from "@/components/TokenMeter";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, type ImportedProject } from "@/lib/project-import";
+import { loadSelection, sendChat } from "@/lib/llm-providers";
+import { addTokens } from "@/lib/token-usage";
+import { toast } from "sonner";
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({
