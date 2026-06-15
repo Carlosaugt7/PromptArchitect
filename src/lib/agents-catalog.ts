@@ -212,6 +212,61 @@ export const AGENTS: AgentDefinition[] = [
     skills: ["architecture", "plan-writing", "systematic-debugging"],
   },
   {
+    id: "php-specialist",
+    name: "PHP Specialist",
+    category: "backend",
+    description:
+      "Especialista em PHP moderno (8+), Laravel, Symfony e Slim. APIs REST, Eloquent/Doctrine, filas e Composer.",
+    skills: ["php-modern", "laravel-patterns", "symfony-patterns", "api-patterns"],
+    triggers: ["php", "laravel", "symfony", "composer"],
+  },
+  {
+    id: "vue-specialist",
+    name: "Vue Specialist",
+    category: "frontend",
+    description:
+      "Especialista em Vue 3, Nuxt 3, Composition API, Pinia, Vite e SSR/SSG.",
+    skills: ["vue3-patterns", "nuxt-patterns", "pinia-state", "frontend-design"],
+    triggers: ["vue", "nuxt", "pinia"],
+  },
+  {
+    id: "typescript-specialist",
+    name: "TypeScript Specialist",
+    category: "frontend",
+    description:
+      "Tipagem avançada, generics, inferência, monorepos e DX. Garante segurança de tipos em frontend e backend.",
+    skills: ["typescript-advanced", "monorepo-patterns", "code-review-checklist"],
+    triggers: ["typescript", "types", "generics"],
+  },
+  {
+    id: "fullstack-architect",
+    name: "Fullstack Architect",
+    category: "orchestration",
+    coordinator: true,
+    description:
+      "Define arquitetura fullstack ponta-a-ponta: escolha de linguagem, framework, banco, autenticação, deploy e observabilidade.",
+    skills: ["architecture", "plan-writing", "database-design", "api-patterns"],
+    triggers: ["fullstack", "arquitetura", "stack"],
+  },
+  {
+    id: "lgpd-compliance",
+    name: "LGPD & Compliance",
+    category: "security",
+    description:
+      "Garante conformidade com LGPD (Lei 13.709/2018), GDPR e boas práticas de privacidade: bases legais, minimização, criptografia, direitos do titular e DPIA.",
+    skills: ["privacy-by-design", "data-mapping", "vulnerability-scanner"],
+    triggers: ["lgpd", "gdpr", "privacidade", "compliance", "dpo"],
+  },
+  {
+    id: "clean-code-reviewer",
+    name: "Clean Code Reviewer",
+    category: "quality",
+    description:
+      "Aplica princípios de Clean Code, SOLID e DDD. Revisa nomes, coesão, acoplamento, duplicação e cobertura de testes.",
+    skills: ["clean-code", "solid-principles", "code-review-checklist", "simplify-code"],
+    triggers: ["clean code", "refactor", "solid", "review"],
+  },
+  {
     id: "code-archaeologist",
     name: "Code Archaeologist",
     category: "research",

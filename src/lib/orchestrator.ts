@@ -4,6 +4,7 @@
 
 import { AGENTS, loadAgentsState, type AgentsState } from "./agents-catalog";
 import { buildSystemPreamble, loadDirectives } from "./llm-directives";
+import { buildStacksBlock } from "./llm-stacks";
 
 export function buildOrchestrationBlock(state: AgentsState = loadAgentsState()): string {
   const lead = AGENTS.find(a => a.id === state.leadId);
@@ -38,7 +39,9 @@ export function buildOrchestrationBlock(state: AgentsState = loadAgentsState()):
 
 /** Preâmbulo completo: diretivas globais + orquestração de agentes. */
 export function buildFullPreamble(): string {
-  return [buildSystemPreamble(loadDirectives()), buildOrchestrationBlock()]
-    .filter(Boolean)
-    .join("\n\n");
+  return [
+    buildSystemPreamble(loadDirectives()),
+    buildStacksBlock(),
+    buildOrchestrationBlock(),
+  ].filter(Boolean).join("\n\n");
 }
