@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Sparkles, Plus, Globe, Send, History, MessageSquare, Settings, Users,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText,
-  Image as ImageIcon, FileType2, Trash2, MessageCirclePlus, Square, RotateCw, Download,
+  FileType2, Trash2, MessageCirclePlus, Square, RotateCw, Download, Upload,
+  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Rows3, Rows4, Columns3,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -12,19 +13,24 @@ import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
 import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import { TokenMeter } from "@/components/TokenMeter";
 import { Markdown } from "@/components/Markdown";
+import { InstallAppButton } from "@/components/InstallAppButton";
+import { CompareDialog } from "@/components/CompareDialog";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, type ImportedProject } from "@/lib/project-import";
 import { loadSelection, sendChatStream, type WireMessage, type ContentPart } from "@/lib/llm-providers";
 import { addTokens } from "@/lib/token-usage";
 import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
+import { estimateTokens, estimatePromptCostUsd } from "@/lib/cost-estimate";
+import { PROMPT_TEMPLATES, applyTemplate } from "@/lib/prompt-templates";
 import {
   loadConversations, saveConversation, deleteConversation, newConversation,
-  subscribeConversations, titleFrom, type Conversation, type ChatMessage,
+  subscribeConversations, titleFrom, renameConversation, togglePinned,
+  importConversation, parseImportedConversation, searchConversations,
+  type Conversation, type ChatMessage,
 } from "@/lib/chat-history";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useTheme, useDensity } from "@/hooks/use-theme";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-
-
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,15 +61,29 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [input, setInput] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentsOpen, setAgentsOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   const [agents, setAgents] = useState<AgentsState>({ leadId: "orchestrator", activeIds: ["orchestrator"] });
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [conversation, setConversation] = useState<Conversation>(() => newConversation());
   const [history, setHistory] = useState<Conversation[]>([]);
+  const [search, setSearch] = useState("");
   const [streaming, setStreaming] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const { theme, toggleTheme } = useTheme();
+  const { density, toggleDensity } = useDensity();
+
+  const [currentModel, setCurrentModel] = useState(() => loadSelection());
+  useEffect(() => {
+    const id = setInterval(() => setCurrentModel(loadSelection()), 1500);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => { setAgents(loadAgentsState()); }, []);
   useEffect(() => {
@@ -77,11 +97,29 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const lead = AGENTS.find(a => a.id === agents.leadId);
   const activeCount = agents.activeIds.length;
 
+  /* ----- shortcuts ----- */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const meta = e.ctrlKey || e.metaKey;
+      if (meta && e.key.toLowerCase() === "k") { e.preventDefault(); startNew(); return; }
+      if (e.key === "Escape" && sending) { e.preventDefault(); stopStream(); return; }
+      if (meta && e.key === "Enter") { e.preventDefault(); handleSend(); return; }
+      if (e.key === "ArrowUp" && document.activeElement === textareaRef.current && input === "") {
+        const last = [...conversation.messages].reverse().find(m => m.role === "user");
+        if (last) { e.preventDefault(); beginEdit(last); }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   function startNew() {
     abortRef.current?.abort();
     setConversation(newConversation());
     setStreaming("");
     setTab("chat");
+    setEditingId(null);
+    setInput("");
   }
   function openConversation(c: Conversation) {
     abortRef.current?.abort();
@@ -89,9 +127,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     setStreaming("");
     setTab("chat");
   }
-  function stopStream() {
-    abortRef.current?.abort();
-  }
+  function stopStream() { abortRef.current?.abort(); }
 
   async function handleFiles(list: FileList | null) {
     if (!list) return;
@@ -107,7 +143,6 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     setAttachments(prev => [...prev, ...next]);
   }
 
-  /** Constrói content parts (vision) para a mensagem do usuário. */
   function buildUserContent(text: string, atts: Attachment[]): string | ContentPart[] {
     const mdInline = atts.filter(a => a.kind === "md").map(a => `\n\n--- Anexo: ${a.name} ---\n${a.content}`).join("");
     const fullText = (text + mdInline).trim();
@@ -164,8 +199,9 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   }
 
   async function handleSend() {
-    const text = input.trim();
-    if ((!text && attachments.length === 0) || sending) return;
+    const rawText = input.trim();
+    if ((!rawText && attachments.length === 0) || sending) return;
+    const text = applyTemplate(rawText);
     const atts = attachments;
     const userContent = buildUserContent(text, atts);
     const images = atts.filter(a => a.kind === "image").map(a => a.content);
@@ -190,7 +226,6 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     if (sending) return;
     const msgs = conversation.messages;
     if (msgs.length < 2) return;
-    // remove última assistente e refaz
     const lastAssistantIdx = [...msgs].reverse().findIndex(m => m.role === "assistant");
     if (lastAssistantIdx < 0) return;
     const cut = msgs.length - 1 - lastAssistantIdx;
@@ -202,11 +237,30 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     await runTurn(convo, lastUser.id, lastUser.content);
   }
 
+  function beginEdit(m: ChatMessage) {
+    setEditingId(m.id);
+    setEditingText(typeof m.content === "string" ? m.content : "");
+    setTab("chat");
+  }
+  async function saveEdit() {
+    if (!editingId || sending) return;
+    const idx = conversation.messages.findIndex(m => m.id === editingId);
+    if (idx < 0) return;
+    const newText = editingText.trim();
+    if (!newText) { setEditingId(null); return; }
+    const truncated = conversation.messages.slice(0, idx);
+    const newMsg: ChatMessage = { ...conversation.messages[idx], content: newText };
+    const convo: Conversation = { ...conversation, messages: [...truncated, newMsg] };
+    setConversation(convo);
+    setEditingId(null);
+    setEditingText("");
+    await runTurn(convo, newMsg.id, newText);
+  }
+
   function exportConversation(format: "md" | "json") {
     if (conversation.messages.length === 0) { toast.error("Nada para exportar"); return; }
     const slug = conversation.title.replace(/[^\w\-]+/g, "-").slice(0, 40) || "conversa";
-    let blob: Blob;
-    let ext: string;
+    let blob: Blob; let ext: string;
     if (format === "json") {
       blob = new Blob([JSON.stringify(conversation, null, 2)], { type: "application/json" });
       ext = "json";
@@ -224,13 +278,42 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `${slug}.${ext}`;
-    a.click();
+    a.href = url; a.download = `${slug}.${ext}`; a.click();
     URL.revokeObjectURL(url);
   }
 
+  async function handleImport(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    let count = 0;
+    for (const f of Array.from(list)) {
+      try {
+        const raw = await f.text();
+        const c = parseImportedConversation(raw, f.name);
+        importConversation(c);
+        count++;
+      } catch (e) {
+        toast.error(`${f.name}: ${(e as Error).message}`);
+      }
+    }
+    if (count > 0) toast.success(`${count} conversa(s) importada(s)`);
+  }
 
+  /* ----- slash commands & cost preview ----- */
+  const slashMatches = useMemo(() => {
+    if (!input.startsWith("/")) return [];
+    const q = input.slice(1).split(/\s/)[0].toLowerCase();
+    return PROMPT_TEMPLATES.filter(t => t.slug.startsWith(q));
+  }, [input]);
+  const showSlash = slashMatches.length > 0 && input.startsWith("/") && !input.includes("\n");
+
+  const previewTokens = useMemo(() => {
+    const base = estimateTokens(input);
+    const att = attachments.reduce((s, a) => s + (a.kind === "md" ? estimateTokens(a.content) : 200), 0);
+    return base + att;
+  }, [input, attachments]);
+  const previewCost = currentModel ? estimatePromptCostUsd(currentModel.model, previewTokens) : 0;
+
+  const filteredHistory = useMemo(() => searchConversations(history, search), [history, search]);
 
   return (
     <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl">
@@ -243,18 +326,20 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setAgentsOpen(true)}
-            title="Equipe de agentes"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
+          <button onClick={toggleTheme} title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+          <button onClick={toggleDensity} title={density === "cozy" ? "Modo compacto" : "Modo confortável"}
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+            {density === "cozy" ? <Rows3 className="h-4 w-4" /> : <Rows4 className="h-4 w-4" />}
+          </button>
+          <button onClick={() => setAgentsOpen(true)} title="Equipe de agentes"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
             <Users className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            title="Configurar provedores de LLM"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
+          <button onClick={() => setSettingsOpen(true)} title="Configurar provedores de LLM"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
             <Settings className="h-4 w-4" />
           </button>
         </div>
@@ -276,6 +361,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
 
       <LlmSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <AgentsDialog open={agentsOpen} onOpenChange={setAgentsOpen} onSaved={setAgents} />
+      <CompareDialog open={compareOpen} onOpenChange={setCompareOpen} prompt={input} />
 
       <div className="flex items-center gap-1 px-3 pt-3">
         <TabButton active={tab === "chat"} onClick={() => setTab("chat")} icon={<MessageSquare className="h-4 w-4" />}>
@@ -285,47 +371,74 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           Histórico {history.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({history.length})</span>}
         </TabButton>
         <div className="ml-auto flex items-center gap-0.5">
+          <button onClick={() => setCompareOpen(true)} title="Comparar modelos lado a lado"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+            <Columns3 className="h-4 w-4" />
+          </button>
           {conversation.messages.length > 0 && (
             <>
-              <button
-                onClick={handleRegenerate}
-                disabled={sending}
-                title="Regenerar última resposta"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40"
-              >
+              <button onClick={handleRegenerate} disabled={sending} title="Regenerar última resposta"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40">
                 <RotateCw className="h-4 w-4" />
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button title="Exportar conversa" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+                  <button title="Exportar / importar conversa" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                     <Download className="h-4 w-4" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => exportConversation("md")}>Exportar como .md</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => exportConversation("json")}>Exportar como .json</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => importInputRef.current?.click()}>
+                    <Upload className="h-3.5 w-3.5 mr-1.5" /> Importar conversa…
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           )}
-          <button
-            onClick={startNew}
-            title="Nova conversa"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
+          <input ref={importInputRef} type="file" multiple accept=".json,.md,application/json,text/markdown" className="hidden"
+            onChange={(e) => { handleImport(e.target.files); e.target.value = ""; }} />
+          <button onClick={startNew} title="Nova conversa (Ctrl+K)"
+            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
             <MessageCirclePlus className="h-4 w-4" />
           </button>
         </div>
       </div>
 
+      {tab === "history" && (
+        <div className="px-3 pt-2">
+          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card/40 px-2.5 py-1.5">
+            <Search className="h-3.5 w-3.5 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar conversas…"
+              className="flex-1 bg-transparent text-xs focus:outline-none placeholder:text-muted-foreground/70" />
+            {search && (
+              <button onClick={() => setSearch("")} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
         {tab === "history" ? (
-          <HistoryList list={history} activeId={conversation.id} onOpen={openConversation} />
+          <HistoryList list={filteredHistory} activeId={conversation.id} onOpen={openConversation} />
         ) : conversation.messages.length === 0 && !streaming ? (
           <EmptyChat />
         ) : (
           <div className="flex flex-col gap-3">
-            {conversation.messages.map(m => <MessageBubble key={m.id} m={m} />)}
+            {conversation.messages.map(m => (
+              <MessageBubble
+                key={m.id} m={m}
+                editing={editingId === m.id}
+                editingText={editingText}
+                onEditChange={setEditingText}
+                onEditStart={() => beginEdit(m)}
+                onEditSave={saveEdit}
+                onEditCancel={() => setEditingId(null)}
+              />
+            ))}
             {streaming && (
               <MessageBubble m={{ id: "stream", role: "assistant", content: streaming, createdAt: Date.now() }} streaming />
             )}
@@ -336,14 +449,25 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
         )}
       </div>
 
-
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border p-3 relative">
+        {showSlash && (
+          <div className="absolute left-3 right-3 bottom-full mb-2 rounded-lg border border-border bg-popover shadow-lg overflow-hidden z-10">
+            {slashMatches.map(t => (
+              <button key={t.slug} onClick={() => setInput(t.label + " ")}
+                className="w-full text-left px-3 py-1.5 hover:bg-accent text-xs flex items-center justify-between gap-2">
+                <span className="font-mono text-primary">{t.label}</span>
+                <span className="text-muted-foreground truncate">{t.description}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="surface rounded-2xl border border-border p-2.5 focus-within:border-primary/50 focus-within:glow transition-all">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            placeholder="Descreva o que você quer construir…"
+            placeholder="Descreva o que você quer construir… (digite / para comandos)"
             rows={2}
             className="w-full resize-none bg-transparent px-2 py-1.5 text-sm placeholder:text-muted-foreground/70 focus:outline-none"
           />
@@ -376,53 +500,39 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
 
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
-              <button
-                onClick={onOpenImport}
-                title="Importar projeto (pasta ou GitHub)"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-              >
+              <button onClick={onOpenImport} title="Importar projeto (pasta ou GitHub)"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                 <Plus className="h-4 w-4" />
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,.pdf,.md,text/markdown"
-                className="hidden"
-                onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                title="Anexar imagens, PDF ou Markdown"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-              >
+              <input ref={fileInputRef} type="file" multiple
+                accept="image/*,.pdf,.md,text/markdown" className="hidden"
+                onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }} />
+              <button onClick={() => fileInputRef.current?.click()} title="Anexar imagens, PDF ou Markdown"
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                 <Paperclip className="h-4 w-4" />
               </button>
-              
+              {(input || attachments.length > 0) && currentModel && (
+                <span className="text-[10px] text-muted-foreground px-1" title="Estimativa antes do envio">
+                  ≈ {previewTokens} tok · ~{formatUsd(previewCost)}
+                </span>
+              )}
             </div>
             {sending ? (
-              <button
-                onClick={stopStream}
-                title="Parar geração"
-                className="grid h-9 w-9 place-items-center rounded-xl bg-destructive text-destructive-foreground hover:opacity-90 transition"
-              >
+              <button onClick={stopStream} title="Parar geração (Esc)"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-destructive text-destructive-foreground hover:opacity-90 transition">
                 <Square className="h-4 w-4" fill="currentColor" />
               </button>
             ) : (
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() && attachments.length === 0}
-                title="Enviar"
-                className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <button onClick={handleSend} disabled={!input.trim() && attachments.length === 0}
+                title="Enviar (Ctrl+Enter)"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
                 <Send className="h-4 w-4" />
               </button>
             )}
-
           </div>
         </div>
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          OmniForge pode cometer erros. Verifique sempre.
+          Ctrl+Enter envia · Ctrl+K nova · Esc para · ↑ edita última
         </p>
       </div>
     </aside>
@@ -439,12 +549,10 @@ function Logo() {
 
 function TabButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
+    <button onClick={onClick}
       className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors ${
         active ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/40"
-      }`}
-    >
+      }`}>
       {icon}{children}
     </button>
   );
@@ -475,6 +583,7 @@ function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | 
         </div>
 
         <div className="flex items-center gap-2">
+          <InstallAppButton />
           <TokenMeter />
           <div className="flex items-center rounded-lg border border-border bg-card/50 p-0.5">
             <ViewportBtn active><Monitor className="h-4 w-4" /></ViewportBtn>
@@ -542,12 +651,10 @@ function ViewportBtn({ active, children }: { active?: boolean; children: React.R
 
 function WorkTab({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
+    <button onClick={onClick}
       className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm transition-colors ${
         active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
+      }`}>
       {icon}{children}
       {active && <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)]" />}
     </button>
@@ -592,15 +699,49 @@ function EmptyChat() {
   );
 }
 
-function MessageBubble({ m, streaming }: { m: ChatMessage; streaming?: boolean }) {
+interface MsgBubbleProps {
+  m: ChatMessage;
+  streaming?: boolean;
+  editing?: boolean;
+  editingText?: string;
+  onEditChange?: (v: string) => void;
+  onEditStart?: () => void;
+  onEditSave?: () => void;
+  onEditCancel?: () => void;
+}
+
+function MessageBubble({ m, streaming, editing, editingText, onEditChange, onEditStart, onEditSave, onEditCancel }: MsgBubbleProps) {
   const isUser = m.role === "user";
+  if (editing && isUser) {
+    return (
+      <div className="flex flex-col gap-1 items-end">
+        <div className="w-full">
+          <textarea value={editingText} onChange={(e) => onEditChange?.(e.target.value)}
+            rows={3} autoFocus
+            className="w-full resize-none rounded-2xl border border-primary/50 bg-card/60 px-3 py-2 text-sm focus:outline-none" />
+          <div className="flex justify-end gap-1.5 mt-1">
+            <button onClick={onEditCancel} className="rounded-md border border-border bg-card/60 px-2 py-1 text-[11px] hover:bg-accent">Cancelar</button>
+            <button onClick={onEditSave} className="rounded-md bg-primary text-primary-foreground px-2 py-1 text-[11px] hover:opacity-90">
+              <Check className="h-3 w-3 inline mr-0.5" /> Salvar e regerar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className={`flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
-      <div className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm break-words ${
+    <div className={`group flex flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
+      <div className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm break-words relative ${
         isUser ? "bg-primary text-primary-foreground whitespace-pre-wrap" : "bg-card/60 border border-border"
       }`}>
         {isUser ? m.content : <Markdown>{m.content}</Markdown>}
         {streaming && <span className="ml-0.5 inline-block w-1.5 h-3 bg-current animate-pulse align-middle" />}
+        {isUser && !streaming && onEditStart && (
+          <button onClick={onEditStart} title="Editar e regerar"
+            className="absolute -left-7 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity">
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       {m.images && m.images.length > 0 && (
@@ -625,36 +766,55 @@ function MessageBubble({ m, streaming }: { m: ChatMessage; streaming?: boolean }
 }
 
 function HistoryList({ list, activeId, onOpen }: { list: Conversation[]; activeId: string; onOpen: (c: Conversation) => void }) {
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
   if (list.length === 0) {
-    return <div className="text-center text-sm text-muted-foreground py-8">Nenhuma conversa salva ainda.</div>;
+    return <div className="text-center text-sm text-muted-foreground py-8">Nenhuma conversa encontrada.</div>;
   }
   return (
     <div className="flex flex-col gap-1">
-      {list.map(c => (
-        <div
-          key={c.id}
-          className={`group flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors cursor-pointer ${
-            c.id === activeId ? "border-primary/50 bg-accent" : "border-border bg-card/40 hover:bg-card/70"
-          }`}
-          onClick={() => onOpen(c)}
-        >
-          <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium truncate">{c.title}</p>
-            <p className="text-[10px] text-muted-foreground">
-              {c.messages.length} msg · {new Date(c.updatedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
-            </p>
+      {list.map(c => {
+        const renaming = renamingId === c.id;
+        return (
+          <div key={c.id}
+            className={`group flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors ${
+              c.id === activeId ? "border-primary/50 bg-accent" : "border-border bg-card/40 hover:bg-card/70"
+            }`}>
+            {c.pinned ? <Pin className="h-3.5 w-3.5 text-primary shrink-0" /> : <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => !renaming && onOpen(c)}>
+              {renaming ? (
+                <input value={renameText} autoFocus
+                  onChange={(e) => setRenameText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { renameConversation(c.id, renameText); setRenamingId(null); }
+                    if (e.key === "Escape") setRenamingId(null);
+                  }}
+                  onBlur={() => { renameConversation(c.id, renameText); setRenamingId(null); }}
+                  className="w-full bg-transparent text-xs font-medium border-b border-primary/50 focus:outline-none" />
+              ) : (
+                <p className="text-xs font-medium truncate">{c.title}</p>
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                {c.messages.length} msg · {new Date(c.updatedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+              </p>
+            </div>
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => togglePinned(c.id)} title={c.pinned ? "Desafixar" : "Fixar"}
+                className="text-muted-foreground hover:text-foreground p-1">
+                {c.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+              </button>
+              <button onClick={() => { setRenamingId(c.id); setRenameText(c.title); }} title="Renomear"
+                className="text-muted-foreground hover:text-foreground p-1">
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => deleteConversation(c.id)} title="Excluir"
+                className="text-muted-foreground hover:text-destructive p-1">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-            title="Excluir"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
-
