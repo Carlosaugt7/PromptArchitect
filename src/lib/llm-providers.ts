@@ -102,3 +102,32 @@ export async function fetchModels(
   return data.models ?? [];
 }
 
+export interface ChatUsage { prompt: number; completion: number; total: number }
+export interface ChatResult { text: string; usage: ChatUsage }
+
+/** Envia uma mensagem ao provedor selecionado e devolve texto + uso real de tokens. */
+export async function sendChat(
+  selection: ModelSelection,
+  messages: { role: "user" | "assistant" | "system"; content: string }[],
+  system?: string,
+): Promise<ChatResult> {
+  const state = loadProviders();
+  const saved = state[selection.provider];
+  if (!saved?.apiKey) throw new Error("Configure o provedor em Configurações → LLM");
+  const res = await fetch("/api/llm-chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider: selection.provider,
+      apiKey: saved.apiKey,
+      baseUrl: saved.baseUrl,
+      model: selection.model,
+      system,
+      messages,
+    }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Partial<ChatResult> & { error?: string };
+  if (!res.ok || data.error) throw new Error(data.error ?? `${res.status} ${res.statusText}`);
+  return { text: data.text ?? "", usage: data.usage ?? { prompt: 0, completion: 0, total: 0 } };
+}
+
