@@ -262,7 +262,7 @@ function ProviderForm({
         )}
       </div>
 
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex flex-wrap items-center gap-2 pt-1">
         <Button
           onClick={handleTest}
           disabled={loading}
@@ -270,6 +270,31 @@ function ProviderForm({
         >
           {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Detectando…</>
                    : <>Testar & detectar modelos</>}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (!apiKey.trim()) {
+              toast.error("Informe a chave de API");
+              return;
+            }
+            const base = saved ?? { models: [], enabled: [] };
+            const next: ProvidersState = {
+              ...state,
+              [providerId]: {
+                ...base,
+                apiKey: apiKey.trim(),
+                baseUrl: baseUrl.trim() || provider.defaultBaseUrl,
+                models: base.models ?? [],
+                enabled: base.enabled ?? [],
+                updatedAt: Date.now(),
+              },
+            };
+            onChange(next);
+            toast.success(`${provider.name} salvo`);
+          }}
+        >
+          <Save className="h-4 w-4 mr-1.5" /> Salvar
         </Button>
         {saved && (
           <Button variant="outline" onClick={handleRemove} className="text-destructive hover:text-destructive">
