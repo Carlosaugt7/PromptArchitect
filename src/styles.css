@@ -100,6 +100,34 @@
   --shadow-soft: 0 10px 40px -15px oklch(0 0 0 / 60%);
 }
 
+.light {
+  --background: oklch(0.99 0.005 270);
+  --foreground: oklch(0.18 0.02 270);
+  --card: oklch(0.97 0.01 270);
+  --card-foreground: oklch(0.18 0.02 270);
+  --popover: oklch(0.99 0.005 270);
+  --popover-foreground: oklch(0.18 0.02 270);
+  --primary: oklch(0.55 0.22 295);
+  --primary-foreground: oklch(0.99 0.005 270);
+  --secondary: oklch(0.94 0.015 270);
+  --secondary-foreground: oklch(0.18 0.02 270);
+  --muted: oklch(0.94 0.01 270);
+  --muted-foreground: oklch(0.45 0.02 270);
+  --accent: oklch(0.92 0.03 285);
+  --accent-foreground: oklch(0.18 0.02 270);
+  --border: oklch(0.85 0.02 270 / 80%);
+  --input: oklch(0.94 0.015 270);
+  --ring: oklch(0.55 0.22 295);
+  --sidebar: oklch(0.97 0.01 270);
+  --sidebar-foreground: oklch(0.18 0.02 270);
+  --sidebar-border: oklch(0.85 0.02 270 / 80%);
+}
+
+[data-density="compact"] .px-5 { padding-left: 0.75rem; padding-right: 0.75rem; }
+[data-density="compact"] .py-4 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+[data-density="compact"] .py-2 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+[data-density="compact"] .gap-3 { gap: 0.5rem; }
+
 @layer base {
   * {
     border-color: var(--color-border);
