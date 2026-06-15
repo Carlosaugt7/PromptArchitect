@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ExternalLink, Eye, EyeOff, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Check, ExternalLink, Eye, EyeOff, Loader2, Save, Sparkles, Trash2, UserCog, ShieldCheck } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ import {
   PROVIDERS, type ProviderId, type ProvidersState,
   loadProviders, saveProviders, fetchModels,
 } from "@/lib/llm-providers";
+import { loadDirectives, saveDirectives, type LlmDirectives } from "@/lib/llm-directives";
 
 interface Props {
   open: boolean;
@@ -30,49 +32,124 @@ export function LlmSettingsDialog({ open, onOpenChange, onSaved }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl bg-card border-border">
+      <DialogContent className="max-w-3xl bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-display">
             <Sparkles className="h-4 w-4 text-primary" />
-            Configurar provedores de LLM
+            Configurações de IA
           </DialogTitle>
           <DialogDescription>
-            Conecte suas chaves de API. A OmniForge detecta automaticamente os modelos disponíveis.
-            As chaves ficam armazenadas localmente no seu navegador.
+            Conecte provedores de LLM e defina o Agente e as Rules globais — aplicadas a todas as chamadas.
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as ProviderId)} className="mt-2">
-          <TabsList className="grid grid-cols-6 bg-muted/40">
-            {PROVIDERS.map((p) => (
-              <TabsTrigger key={p.id} value={p.id} className="text-xs relative">
-                {p.name}
-                {state[p.id]?.apiKey && (
-                  <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-success" />
-                )}
-              </TabsTrigger>
-            ))}
+        <Tabs defaultValue="providers" className="mt-2">
+          <TabsList className="grid grid-cols-3 bg-muted/40">
+            <TabsTrigger value="providers"><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Provedores</TabsTrigger>
+            <TabsTrigger value="agent"><UserCog className="h-3.5 w-3.5 mr-1.5" /> Agente</TabsTrigger>
+            <TabsTrigger value="rules"><ShieldCheck className="h-3.5 w-3.5 mr-1.5" /> Rules</TabsTrigger>
           </TabsList>
 
-          {PROVIDERS.map((p) => (
-            <TabsContent key={p.id} value={p.id} className="mt-4">
-              <ProviderForm
-                providerId={p.id}
-                state={state}
-                onChange={(next) => {
-                  setState(next);
-                  saveProviders(next);
-                  onSaved?.(next);
-                }}
-              />
-            </TabsContent>
-          ))}
+          <TabsContent value="providers" className="mt-4">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as ProviderId)}>
+              <TabsList className="grid grid-cols-6 bg-muted/40">
+                {PROVIDERS.map((p) => (
+                  <TabsTrigger key={p.id} value={p.id} className="text-xs relative">
+                    {p.name}
+                    {state[p.id]?.apiKey && (
+                      <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-success" />
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {PROVIDERS.map((p) => (
+                <TabsContent key={p.id} value={p.id} className="mt-4">
+                  <ProviderForm
+                    providerId={p.id}
+                    state={state}
+                    onChange={(next) => {
+                      setState(next);
+                      saveProviders(next);
+                      onSaved?.(next);
+                    }}
+                  />
+                </TabsContent>
+              ))}
+            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="agent" className="mt-4">
+            <DirectivesForm field="agent" open={open} />
+          </TabsContent>
+          <TabsContent value="rules" className="mt-4">
+            <DirectivesForm field="rules" open={open} />
+          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
   );
 }
 
+function DirectivesForm({ field, open }: { field: "agent" | "rules"; open: boolean }) {
+  const [data, setData] = useState<LlmDirectives>(() => loadDirectives());
+  const [value, setValue] = useState<string>(data[field]);
+
+  useEffect(() => {
+    if (open) {
+      const fresh = loadDirectives();
+      setData(fresh);
+      setValue(fresh[field]);
+    }
+  }, [open, field]);
+
+  const meta = field === "agent"
+    ? {
+        title: "Persona do Agente",
+        description: "Define quem é a IA, seu tom e responsabilidades. Será injetado no system prompt de TODAS as LLMs.",
+        placeholder: "Você é o OmniForge, um agente de engenharia...",
+        rows: 10,
+      }
+    : {
+        title: "Regras obrigatórias",
+        description: "Restrições e padrões que TODA LLM deve seguir integralmente em qualquer resposta.",
+        placeholder: "1. Sempre responda em pt-BR.\n2. Nunca invente APIs...",
+        rows: 12,
+      };
+
+  function handleSave() {
+    const next = saveDirectives({ agent: field === "agent" ? value : data.agent, rules: field === "rules" ? value : data.rules });
+    setData(next);
+    toast.success(field === "agent" ? "Agente atualizado" : "Rules atualizadas");
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-semibold text-sm">{meta.title}</h3>
+        <p className="text-xs text-muted-foreground mt-1">{meta.description}</p>
+      </div>
+      <Textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={meta.placeholder}
+        rows={meta.rows}
+        className="font-mono text-xs resize-y"
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-muted-foreground">
+          {data.updatedAt ? `Salvo em ${new Date(data.updatedAt).toLocaleString("pt-BR")}` : "Ainda não salvo"}
+        </span>
+        <Button
+          onClick={handleSave}
+          className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow"
+        >
+          <Save className="h-4 w-4 mr-1.5" /> Salvar
+        </Button>
+      </div>
+    </div>
+  );
+}
 function ProviderForm({
   providerId, state, onChange,
 }: { providerId: ProviderId; state: ProvidersState; onChange: (s: ProvidersState) => void }) {
