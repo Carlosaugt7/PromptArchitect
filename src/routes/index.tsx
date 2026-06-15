@@ -207,23 +207,33 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           Chat
         </TabButton>
         <TabButton active={tab === "history"} onClick={() => setTab("history")} icon={<History className="h-4 w-4" />}>
-          Histórico
+          Histórico {history.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({history.length})</span>}
         </TabButton>
+        <button
+          onClick={startNew}
+          title="Nova conversa"
+          className="ml-auto grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        >
+          <MessageCirclePlus className="h-4 w-4" />
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-5">
-        <div className="flex h-full flex-col items-center justify-center text-center px-2">
-          <div className="relative mb-5">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-2xl opacity-40" />
-            <div className="relative grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] glow">
-              <Sparkles className="h-6 w-6 text-primary-foreground" strokeWidth={2.5} />
-            </div>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+        {tab === "history" ? (
+          <HistoryList list={history} activeId={conversation.id} onOpen={openConversation} />
+        ) : conversation.messages.length === 0 && !streaming ? (
+          <EmptyChat />
+        ) : (
+          <div className="flex flex-col gap-3">
+            {conversation.messages.map(m => <MessageBubble key={m.id} m={m} />)}
+            {streaming && (
+              <MessageBubble m={{ id: "stream", role: "assistant", content: streaming, createdAt: Date.now() }} streaming />
+            )}
+            {sending && !streaming && (
+              <div className="text-xs text-muted-foreground italic">Pensando…</div>
+            )}
           </div>
-          <h2 className="font-display text-lg font-semibold mb-1.5">Forje sua próxima ideia</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px]">
-            Descreva o que deseja construir e a OmniForge gera a aplicação para você em tempo real.
-          </p>
-        </div>
+        )}
       </div>
 
       <div className="border-t border-border p-3">
@@ -246,9 +256,15 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           {attachments.length > 0 && (
             <div className="flex flex-wrap gap-1.5 px-1 pb-1">
               {attachments.map(a => (
-                <span key={a.id} className="flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-2 py-1 text-[11px]">
-                  {a.kind === "image" ? <ImageIcon className="h-3 w-3" /> : a.kind === "pdf" ? <FileType2 className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                  <span className="max-w-[140px] truncate">{a.name}</span>
+                <span key={a.id} className="flex items-center gap-1.5 rounded-md border border-border bg-card/60 px-1.5 py-1 text-[11px]">
+                  {a.kind === "image" ? (
+                    <img src={a.content} alt={a.name} className="h-6 w-6 rounded object-cover" />
+                  ) : a.kind === "pdf" ? (
+                    <FileType2 className="h-3.5 w-3.5 text-red-500" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 text-blue-500" />
+                  )}
+                  <span className="max-w-[120px] truncate">{a.name}</span>
                   <button onClick={() => setAttachments(p => p.filter(x => x.id !== a.id))} className="text-muted-foreground hover:text-foreground">
                     <X className="h-3 w-3" />
                   </button>
@@ -256,6 +272,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               ))}
             </div>
           )}
+
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
               <button
