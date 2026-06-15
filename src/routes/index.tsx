@@ -47,11 +47,30 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [agents, setAgents] = useState<AgentsState>({ leadId: "orchestrator", activeIds: ["orchestrator"] });
+  const [sending, setSending] = useState(false);
 
   useEffect(() => { setAgents(loadAgentsState()); }, []);
 
   const lead = AGENTS.find(a => a.id === agents.leadId);
   const activeCount = agents.activeIds.length;
+
+  async function handleSend() {
+    const text = input.trim();
+    if (!text || sending) return;
+    const sel = loadSelection();
+    if (!sel) { toast.error("Selecione um modelo no seletor da caixa de envio"); return; }
+    setSending(true);
+    try {
+      const { usage } = await sendChat(sel, [{ role: "user", content: text }]);
+      addTokens(usage.total);
+      setInput("");
+      toast.success(`Resposta recebida · ${usage.total} tokens (${usage.prompt}+${usage.completion})`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl">
