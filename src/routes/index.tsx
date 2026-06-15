@@ -358,3 +358,23 @@ function WorkTab({ active, onClick, icon, children }: { active: boolean; onClick
     </button>
   );
 }
+
+/* ---------------- ATTACHMENTS ---------------- */
+type AttachmentKind = "image" | "pdf" | "md";
+interface Attachment { id: string; name: string; size: number; kind: AttachmentKind; content: string; }
+
+function detectKind(file: File): AttachmentKind | null {
+  if (file.type.startsWith("image/")) return "image";
+  if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return "pdf";
+  if (file.type === "text/markdown" || /\.md$/i.test(file.name)) return "md";
+  return null;
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
