@@ -1,0 +1,14 @@
+node_modules
+.output
+.nitro
+dist
+.cache
+.git
+.vscode
+.idea
+*.log
+.env
+.env.*
+!.env.example
+/mnt
+/tmp
