@@ -188,16 +188,17 @@ function IconBtn({ children }: { children: React.ReactNode }) {
 }
 
 /* ---------------- WORKSPACE PANEL ---------------- */
-function WorkspacePanel() {
+function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | null; onOpenImport: () => void }) {
   const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
 
   return (
     <section className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm">
+          <button onClick={onOpenImport} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="font-medium text-muted-foreground">Sem projeto</span>
+            <span className="font-medium">{project ? project.name : "Sem projeto"}</span>
+            {project && <span className="text-[10px] text-muted-foreground">· {project.files.length} arq.</span>}
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </div>
