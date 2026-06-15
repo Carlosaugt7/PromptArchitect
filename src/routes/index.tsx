@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Sparkles, Plus, Globe, Send, History, MessageSquare, Settings, Users,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
-  ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText, Image as ImageIcon, FileType2,
+  ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText,
+  Image as ImageIcon, FileType2, Trash2, MessageCirclePlus,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -12,10 +13,15 @@ import { ImportProjectDialog } from "@/components/ImportProjectDialog";
 import { TokenMeter } from "@/components/TokenMeter";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, type ImportedProject } from "@/lib/project-import";
-import { loadSelection, sendChat } from "@/lib/llm-providers";
+import { loadSelection, sendChatStream } from "@/lib/llm-providers";
 import { addTokens } from "@/lib/token-usage";
+import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
+import {
+  loadConversations, saveConversation, deleteConversation, newConversation,
+  subscribeConversations, titleFrom, type Conversation, type ChatMessage,
+} from "@/lib/chat-history";
 import { toast } from "sonner";
-import { useEffect } from "react";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
