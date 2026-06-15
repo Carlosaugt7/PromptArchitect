@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  Sparkles, Plus, Globe, Send, History, MessageSquare, Settings,
+  Sparkles, Plus, Globe, Send, History, MessageSquare, Settings, Users,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
-  ChevronDown, Database, ScrollText, Eye, X,
+  ChevronDown, Database, ScrollText, Eye, X, Crown,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
+import { AgentsDialog } from "@/components/AgentsDialog";
+import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
