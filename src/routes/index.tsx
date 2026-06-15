@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  Sparkles, Plus, Globe, Send, History, MessageSquare,
+  Sparkles, Plus, Globe, Send, History, MessageSquare, Settings,
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X,
 } from "lucide-react";
+import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
