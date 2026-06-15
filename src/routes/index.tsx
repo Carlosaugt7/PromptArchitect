@@ -215,7 +215,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               >
                 <Paperclip className="h-4 w-4" />
               </button>
-              <IconBtn><Globe className="h-4 w-4" /></IconBtn>
+              
             </div>
             <button
               onClick={handleSend}
