@@ -5,7 +5,7 @@ import {
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText,
   FileType2, Trash2, MessageCirclePlus, Square, RotateCw, Download, Upload,
-  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Columns3,
+  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Columns3, PanelLeft, LayoutGrid,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -45,11 +45,35 @@ export const Route = createFileRoute("/")({
 function OmniForge() {
   const [importOpen, setImportOpen] = useState(false);
   const [project, setProject] = useState<ImportedProject | null>(null);
+  const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
   useEffect(() => { setProject(loadProject()); }, []);
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
-      <ChatPanel onOpenImport={() => setImportOpen(true)} />
-      <WorkspacePanel project={project} onOpenImport={() => setImportOpen(true)} />
+      <div className={`${mobileView === "chat" ? "flex" : "hidden"} md:flex w-full md:w-[380px] shrink-0`}>
+        <ChatPanel onOpenImport={() => setImportOpen(true)} />
+      </div>
+      <div className={`${mobileView === "work" ? "flex" : "hidden"} md:flex flex-1 min-w-0`}>
+        <WorkspacePanel project={project} onOpenImport={() => setImportOpen(true)} />
+      </div>
+      <nav
+        aria-label="Alternar painel"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-border bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]"
+      >
+        <button
+          onClick={() => setMobileView("chat")}
+          aria-pressed={mobileView === "chat"}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] ${mobileView === "chat" ? "text-foreground" : "text-muted-foreground"}`}
+        >
+          <PanelLeft className="h-4 w-4" /> Chat
+        </button>
+        <button
+          onClick={() => setMobileView("work")}
+          aria-pressed={mobileView === "work"}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] ${mobileView === "work" ? "text-foreground" : "text-muted-foreground"}`}
+        >
+          <LayoutGrid className="h-4 w-4" /> Workspace
+        </button>
+      </nav>
       <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} />
     </div>
   );
@@ -316,7 +340,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const filteredHistory = useMemo(() => searchConversations(history, search), [history, search]);
 
   return (
-    <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl">
+    <aside className="flex w-full md:w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl pb-12 md:pb-0">
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <div className="flex items-center gap-2.5">
           <Logo />
