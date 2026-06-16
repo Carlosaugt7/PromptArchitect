@@ -46,7 +46,13 @@ export interface ModelSelection { provider: ProviderId; model: string; }
 export function loadProviders(): ProvidersState {
   if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as ProvidersState;
+    const state = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as ProvidersState;
+    // Migração: DeepSeek precisa de /v1 no baseUrl (OpenAI-compatível).
+    if (state.deepseek && /^https:\/\/api\.deepseek\.com\/?$/.test(state.deepseek.baseUrl)) {
+      state.deepseek.baseUrl = "https://api.deepseek.com/v1";
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+    return state;
   } catch {
     return {};
   }
