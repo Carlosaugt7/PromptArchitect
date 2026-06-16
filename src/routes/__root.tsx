@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { AutoDebugPanel } from "@/components/AutoDebugPanel";
+import { OnboardingHint } from "@/components/OnboardingHint";
 import { startAutoDebug } from "@/lib/auto-debug";
 
 function NotFoundComponent() {
@@ -123,6 +124,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <AutoDebugPanel />
+      <OnboardingHint />
       <Toaster richColors theme="dark" position="bottom-right" />
     </QueryClientProvider>
   );

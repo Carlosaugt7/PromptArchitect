@@ -5,7 +5,7 @@ import {
   Monitor, Smartphone, Code2, Undo2, Redo2, Share2, RefreshCw, ExternalLink,
   ChevronDown, Database, ScrollText, Eye, X, Crown, Paperclip, FileText,
   FileType2, Trash2, MessageCirclePlus, Square, RotateCw, Download, Upload,
-  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Columns3,
+  Search, Pin, PinOff, Pencil, Check, Sun, Moon, Columns3, PanelLeft, LayoutGrid,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -45,11 +45,35 @@ export const Route = createFileRoute("/")({
 function OmniForge() {
   const [importOpen, setImportOpen] = useState(false);
   const [project, setProject] = useState<ImportedProject | null>(null);
+  const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
   useEffect(() => { setProject(loadProject()); }, []);
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
-      <ChatPanel onOpenImport={() => setImportOpen(true)} />
-      <WorkspacePanel project={project} onOpenImport={() => setImportOpen(true)} />
+      <div className={`${mobileView === "chat" ? "flex" : "hidden"} md:flex w-full md:w-[380px] shrink-0`}>
+        <ChatPanel onOpenImport={() => setImportOpen(true)} />
+      </div>
+      <div className={`${mobileView === "work" ? "flex" : "hidden"} md:flex flex-1 min-w-0`}>
+        <WorkspacePanel project={project} onOpenImport={() => setImportOpen(true)} />
+      </div>
+      <nav
+        aria-label="Alternar painel"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-stretch border-t border-border bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)]"
+      >
+        <button
+          onClick={() => setMobileView("chat")}
+          aria-pressed={mobileView === "chat"}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] ${mobileView === "chat" ? "text-foreground" : "text-muted-foreground"}`}
+        >
+          <PanelLeft className="h-4 w-4" /> Chat
+        </button>
+        <button
+          onClick={() => setMobileView("work")}
+          aria-pressed={mobileView === "work"}
+          className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] ${mobileView === "work" ? "text-foreground" : "text-muted-foreground"}`}
+        >
+          <LayoutGrid className="h-4 w-4" /> Workspace
+        </button>
+      </nav>
       <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} />
     </div>
   );
@@ -316,7 +340,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
   const filteredHistory = useMemo(() => searchConversations(history, search), [history, search]);
 
   return (
-    <aside className="flex w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl">
+    <aside className="flex w-full md:w-[380px] shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl pb-12 md:pb-0">
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <div className="flex items-center gap-2.5">
           <Logo />
@@ -373,13 +397,13 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           </button>
           {conversation.messages.length > 0 && (
             <>
-              <button onClick={handleRegenerate} disabled={sending} title="Regenerar última resposta"
+              <button onClick={handleRegenerate} disabled={sending} aria-label="Regenerar última resposta" title="Regenerar última resposta"
                 className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40">
                 <RotateCw className="h-4 w-4" />
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button title="Exportar / importar conversa" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+                  <button aria-label="Exportar / importar conversa" title="Exportar / importar conversa" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                     <Download className="h-4 w-4" />
                   </button>
                 </DropdownMenuTrigger>
@@ -396,7 +420,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           )}
           <input ref={importInputRef} type="file" multiple accept=".json,.md,application/json,text/markdown" className="hidden"
             onChange={(e) => { handleImport(e.target.files); e.target.value = ""; }} />
-          <button onClick={startNew} title="Nova conversa (Ctrl+K)"
+          <button onClick={startNew} aria-label="Nova conversa (Ctrl+K)" title="Nova conversa (Ctrl+K)"
             className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
             <MessageCirclePlus className="h-4 w-4" />
           </button>
@@ -496,7 +520,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
 
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1">
-              <button onClick={onOpenImport} title="Importar projeto (pasta ou GitHub)"
+              <button onClick={onOpenImport} aria-label="Importar projeto (pasta ou GitHub)" title="Importar projeto (pasta ou GitHub)"
                 className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
                 <Plus className="h-4 w-4" />
               </button>
@@ -514,13 +538,13 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
               )}
             </div>
             {sending ? (
-              <button onClick={stopStream} title="Parar geração (Esc)"
+              <button onClick={stopStream} aria-label="Parar geração (Esc)" title="Parar geração (Esc)"
                 className="grid h-9 w-9 place-items-center rounded-xl bg-destructive text-destructive-foreground hover:opacity-90 transition">
                 <Square className="h-4 w-4" fill="currentColor" />
               </button>
             ) : (
               <button onClick={handleSend} disabled={!input.trim() && attachments.length === 0}
-                title="Enviar (Ctrl+Enter)"
+                aria-label="Enviar (Ctrl+Enter)" title="Enviar (Ctrl+Enter)"
                 className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow hover:opacity-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
                 <Send className="h-4 w-4" />
               </button>
@@ -567,7 +591,7 @@ function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | 
   const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
 
   return (
-    <section className="flex flex-1 flex-col overflow-hidden">
+    <section className="flex flex-1 flex-col overflow-hidden pb-12 md:pb-0">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <button onClick={onOpenImport} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm">
@@ -733,7 +757,7 @@ function MessageBubble({ m, streaming, editing, editingText, onEditChange, onEdi
         {isUser ? m.content : <Markdown>{m.content}</Markdown>}
         {streaming && <span className="ml-0.5 inline-block w-1.5 h-3 bg-current animate-pulse align-middle" />}
         {isUser && !streaming && onEditStart && (
-          <button onClick={onEditStart} title="Editar e regerar"
+          <button onClick={onEditStart} aria-label="Editar e regerar" title="Editar e regerar"
             className="absolute -left-7 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity">
             <Pencil className="h-3.5 w-3.5" />
           </button>
