@@ -148,13 +148,15 @@ function openaiUsage(u: any) {
 async function streamResponse(body: Body, signal: AbortSignal): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = baseUrl.replace(/\/+$/, "");
+  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(base);
+  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(base);
   const enc = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (obj: unknown) => controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
       try {
-        if (provider === "anthropic") {
+        if (isAnthropic) {
           const r = await fetch(`${base}/messages`, {
             method: "POST", signal,
             headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
