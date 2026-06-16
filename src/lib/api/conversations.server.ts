@@ -31,7 +31,7 @@ export const checkFirestoreStatus = createServerFn({ method: "GET" }).handler(as
 
 /** Lista todas as conversas do usuário no Firestore */
 export const listConversations = createServerFn({ method: "POST" })
-  .validator(z.object({ userId: z.string().min(1) }))
+  .inputValidator(z.object({ userId: z.string().min(1) }))
   .handler(async ({ data }) => {
     if (!db) {
       return { success: false, error: "Firestore não configurado", fallback: true };
@@ -66,7 +66,7 @@ export const listConversations = createServerFn({ method: "POST" })
 
 /** Salva ou atualiza uma conversa do usuário no Firestore */
 export const saveConversation = createServerFn({ method: "POST" })
-  .validator(
+  .inputValidator(
     z.object({
       userId: z.string().min(1),
       conversation: conversationSchema,
@@ -93,7 +93,7 @@ export const saveConversation = createServerFn({ method: "POST" })
 
 /** Exclui uma conversa do usuário no Firestore */
 export const deleteConversation = createServerFn({ method: "POST" })
-  .validator(z.object({ userId: z.string().min(1), id: z.string().min(1) }))
+  .inputValidator(z.object({ userId: z.string().min(1), id: z.string().min(1) }))
   .handler(async ({ data }) => {
     if (!db) {
       return { success: false, error: "Firestore não configurado", fallback: true };

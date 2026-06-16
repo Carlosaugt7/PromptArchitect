@@ -15,6 +15,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { AutoDebugPanel } from "@/components/AutoDebugPanel";
 import { OnboardingHint } from "@/components/OnboardingHint";
 import { startAutoDebug } from "@/lib/auto-debug";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { AuthPage } from "@/components/AuthPage";
 
 function NotFoundComponent() {
   return (
@@ -137,10 +139,37 @@ function RootComponent() {
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
+      <Toaster richColors theme="dark" position="bottom-right" />
+    </QueryClientProvider>
+  );
+}
+
+function AuthGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-muted-foreground border-t-primary" />
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  return (
+    <>
       <Outlet />
       <AutoDebugPanel />
       <OnboardingHint />
-      <Toaster richColors theme="dark" position="bottom-right" />
-    </QueryClientProvider>
+    </>
   );
 }

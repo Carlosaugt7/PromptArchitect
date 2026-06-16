@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FolderUp, Github, Loader2, FileCode2, Trash2, FolderOpen, Plus, Sparkles } from "lucide-react";
+import { FolderUp, Github, Loader2, FileCode2, Trash2, FolderOpen, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import {
   importFromGithub,
   importLocalFolder,
+  openLocalDirectory,
+  isFileSystemAccessSupported,
   listSavedProjects,
   deleteProjectFromList,
   saveProject,
@@ -24,10 +26,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImported?: (p: ImportedProject | null) => void;
+  onDirectoryHandle?: (handle: FileSystemDirectoryHandle) => void;
   defaultTab?: "saved" | "local" | "github" | "new";
 }
 
-export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab = "saved" }: Props) {
+export function ImportProjectDialog({ open, onOpenChange, onImported, onDirectoryHandle, defaultTab = "saved" }: Props) {
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
@@ -36,7 +39,6 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [newProjectName, setNewProjectName] = useState("");
 
-  // Carrega chaves salvas e projetos salvos
   useEffect(() => {
     if (!open) return;
     setToken(localStorage.getItem("omniforge.integration.github_token") || "");
@@ -45,7 +47,25 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
     setNewProjectName("");
   }, [open, defaultTab]);
 
-  const handleLocal = async (files: FileList | null) => {
+  const handleOpenLocalFS = async () => {
+    setBusy(true);
+    try {
+      const { project, handle } = await openLocalDirectory();
+      toast.success("Pasta aberta", { description: `${project.files.length} arquivo(s) · ${project.name}` });
+      onImported?.(project);
+      onDirectoryHandle?.(handle);
+      onOpenChange(false);
+    } catch (e: unknown) {
+      const name = (e as Error).name;
+      if (name !== "AbortError") {
+        toast.error("Falha ao abrir pasta", { description: (e as Error).message });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleLocalUpload = async (files: FileList | null) => {
     if (!files?.length) return;
     setBusy(true);
     try {
@@ -68,7 +88,6 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
       toast.success("Repositório clonado", {
         description: `${p.files.length} arquivo(s) · ${p.name}`,
       });
-      // Salva o token do GitHub também caso tenha sido digitado aqui
       if (token.trim()) {
         localStorage.setItem("omniforge.integration.github_token", token.trim());
       }
@@ -93,7 +112,6 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
     deleteProjectFromList(id);
     setSavedProjects(listSavedProjects());
     toast.success("Projeto removido da lista");
-    // Se o projeto ativo foi deletado, limpa
     const current = localStorage.getItem("omniforge.project.current");
     if (!current) {
       onImported?.(null);
@@ -121,6 +139,8 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
     onOpenChange(false);
   };
 
+  const fsAccessSupported = isFileSystemAccessSupported();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg bg-card border-border max-h-[80vh] overflow-y-auto">
@@ -130,7 +150,7 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
             Gerenciador de Projetos
           </DialogTitle>
           <DialogDescription>
-            Importe novas pastas locais, clone repositórios do GitHub ou gerencie seus projetos abertos.
+            Abra pastas locais, clone repositórios do GitHub ou gerencie seus projetos.
           </DialogDescription>
         </DialogHeader>
 
@@ -179,12 +199,12 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
                       </p>
                     </div>
                     <div className="flex gap-1.5">
-                      <Button onClick={() => handleOpenSaved(p)} size="xs" variant="secondary">
+                      <Button onClick={() => handleOpenSaved(p)} size="sm" variant="secondary">
                         Abrir
                       </Button>
                       <Button
                         onClick={() => handleDeleteSaved(p.id)}
-                        size="xs"
+                        size="sm"
                         variant="destructive"
                         className="p-1.5"
                       >
@@ -222,32 +242,54 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
 
           {/* Pasta Local */}
           <TabsContent value="local" className="space-y-3 pt-4">
-            <p className="text-xs text-muted-foreground">
-              Selecione a pasta raiz do seu projeto. Arquivos em <code>node_modules</code>,{" "}
-              <code>.git</code> e <code>dist</code> são ignorados automaticamente.
-            </p>
-            <input
-              ref={folderRef}
-              type="file"
-              // @ts-expect-error - atributos não-padrão suportados pelo Chromium
-              webkitdirectory=""
-              directory=""
-              multiple
-              className="hidden"
-              onChange={(e) => handleLocal(e.target.files)}
-            />
-            <Button
-              onClick={() => folderRef.current?.click()}
-              disabled={busy}
-              className="w-full gap-2"
-            >
-              {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <FolderUp className="h-4 w-4" />
-              )}
-              Escolher pasta…
-            </Button>
+            {fsAccessSupported ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Selecione a pasta raiz do seu projeto. Os arquivos serão lidos diretamente do seu sistema — <strong>sem upload</strong>.
+                </p>
+                <Button
+                  onClick={handleOpenLocalFS}
+                  disabled={busy}
+                  className="w-full gap-2"
+                >
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FolderOpen className="h-4 w-4" />
+                  )}
+                  Abrir pasta do projeto…
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Selecione a pasta raiz do seu projeto. Arquivos em <code>node_modules</code>,{" "}
+                  <code>.git</code> e <code>dist</code> são ignorados automaticamente.
+                </p>
+                <input
+                  ref={folderRef}
+                  type="file"
+                  // @ts-expect-error - atributos não-padrão suportados pelo Chromium
+                  webkitdirectory=""
+                  directory=""
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleLocalUpload(e.target.files)}
+                />
+                <Button
+                  onClick={() => folderRef.current?.click()}
+                  disabled={busy}
+                  className="w-full gap-2"
+                >
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FolderUp className="h-4 w-4" />
+                  )}
+                  Escolher pasta…
+                </Button>
+              </>
+            )}
           </TabsContent>
 
           {/* GitHub */}
@@ -262,7 +304,7 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
                 className="text-xs"
               />
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-[10px] text-muted-foreground font-medium flex justify-between">
                 <span>GitHub Personal Access Token (PAT)</span>
@@ -277,7 +319,7 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab
                 className="text-xs font-mono"
               />
             </div>
-            
+
             <Button onClick={handleGithub} disabled={busy || !url.trim()} className="w-full gap-2 mt-2">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
               Clonar repositório

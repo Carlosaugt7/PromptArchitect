@@ -45,6 +45,7 @@ import {
   LayoutGrid,
   PanelRight,
   FolderOpen,
+  LogOut,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -64,7 +65,8 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
-import { loadProject, type ImportedProject } from "@/lib/project-import";
+import { loadProject, clearProject, type ImportedProject } from "@/lib/project-import";
+import { useAuth } from "@/lib/auth-context";
 import { loadSelection, type WireMessage, type ContentPart } from "@/lib/llm-providers";
 import { runOrchestration } from "@/lib/orchestrator";
 import { addTokens } from "@/lib/token-usage";
@@ -131,6 +133,7 @@ function OmniForge() {
   const [sidebarRightOpen, setSidebarRightOpen] = useState(true);
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
   const [project, setProject] = useState<ImportedProject | null>(null);
+  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
   const [isDesktop, setIsDesktop] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -218,6 +221,7 @@ function OmniForge() {
               <div className="w-64 flex-shrink-0 h-full">
                 <ProjectExplorer
                   project={project}
+                  dirHandle={dirHandle}
                   onSelectFile={(path, content) => {
                     saveArtifact({
                       id: path,
@@ -277,10 +281,49 @@ function OmniForge() {
           </nav>
         </>
       )}
-      <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} defaultTab={importTab} />
+      <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} onDirectoryHandle={setDirHandle} defaultTab={importTab} />
       <IntegrationsDialog open={integrationsOpen} onOpenChange={setIntegrationsOpen} />
       <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
     </div>
+  );
+}
+
+function UserMenu() {
+  const { user, signOut } = useAuth();
+
+  if (!user) return null;
+
+  const name = user.displayName || user.email || "Usuário";
+  const initial = name.charAt(0).toUpperCase();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          title={`Logado como: ${name}`}
+          className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors font-medium text-xs uppercase cursor-pointer shrink-0"
+        >
+          {user.photoURL ? (
+            <img src={user.photoURL} alt={name} className="h-full w-full rounded-lg object-cover" />
+          ) : (
+            initial
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="bg-card border-border min-w-[200px]">
+        <div className="flex flex-col px-3 py-2 text-xs border-b border-border/50">
+          <span className="font-semibold text-foreground truncate">{user.displayName || "Usuário"}</span>
+          <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
+        </div>
+        <DropdownMenuItem
+          onSelect={() => signOut()}
+          className="gap-2 text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Sair da Conta
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -643,6 +686,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <UserMenu />
           <button
             onClick={toggleTheme}
             title={theme === "dark" ? "Tema claro" : "Tema escuro"}

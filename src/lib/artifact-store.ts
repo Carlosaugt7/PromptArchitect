@@ -2,6 +2,8 @@
 // O ChatPanel publica quando a resposta termina; o WorkspacePanel ouve.
 
 export interface Artifact {
+  id?: string;
+  title?: string;
   /** linguagem do bloco principal (html, tsx, jsx, js, py, ...) */
   lang: string;
   /** conteúdo do bloco principal */

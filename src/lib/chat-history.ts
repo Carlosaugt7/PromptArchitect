@@ -94,7 +94,7 @@ export function saveConversation(c: Conversation) {
   const next = sortConversations([updatedConvo, ...others]).slice(0, 100);
   persist(next);
 
-  if (isFirestoreActive) {
+  if (isFirestoreActive && db) {
     setDoc(doc(db, "conversations", updatedConvo.id), {
       ...updatedConvo,
       userId: getUserId(),
@@ -106,7 +106,7 @@ export function saveConversation(c: Conversation) {
 export function deleteConversation(id: string) {
   persist(loadConversations().filter((c) => c.id !== id));
 
-  if (isFirestoreActive) {
+  if (isFirestoreActive && db) {
     deleteDoc(doc(db, "conversations", id))
       .catch((e) => console.error("Erro ao excluir no Firestore (background):", e));
   }
@@ -119,7 +119,7 @@ export function renameConversation(id: string, title: string) {
   const updated = list.find((c) => c.id === id);
   persist(list);
 
-  if (updated && isFirestoreActive) {
+  if (updated && isFirestoreActive && db) {
     setDoc(doc(db, "conversations", updated.id), {
       ...updated,
       userId: getUserId(),
@@ -135,7 +135,7 @@ export function togglePinned(id: string) {
   const updated = list.find((c) => c.id === id);
   persist(sortConversations(list));
 
-  if (updated && isFirestoreActive) {
+  if (updated && isFirestoreActive && db) {
     setDoc(doc(db, "conversations", updated.id), {
       ...updated,
       userId: getUserId(),
@@ -148,7 +148,7 @@ export function importConversation(c: Conversation) {
   const list = [c, ...loadConversations().filter((x) => x.id !== c.id)];
   persist(sortConversations(list).slice(0, 100));
 
-  if (isFirestoreActive) {
+  if (isFirestoreActive && db) {
     setDoc(doc(db, "conversations", c.id), {
       ...c,
       userId: getUserId(),
@@ -238,7 +238,7 @@ export async function initSync(): Promise<void> {
         const userId = getUserId();
 
         // 1. Carrega dados remotos do Firestore
-        const q = query(collection(db, "conversations"), where("userId", "==", userId));
+        const q = query(collection(db!, "conversations"), where("userId", "==", userId));
         const snap = await getDocs(q);
         const remoteList: Conversation[] = snap.docs.map(docSnap => {
           const d = docSnap.data();
@@ -268,7 +268,7 @@ export async function initSync(): Promise<void> {
           if (!remoteItem || (c.updatedAt ?? 0) > (remoteItem.updatedAt ?? 0)) {
             mergedMap.set(c.id, c);
             // Sincroniza alteração mais nova local para o servidor
-            setDoc(doc(db, "conversations", c.id), {
+            setDoc(doc(db!, "conversations", c.id), {
               ...c,
               userId,
               updatedAt: Date.now()

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Folder,
   FolderOpen,
@@ -6,7 +6,6 @@ import {
   FileCode,
   FileJson,
   FileText,
-  Settings,
   Terminal,
   RefreshCw,
   Search,
@@ -16,28 +15,27 @@ import {
   Database,
   Lock,
 } from "lucide-react";
-import type { ImportedProject, ImportedFile } from "@/lib/project-import";
-
-interface FileNode {
-  name: string;
-  path: string;
-  type: "file" | "directory";
-  size?: number;
-  children?: FileNode[];
-}
+import {
+  readDirectoryTree,
+  readFileContent,
+  getDirectoryHandle,
+  type FileNode,
+  type ImportedProject,
+  type ImportedFile,
+} from "@/lib/project-import";
 
 interface ProjectExplorerProps {
   project: ImportedProject | null;
+  dirHandle: FileSystemDirectoryHandle | null;
   onSelectFile: (path: string, content: string) => void;
 }
 
-// Retorna o ícone correspondente à extensão do arquivo
 function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
   if (name === ".env") return <Lock className="h-4 w-4 text-yellow-500" />;
   if (name.startsWith("package")) return <FileJson className="h-4 w-4 text-emerald-500" />;
   if (name === "Dockerfile" || name.includes("docker")) return <FileCode className="h-4 w-4 text-sky-500" />;
-  
+
   switch (ext) {
     case "tsx":
     case "jsx":
@@ -97,7 +95,6 @@ function buildTreeFromFiles(files: ImportedFile[]): FileNode[] {
     }
   }
 
-  // Ordena diretórios primeiro, depois arquivos
   const sortNodes = (nodes: FileNode[]): FileNode[] => {
     return nodes
       .map((node) => {
@@ -115,7 +112,6 @@ function buildTreeFromFiles(files: ImportedFile[]): FileNode[] {
   return sortNodes(root);
 }
 
-// Filtra recursivamente os nós que batem com o termo de busca
 function filterTree(nodes: FileNode[], query: string): FileNode[] {
   if (!query) return nodes;
   const q = query.toLowerCase();
@@ -136,63 +132,88 @@ function filterTree(nodes: FileNode[], query: string): FileNode[] {
     .filter((n): n is FileNode => n !== null);
 }
 
-export function ProjectExplorer({ project, onSelectFile }: ProjectExplorerProps) {
+export function ProjectExplorer({ project, dirHandle, onSelectFile }: ProjectExplorerProps) {
   const [tree, setTree] = useState<FileNode[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isLocalWorkspace, setIsLocalWorkspace] = useState(true);
+  const [activeHandle, setActiveHandle] = useState<FileSystemDirectoryHandle | null>(dirHandle);
+  const [sourceLabel, setSourceLabel] = useState<string>("sem projeto");
 
-  // Carrega a árvore real ou usa o backup virtual
-  const fetchTree = async () => {
+  const fetchTree = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/workspace");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.tree) {
-          setTree(data.tree);
-          setIsLocalWorkspace(true);
-          setLoading(false);
-          return;
+      // Prioridade 1: handle passado via prop
+      let handle = dirHandle;
+
+      // Prioridade 2: handle salvo no IndexedDB para o projeto atual
+      if (!handle && project) {
+        try {
+          const saved = await getDirectoryHandle(project.id);
+          if (saved) {
+            // Verifica se temos permissão
+            const perm = await (saved as any).queryPermission({ mode: "readwrite" });
+            if (perm === "granted") {
+              handle = saved;
+            } else {
+              const req = await (saved as any).requestPermission({ mode: "readwrite" });
+              if (req === "granted") {
+                handle = saved;
+              }
+            }
+          }
+        } catch {
+          /* ignore */
         }
       }
-    } catch {
-      /* ignore e fallback para projeto local/importado */
-    }
 
-    // Fallback: se falhar ou estiver em modo "virtual", renderiza os arquivos do projeto importado
-    if (project) {
-      setTree(buildTreeFromFiles(project.files));
-      setIsLocalWorkspace(false);
-    } else {
-      setTree([]);
+      if (handle) {
+        const nodes = await readDirectoryTree(handle);
+        setTree(nodes);
+        setActiveHandle(handle);
+        setSourceLabel(`${handle.name} (local)`);
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: projeto virtual (GitHub/upload)
+      if (project) {
+        setTree(buildTreeFromFiles(project.files));
+        setSourceLabel(project.name || "projeto virtual");
+      } else {
+        setTree([]);
+        setSourceLabel("sem projeto");
+      }
+    } catch {
+      // Fallback em caso de erro
+      if (project) {
+        setTree(buildTreeFromFiles(project.files));
+        setSourceLabel(project.name || "projeto virtual");
+      } else {
+        setTree([]);
+      }
     }
     setLoading(false);
-  };
+  }, [dirHandle, project]);
 
   useEffect(() => {
     fetchTree();
-  }, [project]);
+  }, [fetchTree]);
 
-  // Filtra os nós da árvore
   const filteredTree = useMemo(() => {
     return filterTree(tree, search);
   }, [tree, search]);
 
-  // Função para abrir o arquivo
   const handleOpenFile = async (node: FileNode) => {
     if (node.type !== "file") return;
 
-    if (isLocalWorkspace) {
+    // Tenta ler via handle local
+    if (activeHandle) {
       try {
-        const res = await fetch(`/api/workspace?path=${encodeURIComponent(node.path)}`);
-        if (res.ok) {
-          const { content } = await res.json();
-          onSelectFile(node.path, content);
-          return;
-        }
+        const content = await readFileContent(activeHandle, node.path);
+        onSelectFile(node.path, content);
+        return;
       } catch {
-        /* ignore */
+        /* fallback abaixo */
       }
     }
 
@@ -210,8 +231,8 @@ export function ProjectExplorer({ project, onSelectFile }: ProjectExplorerProps)
             <Terminal className="h-4 w-4 text-primary" />
             Explorer
           </h3>
-          <p className="text-[10px] text-muted-foreground font-mono">
-            {isLocalWorkspace ? "projeto-local (real)" : project?.name || "sem projeto"}
+          <p className="text-[10px] text-muted-foreground font-mono truncate max-w-[160px]">
+            {sourceLabel}
           </p>
         </div>
         <button
@@ -243,7 +264,9 @@ export function ProjectExplorer({ project, onSelectFile }: ProjectExplorerProps)
         {filteredTree.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
             <p className="text-xs font-medium">Nenhum arquivo encontrado</p>
-            <p className="text-[10px] opacity-75">Importe ou crie novos arquivos.</p>
+            <p className="text-[10px] opacity-75">
+              {project ? "Recarregue ou filtre menos." : "Abra um projeto para ver os arquivos."}
+            </p>
           </div>
         ) : (
           <div className="space-y-1">
@@ -270,10 +293,8 @@ interface ExplorerNodeProps {
 }
 
 function ExplorerNode({ node, onOpenFile, depth = 0, searchTerm = "" }: ExplorerNodeProps) {
-  // Pastas ficam abertas por padrão se houver termo de busca ativo
   const [isOpen, setIsOpen] = useState(!!searchTerm);
 
-  // Reseta estado de aberto caso a busca mude
   useEffect(() => {
     if (searchTerm) {
       setIsOpen(true);
