@@ -201,12 +201,23 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
         .map(m => ({ role: m.role, content: m.content }));
       let acc = "";
       let phase = "";
+      let lastArtifactAt = 0;
       const render = () => setStreaming(phase ? `${phase}\n\n${acc}` : acc);
       const { usage } = await runOrchestration(
         sel, baseWire, userContent,
         agents.activeIds, agents.leadId ?? "orchestrator",
         (label) => { phase = label; render(); },
-        (chunk) => { acc += chunk; render(); },
+        (chunk) => {
+          acc += chunk;
+          render();
+          // Atualiza o artefato em tempo real (throttle ~300ms) assim que houver pelo menos um bloco fechado.
+          const now = Date.now();
+          if (now - lastArtifactAt > 300 && acc.lastIndexOf("```") > acc.indexOf("```")) {
+            lastArtifactAt = now;
+            const art = extractArtifact(acc);
+            if (art) saveArtifact(art);
+          }
+        },
         ctrl.signal,
       );
       const cost = estimateCostUsd(sel.model, usage.prompt, usage.completion);
