@@ -14,7 +14,6 @@ export interface TokenBudget {
   updatedAt: number;
 }
 
-
 const KEY = "omniforge.tokens.usage";
 const EVENT = "omniforge:tokens-changed";
 
@@ -24,7 +23,13 @@ function currentPeriod(): string {
 }
 
 export function loadTokens(): TokenBudget {
-  const fallback: TokenBudget = { monthlyLimit: 1_000_000, used: 0, costUsd: 0, period: currentPeriod(), updatedAt: 0 };
+  const fallback: TokenBudget = {
+    monthlyLimit: 1_000_000,
+    used: 0,
+    costUsd: 0,
+    period: currentPeriod(),
+    updatedAt: 0,
+  };
   if (typeof window === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(KEY);
@@ -34,7 +39,9 @@ export function loadTokens(): TokenBudget {
       return { ...fallback, monthlyLimit: data.monthlyLimit ?? fallback.monthlyLimit };
     }
     return { ...fallback, ...data };
-  } catch { return fallback; }
+  } catch {
+    return fallback;
+  }
 }
 
 function persist(b: TokenBudget) {
@@ -61,7 +68,6 @@ export function setMonthlyLimit(limit: number) {
 export function resetTokens() {
   persist({ ...loadTokens(), used: 0, costUsd: 0, updatedAt: Date.now() });
 }
-
 
 export function subscribeTokens(cb: () => void): () => void {
   const h = () => cb();

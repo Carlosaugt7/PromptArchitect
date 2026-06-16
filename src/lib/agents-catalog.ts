@@ -32,19 +32,19 @@ export interface AgentDefinition {
 
 export const AGENT_CATEGORIES: Record<AgentCategory, { label: string; color: string }> = {
   orchestration: { label: "Orquestração", color: "from-fuchsia-500 to-purple-500" },
-  planning:      { label: "Planejamento", color: "from-sky-500 to-indigo-500" },
-  frontend:      { label: "Frontend",     color: "from-pink-500 to-rose-500" },
-  backend:       { label: "Backend",      color: "from-emerald-500 to-teal-500" },
-  data:          { label: "Dados",        color: "from-amber-500 to-orange-500" },
-  security:      { label: "Segurança",    color: "from-red-500 to-rose-600" },
-  quality:       { label: "Qualidade",    color: "from-lime-500 to-emerald-500" },
-  devops:        { label: "DevOps",       color: "from-cyan-500 to-blue-500" },
-  performance:   { label: "Performance",  color: "from-yellow-500 to-amber-500" },
-  mobile:        { label: "Mobile",       color: "from-violet-500 to-fuchsia-500" },
-  game:          { label: "Games",        color: "from-purple-500 to-pink-500" },
-  seo:           { label: "SEO/GEO",      color: "from-teal-500 to-cyan-500" },
-  docs:          { label: "Documentação", color: "from-slate-500 to-zinc-500" },
-  research:      { label: "Pesquisa",     color: "from-indigo-500 to-blue-500" },
+  planning: { label: "Planejamento", color: "from-sky-500 to-indigo-500" },
+  frontend: { label: "Frontend", color: "from-pink-500 to-rose-500" },
+  backend: { label: "Backend", color: "from-emerald-500 to-teal-500" },
+  data: { label: "Dados", color: "from-amber-500 to-orange-500" },
+  security: { label: "Segurança", color: "from-red-500 to-rose-600" },
+  quality: { label: "Qualidade", color: "from-lime-500 to-emerald-500" },
+  devops: { label: "DevOps", color: "from-cyan-500 to-blue-500" },
+  performance: { label: "Performance", color: "from-yellow-500 to-amber-500" },
+  mobile: { label: "Mobile", color: "from-violet-500 to-fuchsia-500" },
+  game: { label: "Games", color: "from-purple-500 to-pink-500" },
+  seo: { label: "SEO/GEO", color: "from-teal-500 to-cyan-500" },
+  docs: { label: "Documentação", color: "from-slate-500 to-zinc-500" },
+  research: { label: "Pesquisa", color: "from-indigo-500 to-blue-500" },
 };
 
 export const AGENTS: AgentDefinition[] = [
@@ -55,7 +55,13 @@ export const AGENTS: AgentDefinition[] = [
     coordinator: true,
     description:
       "Coordena múltiplos agentes em paralelo. Sintetiza resultados de segurança, backend, frontend, testes e DevOps em uma única solução.",
-    skills: ["parallel-agents", "coordinator-mode", "plan-writing", "architecture", "verify-changes"],
+    skills: [
+      "parallel-agents",
+      "coordinator-mode",
+      "plan-writing",
+      "architecture",
+      "verify-changes",
+    ],
     triggers: ["coordenar", "orquestrar", "tarefa complexa", "multi-domínio"],
   },
   {
@@ -88,7 +94,12 @@ export const AGENTS: AgentDefinition[] = [
     category: "frontend",
     description:
       "Arquiteto React/Next.js com foco em performance e manutenibilidade. UI, estado, responsivo, Tailwind.",
-    skills: ["nextjs-react-expert", "tailwind-patterns", "frontend-design", "web-design-guidelines"],
+    skills: [
+      "nextjs-react-expert",
+      "tailwind-patterns",
+      "frontend-design",
+      "web-design-guidelines",
+    ],
     triggers: ["component", "react", "ui", "css", "tailwind", "responsive"],
   },
   {
@@ -122,8 +133,7 @@ export const AGENTS: AgentDefinition[] = [
     id: "penetration-tester",
     name: "Penetration Tester",
     category: "security",
-    description:
-      "Operações ofensivas: pentest, red team e exploração de vulnerabilidades.",
+    description: "Operações ofensivas: pentest, red team e exploração de vulnerabilidades.",
     skills: ["vulnerability-scanner", "red-team-tactics"],
     triggers: ["pentest", "exploit", "attack", "redteam"],
   },
@@ -139,8 +149,7 @@ export const AGENTS: AgentDefinition[] = [
     id: "qa-automation-engineer",
     name: "QA Automation",
     category: "quality",
-    description:
-      "Infra de testes e E2E com Playwright/Cypress, pipelines CI e regressão.",
+    description: "Infra de testes e E2E com Playwright/Cypress, pipelines CI e regressão.",
     skills: ["webapp-testing", "testing-patterns"],
   },
   {
@@ -165,8 +174,7 @@ export const AGENTS: AgentDefinition[] = [
     id: "performance-optimizer",
     name: "Performance Optimizer",
     category: "performance",
-    description:
-      "Otimização de Core Web Vitals, bundle, profiling e runtime.",
+    description: "Otimização de Core Web Vitals, bundle, profiling e runtime.",
     skills: ["performance-profiling"],
     triggers: ["performance", "optimize", "slow", "lighthouse"],
   },
@@ -174,8 +182,7 @@ export const AGENTS: AgentDefinition[] = [
     id: "mobile-developer",
     name: "Mobile Developer",
     category: "mobile",
-    description:
-      "React Native e Flutter. Apps cross-platform, features nativas e padrões mobile.",
+    description: "React Native e Flutter. Apps cross-platform, features nativas e padrões mobile.",
     skills: ["mobile-design"],
     triggers: ["mobile", "react native", "flutter", "ios", "android"],
   },
@@ -183,8 +190,7 @@ export const AGENTS: AgentDefinition[] = [
     id: "game-developer",
     name: "Game Developer",
     category: "game",
-    description:
-      "Games em Unity, Godot, Unreal, Phaser e Three.js. Mecânicas, multiplayer, 2D/3D.",
+    description: "Games em Unity, Godot, Unreal, Phaser e Three.js. Mecânicas, multiplayer, 2D/3D.",
     skills: ["game-development"],
   },
   {
@@ -199,16 +205,14 @@ export const AGENTS: AgentDefinition[] = [
     id: "documentation-writer",
     name: "Documentation Writer",
     category: "docs",
-    description:
-      "Documentação técnica sob demanda: README, API docs, changelog.",
+    description: "Documentação técnica sob demanda: README, API docs, changelog.",
     skills: ["documentation-templates"],
   },
   {
     id: "explorer-agent",
     name: "Explorer",
     category: "research",
-    description:
-      "Descoberta de codebase, análise arquitetural profunda e pesquisa proativa.",
+    description: "Descoberta de codebase, análise arquitetural profunda e pesquisa proativa.",
     skills: ["architecture", "plan-writing", "systematic-debugging"],
   },
   {
@@ -224,8 +228,7 @@ export const AGENTS: AgentDefinition[] = [
     id: "vue-specialist",
     name: "Vue Specialist",
     category: "frontend",
-    description:
-      "Especialista em Vue 3, Nuxt 3, Composition API, Pinia, Vite e SSR/SSG.",
+    description: "Especialista em Vue 3, Nuxt 3, Composition API, Pinia, Vite e SSR/SSG.",
     skills: ["vue3-patterns", "nuxt-patterns", "pinia-state", "frontend-design"],
     triggers: ["vue", "nuxt", "pinia"],
   },
@@ -270,8 +273,7 @@ export const AGENTS: AgentDefinition[] = [
     id: "code-archaeologist",
     name: "Code Archaeologist",
     category: "research",
-    description:
-      "Código legado, refatoração e engenharia reversa de sistemas não documentados.",
+    description: "Código legado, refatoração e engenharia reversa de sistemas não documentados.",
     skills: ["simplify-code", "code-review-checklist"],
   },
 ];

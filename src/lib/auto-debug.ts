@@ -29,7 +29,11 @@ function fingerprint(parts: Array<string | number | undefined>): string {
 function emit() {
   const snap = [...issues];
   listeners.forEach((l) => {
-    try { l(snap); } catch { /* noop */ }
+    try {
+      l(snap);
+    } catch {
+      /* noop */
+    }
   });
 }
 
@@ -72,7 +76,10 @@ export function startAutoDebug() {
 
   window.addEventListener("unhandledrejection", (ev) => {
     const reason = ev.reason;
-    const err = reason instanceof Error ? reason : new Error(typeof reason === "string" ? reason : JSON.stringify(reason));
+    const err =
+      reason instanceof Error
+        ? reason
+        : new Error(typeof reason === "string" ? reason : JSON.stringify(reason));
     push({
       kind: "unhandledrejection",
       message: err.message,
@@ -87,11 +94,20 @@ export function startAutoDebug() {
   console.error = (...args: unknown[]) => {
     origErr(...args);
     const first = args[0];
-    const msg = first instanceof Error ? first.message : args.map((a) => (typeof a === "string" ? a : safe(a))).join(" ");
+    const msg =
+      first instanceof Error
+        ? first.message
+        : args.map((a) => (typeof a === "string" ? a : safe(a))).join(" ");
     const stack = first instanceof Error ? first.stack : undefined;
     // ignora ruído conhecido
     if (/Download the React DevTools|HMR|\[vite\]/i.test(msg)) return;
-    push({ kind: "console", message: msg.slice(0, 500), stack, source: parseSource(stack), url: location.href });
+    push({
+      kind: "console",
+      message: msg.slice(0, 500),
+      stack,
+      source: parseSource(stack),
+      url: location.href,
+    });
   };
 
   // intercept fetch
@@ -99,7 +115,12 @@ export function startAutoDebug() {
   window.fetch = async (...args: Parameters<typeof fetch>) => {
     const res = await origFetch(...args);
     if (!res.ok && res.status >= 400) {
-      const reqUrl = typeof args[0] === "string" ? args[0] : args[0] instanceof Request ? args[0].url : String(args[0]);
+      const reqUrl =
+        typeof args[0] === "string"
+          ? args[0]
+          : args[0] instanceof Request
+            ? args[0].url
+            : String(args[0]);
       // ignora a própria chamada de análise para não criar loops
       if (!reqUrl.includes("/api/llm-chat")) {
         push({
@@ -115,13 +136,19 @@ export function startAutoDebug() {
 }
 
 function safe(v: unknown): string {
-  try { return JSON.stringify(v); } catch { return String(v); }
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
 }
 
 export function subscribe(l: Listener): () => void {
   listeners.add(l);
   l([...issues]);
-  return () => { listeners.delete(l); };
+  return () => {
+    listeners.delete(l);
+  };
 }
 
 export function clearIssues() {
@@ -131,11 +158,16 @@ export function clearIssues() {
 
 export function removeIssue(id: string) {
   const i = issues.findIndex((x) => x.id === id);
-  if (i >= 0) { issues.splice(i, 1); emit(); }
+  if (i >= 0) {
+    issues.splice(i, 1);
+    emit();
+  }
 }
 
 export function markAllSeen() {
-  issues.forEach((i) => { i.seen = true; });
+  issues.forEach((i) => {
+    i.seen = true;
+  });
   emit();
 }
 

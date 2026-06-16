@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  subscribe, clearIssues, removeIssue, markAllSeen, formatIssueForPrompt,
+  subscribe,
+  clearIssues,
+  removeIssue,
+  markAllSeen,
+  formatIssueForPrompt,
   type CapturedIssue,
 } from "@/lib/auto-debug";
 import { loadSelection, sendChat } from "@/lib/llm-providers";
@@ -69,11 +73,16 @@ export function AutoDebugPanel() {
     <>
       {/* Botão flutuante */}
       <button
-        onClick={() => { setOpen((o) => !o); markAllSeen(); }}
+        onClick={() => {
+          setOpen((o) => !o);
+          markAllSeen();
+        }}
         title="Bugs detectados"
         className="fixed bottom-4 right-4 z-50 grid h-11 w-11 place-items-center rounded-full border border-border bg-card shadow-lg hover:bg-accent transition-colors"
       >
-        <Bug className={`h-5 w-5 ${issues.length ? "text-destructive" : "text-muted-foreground"}`} />
+        <Bug
+          className={`h-5 w-5 ${issues.length ? "text-destructive" : "text-muted-foreground"}`}
+        />
         {unseen > 0 && (
           <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
             {unseen > 9 ? "9+" : unseen}
@@ -91,7 +100,11 @@ export function AutoDebugPanel() {
             <div className="flex items-center gap-1">
               {issues.length > 0 && (
                 <button
-                  onClick={() => { clearIssues(); setActive(null); setAnalysis(""); }}
+                  onClick={() => {
+                    clearIssues();
+                    setActive(null);
+                    setAnalysis("");
+                  }}
                   title="Limpar tudo"
                   className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
                 >
@@ -115,12 +128,22 @@ export function AutoDebugPanel() {
             ) : !active ? (
               <ul className="divide-y divide-border">
                 {issues.map((i) => (
-                  <li key={i.id} className="p-3 hover:bg-accent/30 cursor-pointer" onClick={() => setActive(i)}>
+                  <li
+                    key={i.id}
+                    className="p-3 hover:bg-accent/30 cursor-pointer"
+                    onClick={() => setActive(i)}
+                  >
                     <div className="flex items-start gap-2">
-                      <Badge variant="outline" className="text-[10px] uppercase shrink-0">{i.kind}</Badge>
+                      <Badge variant="outline" className="text-[10px] uppercase shrink-0">
+                        {i.kind}
+                      </Badge>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-medium text-foreground truncate">{i.message}</p>
-                        {i.source && <p className="mt-0.5 text-[10px] text-muted-foreground truncate font-mono">{i.source}</p>}
+                        {i.source && (
+                          <p className="mt-0.5 text-[10px] text-muted-foreground truncate font-mono">
+                            {i.source}
+                          </p>
+                        )}
                         <p className="mt-1 text-[10px] text-muted-foreground">
                           {i.count > 1 && <>×{i.count} · </>}
                           {new Date(i.lastAt).toLocaleTimeString("pt-BR")}
@@ -133,24 +156,55 @@ export function AutoDebugPanel() {
               </ul>
             ) : (
               <div className="p-3 space-y-3">
-                <button onClick={() => { setActive(null); setAnalysis(""); }}
-                        className="text-[11px] text-primary hover:underline">← voltar</button>
+                <button
+                  onClick={() => {
+                    setActive(null);
+                    setAnalysis("");
+                  }}
+                  className="text-[11px] text-primary hover:underline"
+                >
+                  ← voltar
+                </button>
                 <div className="rounded-md border border-border bg-background/40 p-2">
                   <p className="text-xs font-medium break-words">{active.message}</p>
-                  {active.source && <p className="mt-1 text-[10px] font-mono text-muted-foreground break-all">{active.source}</p>}
+                  {active.source && (
+                    <p className="mt-1 text-[10px] font-mono text-muted-foreground break-all">
+                      {active.source}
+                    </p>
+                  )}
                   {active.stack && (
-                    <pre className="mt-2 max-h-32 overflow-auto text-[10px] font-mono text-muted-foreground whitespace-pre-wrap">{active.stack}</pre>
+                    <pre className="mt-2 max-h-32 overflow-auto text-[10px] font-mono text-muted-foreground whitespace-pre-wrap">
+                      {active.stack}
+                    </pre>
                   )}
                 </div>
 
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => analyze(active)} disabled={loading}
-                          className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground">
-                    {loading
-                      ? <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Analisando…</>
-                      : <><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Analisar com IA</>}
+                  <Button
+                    size="sm"
+                    onClick={() => analyze(active)}
+                    disabled={loading}
+                    className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Analisando…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Analisar com IA
+                      </>
+                    )}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => { removeIssue(active.id); setActive(null); setAnalysis(""); }}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      removeIssue(active.id);
+                      setActive(null);
+                      setAnalysis("");
+                    }}
+                  >
                     <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Descartar
                   </Button>
                 </div>
@@ -158,8 +212,15 @@ export function AutoDebugPanel() {
                 {analysis && (
                   <div className="rounded-md border border-border bg-background/40 p-3 text-xs">
                     <Markdown>{analysis}</Markdown>
-                    <Button size="sm" variant="outline" className="mt-2"
-                            onClick={() => { navigator.clipboard.writeText(analysis); toast.success("Sugestão copiada"); }}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(analysis);
+                        toast.success("Sugestão copiada");
+                      }}
+                    >
                       Copiar sugestão
                     </Button>
                   </div>

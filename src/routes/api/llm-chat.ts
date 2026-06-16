@@ -14,11 +14,19 @@ type Part =
   | { type: "image_url"; image_url: { url: string } }
   | { type: "file"; file: { filename: string; file_data: string } };
 
-interface Msg { role: "user" | "assistant" | "system"; content: string | Part[] }
+interface Msg {
+  role: "user" | "assistant" | "system";
+  content: string | Part[];
+}
 
 interface Body {
-  provider: Provider; apiKey: string; baseUrl: string; model: string;
-  system?: string; stream?: boolean; messages: Msg[];
+  provider: Provider;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  system?: string;
+  stream?: boolean;
+  messages: Msg[];
 }
 
 export const Route = createFileRoute("/api/llm-chat")({
@@ -28,7 +36,13 @@ export const Route = createFileRoute("/api/llm-chat")({
       POST: async ({ request }) => {
         try {
           const body = (await request.json()) as Body;
-          if (!body.provider || !body.apiKey || !body.baseUrl || !body.model || !body.messages?.length) {
+          if (
+            !body.provider ||
+            !body.apiKey ||
+            !body.baseUrl ||
+            !body.model ||
+            !body.messages?.length
+          ) {
             return json({ error: "Parâmetros obrigatórios ausentes" }, 400);
           }
           return body.stream ? streamResponse(body, request.signal) : nonStream(body);
@@ -41,7 +55,10 @@ export const Route = createFileRoute("/api/llm-chat")({
 });
 
 function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", ...cors } });
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json", ...cors },
+  });
 }
 
 /* ---------- Provider mapping ---------- */
@@ -53,7 +70,7 @@ function parseDataUrl(url: string): { mediaType: string; base64: string } | null
 
 function partsToAnthropic(content: string | Part[]): any[] {
   if (typeof content === "string") return [{ type: "text", text: content }];
-  return content.map(p => {
+  return content.map((p) => {
     if (p.type === "text") return { type: "text", text: p.text };
     if (p.type === "image_url") {
       const d = parseDataUrl(p.image_url.url);
@@ -70,14 +87,18 @@ function partsToAnthropic(content: string | Part[]): any[] {
 
 function partsToGoogle(content: string | Part[]): any[] {
   if (typeof content === "string") return [{ text: content }];
-  return content.map(p => {
+  return content.map((p) => {
     if (p.type === "text") return { text: p.text };
     if (p.type === "image_url") {
       const d = parseDataUrl(p.image_url.url);
-      return d ? { inline_data: { mime_type: d.mediaType, data: d.base64 } } : { text: p.image_url.url };
+      return d
+        ? { inline_data: { mime_type: d.mediaType, data: d.base64 } }
+        : { text: p.image_url.url };
     }
     const d = parseDataUrl(p.file.file_data);
-    return d ? { inline_data: { mime_type: d.mediaType, data: d.base64 } } : { text: `[Arquivo ${p.file.filename}]` };
+    return d
+      ? { inline_data: { mime_type: d.mediaType, data: d.base64 } }
+      : { text: `[Arquivo ${p.file.filename}]` };
   });
 }
 
@@ -94,44 +115,78 @@ function normalizeBase(url: string): string {
 async function nonStream(body: Body): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = normalizeBase(baseUrl);
-  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(base) || /^claude[-_.]/i.test(model);
-  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(base) || /^gemini[-_.]/i.test(model);
+  const isAnthropic =
+    provider === "anthropic" || /anthropic\.com/i.test(base) || /^claude[-_.]/i.test(model);
+  const isGoogle =
+    provider === "google" ||
+    /generativelanguage\.googleapis\.com/i.test(base) ||
+    /^gemini[-_.]/i.test(model);
 
   if (isAnthropic) {
     const anthropicBase = /\/v\d+$/.test(base) ? base : `${base}/v1`;
     const r = await fetch(`${anthropicBase}/messages`, {
       method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "User-Agent": "OmniForge/1.0",
+        "Accept": "application/json"
+      },
       body: JSON.stringify({
-        model, max_tokens: 4096, system,
-        messages: messages.filter(m => m.role !== "system").map(m => ({ role: m.role, content: partsToAnthropic(m.content) })),
+        model,
+        max_tokens: 4096,
+        system,
+        messages: messages
+          .filter((m) => m.role !== "system")
+          .map((m) => ({ role: m.role, content: partsToAnthropic(m.content) })),
       }),
     });
     const d = await r.json();
     if (!r.ok) return json({ error: d?.error?.message ?? `${r.status}` }, r.status);
-    const text = (d.content ?? []).map((c: any) => c.text).filter(Boolean).join("\n");
+    const text = (d.content ?? [])
+      .map((c: any) => c.text)
+      .filter(Boolean)
+      .join("\n");
     return json({ text, usage: anthropicUsage(d.usage) });
   }
 
   if (isGoogle) {
     const url = `${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const r = await fetch(url, {
-      method: "POST", headers: { "content-type": "application/json" },
+      method: "POST",
+      headers: { 
+        "content-type": "application/json",
+        "User-Agent": "OmniForge/1.0",
+        "Accept": "application/json"
+      },
       body: JSON.stringify({
         systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-        contents: messages.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: partsToGoogle(m.content) })),
+        contents: messages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: partsToGoogle(m.content),
+        })),
       }),
     });
     const d = await r.json();
     if (!r.ok) return json({ error: d?.error?.message ?? `${r.status}` }, r.status);
-    const text = (d.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text).filter(Boolean).join("\n");
+    const text = (d.candidates?.[0]?.content?.parts ?? [])
+      .map((p: any) => p.text)
+      .filter(Boolean)
+      .join("\n");
     return json({ text, usage: googleUsage(d.usageMetadata) });
   }
 
   const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
   const r = await fetch(`${base}/chat/completions`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    headers: { 
+      Authorization: `Bearer ${apiKey}`, 
+      "content-type": "application/json",
+      "User-Agent": "OmniForge/1.0",
+      "HTTP-Referer": "http://localhost:8080",
+      "X-Title": "OmniForge"
+    },
     body: JSON.stringify({ model, messages: all }),
   });
   const d = await r.json();
@@ -140,15 +195,18 @@ async function nonStream(body: Body): Promise<Response> {
 }
 
 function anthropicUsage(u: any) {
-  const p = u?.input_tokens ?? 0, c = u?.output_tokens ?? 0;
+  const p = u?.input_tokens ?? 0,
+    c = u?.output_tokens ?? 0;
   return { prompt: p, completion: c, total: p + c };
 }
 function googleUsage(u: any) {
-  const p = u?.promptTokenCount ?? 0, c = u?.candidatesTokenCount ?? 0;
+  const p = u?.promptTokenCount ?? 0,
+    c = u?.candidatesTokenCount ?? 0;
   return { prompt: p, completion: c, total: u?.totalTokenCount ?? p + c };
 }
 function openaiUsage(u: any) {
-  const p = u?.prompt_tokens ?? 0, c = u?.completion_tokens ?? 0;
+  const p = u?.prompt_tokens ?? 0,
+    c = u?.completion_tokens ?? 0;
   return { prompt: p, completion: c, total: u?.total_tokens ?? p + c };
 }
 
@@ -157,8 +215,12 @@ function openaiUsage(u: any) {
 async function streamResponse(body: Body, signal: AbortSignal): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = normalizeBase(baseUrl);
-  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(base) || /^claude[-_.]/i.test(model);
-  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(base) || /^gemini[-_.]/i.test(model);
+  const isAnthropic =
+    provider === "anthropic" || /anthropic\.com/i.test(base) || /^claude[-_.]/i.test(model);
+  const isGoogle =
+    provider === "google" ||
+    /generativelanguage\.googleapis\.com/i.test(base) ||
+    /^gemini[-_.]/i.test(model);
   const enc = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -168,20 +230,34 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
         if (isAnthropic) {
           const anthropicBase = /\/v\d+$/.test(base) ? base : `${base}/v1`;
           const r = await fetch(`${anthropicBase}/messages`, {
-            method: "POST", signal,
-            headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+            method: "POST",
+            signal,
+            headers: {
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+              "content-type": "application/json",
+            },
             body: JSON.stringify({
-              model, max_tokens: 4096, system, stream: true,
-              messages: messages.filter(m => m.role !== "system").map(m => ({ role: m.role, content: partsToAnthropic(m.content) })),
+              model,
+              max_tokens: 4096,
+              system,
+              stream: true,
+              messages: messages
+                .filter((m) => m.role !== "system")
+                .map((m) => ({ role: m.role, content: partsToAnthropic(m.content) })),
             }),
           });
-          if (!r.ok || !r.body) { send({ error: `${r.status} ${await r.text()}` }); return controller.close(); }
-          let usage = { prompt: 0, completion: 0, total: 0 };
+          if (!r.ok || !r.body) {
+            send({ error: `${r.status} ${await r.text()}` });
+            return controller.close();
+          }
+          const usage = { prompt: 0, completion: 0, total: 0 };
           await readSSE(r.body, (evt) => {
             try {
               const j = JSON.parse(evt);
               if (j.type === "content_block_delta" && j.delta?.text) send({ delta: j.delta.text });
-              if (j.type === "message_start" && j.message?.usage) usage.prompt = j.message.usage.input_tokens ?? 0;
+              if (j.type === "message_start" && j.message?.usage)
+                usage.prompt = j.message.usage.input_tokens ?? 0;
               if (j.type === "message_delta" && j.usage) {
                 usage.completion = j.usage.output_tokens ?? 0;
                 usage.total = usage.prompt + usage.completion;
@@ -195,19 +271,33 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
         if (isGoogle) {
           const url = `${base}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
           const r = await fetch(url, {
-            method: "POST", signal,
-            headers: { "content-type": "application/json" },
+            method: "POST",
+            signal,
+            headers: { 
+        "content-type": "application/json",
+        "User-Agent": "OmniForge/1.0",
+        "Accept": "application/json"
+      },
             body: JSON.stringify({
               systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-              contents: messages.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: partsToGoogle(m.content) })),
+              contents: messages.map((m) => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: partsToGoogle(m.content),
+              })),
             }),
           });
-          if (!r.ok || !r.body) { send({ error: `${r.status} ${await r.text()}` }); return controller.close(); }
+          if (!r.ok || !r.body) {
+            send({ error: `${r.status} ${await r.text()}` });
+            return controller.close();
+          }
           let usage = { prompt: 0, completion: 0, total: 0 };
           await readSSE(r.body, (evt) => {
             try {
               const j = JSON.parse(evt);
-              const text = (j.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text).filter(Boolean).join("");
+              const text = (j.candidates?.[0]?.content?.parts ?? [])
+                .map((p: any) => p.text)
+                .filter(Boolean)
+                .join("");
               if (text) send({ delta: text });
               if (j.usageMetadata) usage = googleUsage(j.usageMetadata);
             } catch {}
@@ -218,11 +308,26 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
 
         const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
         const r = await fetch(`${base}/chat/completions`, {
-          method: "POST", signal,
-          headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-          body: JSON.stringify({ model, messages: all, stream: true, stream_options: { include_usage: true } }),
+          method: "POST",
+          signal,
+          headers: { 
+      Authorization: `Bearer ${apiKey}`, 
+      "content-type": "application/json",
+      "User-Agent": "OmniForge/1.0",
+      "HTTP-Referer": "http://localhost:8080",
+      "X-Title": "OmniForge"
+    },
+          body: JSON.stringify({
+            model,
+            messages: all,
+            stream: true,
+            stream_options: { include_usage: true },
+          }),
         });
-        if (!r.ok || !r.body) { send({ error: `${r.status} ${await r.text()}` }); return controller.close(); }
+        if (!r.ok || !r.body) {
+          send({ error: `${r.status} ${await r.text()}` });
+          return controller.close();
+        }
         let usage = { prompt: 0, completion: 0, total: 0 };
         await readSSE(r.body, (evt) => {
           if (evt === "[DONE]") return;

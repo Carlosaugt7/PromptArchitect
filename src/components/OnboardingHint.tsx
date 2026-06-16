@@ -40,12 +40,15 @@ export function OnboardingHint() {
               Bem-vindo ao OmniForge
             </h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Para começar, conecte um provedor de IA em <strong>Configurações → Provedores</strong>
-              {" "}(OpenAI, Anthropic, Gemini, DeepSeek, OpenRouter ou um endpoint próprio).
+              Para começar, conecte um provedor de IA em <strong>Configurações → Provedores</strong>{" "}
+              (OpenAI, Anthropic, Gemini, DeepSeek, OpenRouter ou um endpoint próprio).
             </p>
             <div className="mt-3 flex items-center gap-2">
               <button
-                onClick={() => { setOpenSettings(true); dismiss(); }}
+                onClick={() => {
+                  setOpenSettings(true);
+                  dismiss();
+                }}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] px-3 py-1.5 text-xs font-medium text-primary-foreground glow hover:opacity-95"
               >
                 <Settings className="h-3.5 w-3.5" /> Configurar agora

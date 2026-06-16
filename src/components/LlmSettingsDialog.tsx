@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ExternalLink, Eye, EyeOff, Loader2, Save, Sparkles, Trash2, UserCog, ShieldCheck } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  Check,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Loader2,
+  Save,
+  Sparkles,
+  Trash2,
+  UserCog,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -11,10 +26,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  PROVIDERS, DEFAULT_MODELS, type ProviderId, type ProvidersState,
-  loadProviders, saveProviders, fetchModels,
+  PROVIDERS,
+  DEFAULT_MODELS,
+  type ProviderId,
+  type ProvidersState,
+  loadProviders,
+  saveProviders,
+  fetchModels,
 } from "@/lib/llm-providers";
 import { loadDirectives, saveDirectives, type LlmDirectives } from "@/lib/llm-directives";
+import { getUserId, setUserId } from "@/lib/chat-history";
 
 interface Props {
   open: boolean;
@@ -39,15 +60,25 @@ export function LlmSettingsDialog({ open, onOpenChange, onSaved }: Props) {
             Configurações de IA
           </DialogTitle>
           <DialogDescription>
-            Conecte provedores de LLM e defina o Agente e as Rules globais — aplicadas a todas as chamadas.
+            Conecte provedores de LLM e defina o Agente e as Rules globais — aplicadas a todas as
+            chamadas.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="providers" className="mt-2">
-          <TabsList className="grid grid-cols-3 bg-muted/40">
-            <TabsTrigger value="providers"><Sparkles className="h-3.5 w-3.5 mr-1.5" /> Provedores</TabsTrigger>
-            <TabsTrigger value="agent"><UserCog className="h-3.5 w-3.5 mr-1.5" /> Agente</TabsTrigger>
-            <TabsTrigger value="rules"><ShieldCheck className="h-3.5 w-3.5 mr-1.5" /> Rules</TabsTrigger>
+          <TabsList className="grid grid-cols-4 bg-muted/40">
+            <TabsTrigger value="providers">
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Provedores
+            </TabsTrigger>
+            <TabsTrigger value="agent">
+              <UserCog className="h-3.5 w-3.5 mr-1.5" /> Agente
+            </TabsTrigger>
+            <TabsTrigger value="rules">
+              <ShieldCheck className="h-3.5 w-3.5 mr-1.5" /> Rules
+            </TabsTrigger>
+            <TabsTrigger value="user">
+              <UserCog className="h-3.5 w-3.5 mr-1.5" /> Sessão
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="providers" className="mt-4">
@@ -85,6 +116,9 @@ export function LlmSettingsDialog({ open, onOpenChange, onSaved }: Props) {
           <TabsContent value="rules" className="mt-4">
             <DirectivesForm field="rules" open={open} />
           </TabsContent>
+          <TabsContent value="user" className="mt-4">
+            <UserForm />
+          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
@@ -103,22 +137,28 @@ function DirectivesForm({ field, open }: { field: "agent" | "rules"; open: boole
     }
   }, [open, field]);
 
-  const meta = field === "agent"
-    ? {
-        title: "Persona do Agente",
-        description: "Define quem é a IA, seu tom e responsabilidades. Será injetado no system prompt de TODAS as LLMs.",
-        placeholder: "Você é o OmniForge, um agente de engenharia...",
-        rows: 10,
-      }
-    : {
-        title: "Regras obrigatórias",
-        description: "Restrições e padrões que TODA LLM deve seguir integralmente em qualquer resposta.",
-        placeholder: "1. Sempre responda em pt-BR.\n2. Nunca invente APIs...",
-        rows: 12,
-      };
+  const meta =
+    field === "agent"
+      ? {
+          title: "Persona do Agente",
+          description:
+            "Define quem é a IA, seu tom e responsabilidades. Será injetado no system prompt de TODAS as LLMs.",
+          placeholder: "Você é o OmniForge, um agente de engenharia...",
+          rows: 10,
+        }
+      : {
+          title: "Regras obrigatórias",
+          description:
+            "Restrições e padrões que TODA LLM deve seguir integralmente em qualquer resposta.",
+          placeholder: "1. Sempre responda em pt-BR.\n2. Nunca invente APIs...",
+          rows: 12,
+        };
 
   function handleSave() {
-    const next = saveDirectives({ agent: field === "agent" ? value : data.agent, rules: field === "rules" ? value : data.rules });
+    const next = saveDirectives({
+      agent: field === "agent" ? value : data.agent,
+      rules: field === "rules" ? value : data.rules,
+    });
     setData(next);
     toast.success(field === "agent" ? "Agente atualizado" : "Rules atualizadas");
   }
@@ -138,7 +178,9 @@ function DirectivesForm({ field, open }: { field: "agent" | "rules"; open: boole
       />
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-muted-foreground">
-          {data.updatedAt ? `Salvo em ${new Date(data.updatedAt).toLocaleString("pt-BR")}` : "Ainda não salvo"}
+          {data.updatedAt
+            ? `Salvo em ${new Date(data.updatedAt).toLocaleString("pt-BR")}`
+            : "Ainda não salvo"}
         </span>
         <Button
           onClick={handleSave}
@@ -151,8 +193,14 @@ function DirectivesForm({ field, open }: { field: "agent" | "rules"; open: boole
   );
 }
 function ProviderForm({
-  providerId, state, onChange,
-}: { providerId: ProviderId; state: ProvidersState; onChange: (s: ProvidersState) => void }) {
+  providerId,
+  state,
+  onChange,
+}: {
+  providerId: ProviderId;
+  state: ProvidersState;
+  onChange: (s: ProvidersState) => void;
+}) {
   const provider = useMemo(() => PROVIDERS.find((p) => p.id === providerId)!, [providerId]);
   const saved = state[providerId];
 
@@ -184,7 +232,13 @@ function ProviderForm({
       setModels(list);
       const next: ProvidersState = {
         ...state,
-        [providerId]: { apiKey: apiKey.trim(), baseUrl: baseUrl.trim(), models: list, enabled: list, updatedAt: Date.now() },
+        [providerId]: {
+          apiKey: apiKey.trim(),
+          baseUrl: baseUrl.trim(),
+          models: list,
+          enabled: list,
+          updatedAt: Date.now(),
+        },
       };
       onChange(next);
       toast.success(`${list.length} modelos detectados em ${provider.name}`);
@@ -200,7 +254,9 @@ function ProviderForm({
     const next = { ...state };
     delete next[providerId];
     onChange(next);
-    setApiKey(""); setModels([]); setBaseUrl(provider.defaultBaseUrl);
+    setApiKey("");
+    setModels([]);
+    setBaseUrl(provider.defaultBaseUrl);
     toast.success(`${provider.name} desconectado`);
   }
 
@@ -210,8 +266,12 @@ function ProviderForm({
         <div>
           <h3 className="font-semibold text-sm">{provider.name}</h3>
           {provider.helpUrl && (
-            <a href={provider.helpUrl} target="_blank" rel="noreferrer"
-               className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+            <a
+              href={provider.helpUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+            >
               Obter chave <ExternalLink className="h-3 w-3" />
             </a>
           )}
@@ -268,8 +328,13 @@ function ProviderForm({
           disabled={loading}
           className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow"
         >
-          {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Detectando…</>
-                   : <>Testar & detectar modelos</>}
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Detectando…
+            </>
+          ) : (
+            <>Testar & detectar modelos</>
+          )}
         </Button>
         <Button
           variant="outline"
@@ -301,7 +366,11 @@ function ProviderForm({
           <Save className="h-4 w-4 mr-1.5" /> Salvar
         </Button>
         {saved && (
-          <Button variant="outline" onClick={handleRemove} className="text-destructive hover:text-destructive">
+          <Button
+            variant="outline"
+            onClick={handleRemove}
+            className="text-destructive hover:text-destructive"
+          >
             <Trash2 className="h-4 w-4 mr-1.5" /> Remover
           </Button>
         )}
@@ -311,7 +380,7 @@ function ProviderForm({
         <div className="rounded-lg border border-border bg-background/40 p-3">
           <div className="flex items-center justify-between mb-2 gap-2">
             <span className="text-xs font-medium text-muted-foreground">
-              {models.length} modelos · {(saved?.enabled?.length ?? 0)} habilitados na tela de dev
+              {models.length} modelos · {saved?.enabled?.length ?? 0} habilitados na tela de dev
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -319,19 +388,29 @@ function ProviderForm({
                 onClick={() => {
                   const next: ProvidersState = {
                     ...state,
-                    [providerId]: { ...(saved ?? { apiKey, baseUrl, models, updatedAt: Date.now() }), enabled: [...models] },
+                    [providerId]: {
+                      ...(saved ?? { apiKey, baseUrl, models, updatedAt: Date.now() }),
+                      enabled: [...models],
+                    },
                   };
                   onChange(next);
                 }}
-              >Todos</button>
+              >
+                Todos
+              </button>
               <button
                 className="text-[11px] text-muted-foreground hover:underline"
                 onClick={() => {
                   if (!saved) return;
-                  const next: ProvidersState = { ...state, [providerId]: { ...saved, enabled: [] } };
+                  const next: ProvidersState = {
+                    ...state,
+                    [providerId]: { ...saved, enabled: [] },
+                  };
                   onChange(next);
                 }}
-              >Nenhum</button>
+              >
+                Nenhum
+              </button>
             </div>
           </div>
           <div className="max-h-48 overflow-y-auto flex flex-wrap gap-1.5">
@@ -344,14 +423,18 @@ function ProviderForm({
                   onClick={() => {
                     const base = saved ?? { apiKey, baseUrl, models, updatedAt: Date.now() };
                     const enabled = new Set(base.enabled ?? []);
-                    if (enabled.has(m)) enabled.delete(m); else enabled.add(m);
+                    if (enabled.has(m)) enabled.delete(m);
+                    else enabled.add(m);
                     onChange({ ...state, [providerId]: { ...base, enabled: [...enabled] } });
                   }}
                   className={`rounded-md border px-2 py-1 text-[11px] font-mono transition-colors ${
-                    on ? "border-primary/60 bg-primary/15 text-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
+                    on
+                      ? "border-primary/60 bg-primary/15 text-foreground"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {on && <Check className="inline h-3 w-3 mr-1" />}{m}
+                  {on && <Check className="inline h-3 w-3 mr-1" />}
+                  {m}
                 </button>
               );
             })}
@@ -361,6 +444,58 @@ function ProviderForm({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function UserForm() {
+  const [userId, setInputUserId] = useState(() => getUserId());
+
+  function handleSave() {
+    if (!userId.trim()) {
+      toast.error("O ID de usuário não pode ser vazio");
+      return;
+    }
+    setUserId(userId.trim());
+    toast.success("Sessão do usuário atualizada!");
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-semibold text-sm font-display">Identidade de Sessão (Multiusuário)</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Altere o ID abaixo para simular diferentes sessões de usuário ou sincronizar com outra
+          conta no Firestore.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="user-session-id">User ID</Label>
+        <Input
+          id="user-session-id"
+          value={userId}
+          onChange={(e) => setInputUserId(e.target.value)}
+          className="font-mono text-xs"
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          onClick={() => {
+            const randomId = "user-" + Math.random().toString(36).substring(2, 9);
+            setInputUserId(randomId);
+          }}
+          className="text-xs"
+        >
+          Gerar Novo ID
+        </Button>
+        <Button
+          onClick={handleSave}
+          className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow"
+        >
+          <Save className="h-4 w-4 mr-1.5" /> Atualizar Sessão
+        </Button>
+      </div>
     </div>
   );
 }

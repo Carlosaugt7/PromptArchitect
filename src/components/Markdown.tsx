@@ -7,11 +7,13 @@ import "highlight.js/styles/github-dark.css";
 
 export function Markdown({ children }: { children: string }) {
   return (
-    <div className="prose prose-sm prose-invert max-w-none break-words
+    <div
+      className="prose prose-sm prose-invert max-w-none break-words
       prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:p-0
       prose-code:before:hidden prose-code:after:hidden
       prose-p:my-2 prose-headings:mt-3 prose-headings:mb-1.5
-      prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5">
+      prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5"
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
@@ -20,12 +22,20 @@ export function Markdown({ children }: { children: string }) {
           code: ({ className, children, ...props }) => {
             const inline = !className;
             return inline ? (
-              <code className="rounded bg-muted px-1 py-0.5 text-[0.85em]" {...props}>{children}</code>
+              <code className="rounded bg-muted px-1 py-0.5 text-[0.85em]" {...props}>
+                {children}
+              </code>
             ) : (
-              <code className={className} {...props}>{children}</code>
+              <code className={className} {...props}>
+                {children}
+              </code>
             );
           },
-          a: ({ children, ...props }) => <a target="_blank" rel="noreferrer" className="text-primary underline" {...props}>{children}</a>,
+          a: ({ children, ...props }) => (
+            <a target="_blank" rel="noreferrer" className="text-primary underline" {...props}>
+              {children}
+            </a>
+          ),
         }}
       >
         {children}
@@ -39,7 +49,8 @@ function CodeBlock({ children }: { children: React.ReactNode }) {
   function copy() {
     const text = extractText(children);
     navigator.clipboard.writeText(text).then(() => {
-      setCopied(true); setTimeout(() => setCopied(false), 1500);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     });
   }
   return (

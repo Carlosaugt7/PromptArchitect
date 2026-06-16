@@ -3,7 +3,6 @@
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -94,7 +93,11 @@
   --sidebar-ring: oklch(0.7 0.2 295);
 
   --gradient-brand: linear-gradient(135deg, oklch(0.72 0.2 295), oklch(0.78 0.18 320));
-  --gradient-surface: linear-gradient(180deg, oklch(0.22 0.03 275 / 80%), oklch(0.18 0.02 270 / 40%));
+  --gradient-surface: linear-gradient(
+    180deg,
+    oklch(0.22 0.03 275 / 80%),
+    oklch(0.18 0.02 270 / 40%)
+  );
   --gradient-glow: radial-gradient(circle at 30% 0%, oklch(0.72 0.2 295 / 25%), transparent 60%);
   --shadow-glow: 0 0 40px -10px oklch(0.72 0.2 295 / 45%);
   --shadow-soft: 0 10px 40px -15px oklch(0 0 0 / 60%);
@@ -123,17 +126,29 @@
   --sidebar-border: oklch(0.85 0.02 270 / 80%);
 }
 
-[data-density="compact"] .px-5 { padding-left: 0.75rem; padding-right: 0.75rem; }
-[data-density="compact"] .py-4 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-[data-density="compact"] .py-2 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
-[data-density="compact"] .gap-3 { gap: 0.5rem; }
+[data-density="compact"] .px-5 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+[data-density="compact"] .py-4 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+[data-density="compact"] .py-2 {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+[data-density="compact"] .gap-3 {
+  gap: 0.5rem;
+}
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
 
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -147,10 +162,20 @@
     background-attachment: fixed;
   }
 
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: oklch(0.3 0.03 270 / 60%); border-radius: 8px; }
-  ::-webkit-scrollbar-thumb:hover { background: oklch(0.4 0.04 285 / 80%); }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.3 0.03 270 / 60%);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.4 0.04 285 / 80%);
+  }
 }
 
 @utility gradient-text {

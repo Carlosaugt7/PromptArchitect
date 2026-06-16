@@ -48,15 +48,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Algo deu errado
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Tente recarregar ou voltar ao início.
-        </p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Algo deu errado</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Tente recarregar ou voltar ao início.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
           >
             Tentar novamente
@@ -84,9 +83,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "OmniForge" },
       { title: "OmniForge — Forje aplicações com IA" },
-      { name: "description", content: "OmniForge é um ambiente de desenvolvimento conversacional com IA. Descreva e veja seu app ganhar vida em tempo real." },
+      {
+        name: "description",
+        content:
+          "OmniForge é um ambiente de desenvolvimento conversacional com IA. Descreva e veja seu app ganhar vida em tempo real.",
+      },
       { property: "og:title", content: "OmniForge — Forje aplicações com IA" },
-      { property: "og:description", content: "Construa apps web conversando com IA. Preview ao vivo, código, banco e logs em um só lugar." },
+      {
+        property: "og:description",
+        content:
+          "Construa apps web conversando com IA. Preview ao vivo, código, banco e logs em um só lugar.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -97,7 +104,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icons/icon-512.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -109,7 +119,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
-      <head><HeadContent /></head>
+      <head>
+        <HeadContent />
+      </head>
       <body data-density="cozy">
         {children}
         <Scripts />
@@ -120,7 +132,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(() => { startAutoDebug(); }, []);
+  useEffect(() => {
+    startAutoDebug();
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />

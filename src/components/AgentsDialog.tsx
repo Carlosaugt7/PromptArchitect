@@ -1,15 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bot, Check, Crown, Search, Sparkles, Users } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  AGENTS, AGENT_CATEGORIES, type AgentDefinition,
-  loadAgentsState, saveAgentsState, type AgentsState,
+  AGENTS,
+  AGENT_CATEGORIES,
+  type AgentDefinition,
+  loadAgentsState,
+  saveAgentsState,
+  type AgentsState,
 } from "@/lib/agents-catalog";
 
 interface Props {
@@ -19,19 +27,25 @@ interface Props {
 }
 
 export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
-  const [state, setState] = useState<AgentsState>({ leadId: "orchestrator", activeIds: ["orchestrator"] });
+  const [state, setState] = useState<AgentsState>({
+    leadId: "orchestrator",
+    activeIds: ["orchestrator"],
+  });
   const [query, setQuery] = useState("");
 
-  useEffect(() => { if (open) setState(loadAgentsState()); }, [open]);
+  useEffect(() => {
+    if (open) setState(loadAgentsState());
+  }, [open]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return AGENTS;
-    return AGENTS.filter(a =>
-      a.name.toLowerCase().includes(q) ||
-      a.description.toLowerCase().includes(q) ||
-      a.skills.some(s => s.toLowerCase().includes(q)) ||
-      a.category.includes(q),
+    return AGENTS.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.description.toLowerCase().includes(q) ||
+        a.skills.some((s) => s.toLowerCase().includes(q)) ||
+        a.category.includes(q),
     );
   }, [query]);
 
@@ -46,7 +60,7 @@ export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
   }, [filtered]);
 
   const toggle = (id: string) => {
-    setState(prev => {
+    setState((prev) => {
       const isLead = prev.leadId === id;
       const active = new Set(prev.activeIds);
       if (active.has(id)) {
@@ -60,7 +74,7 @@ export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
   };
 
   const setLead = (id: string) => {
-    setState(prev => {
+    setState((prev) => {
       const active = new Set(prev.activeIds);
       active.add(id);
       return { leadId: id, activeIds: Array.from(active) };
@@ -70,7 +84,7 @@ export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
   const handleSave = () => {
     saveAgentsState(state);
     toast.success("Agentes configurados", {
-      description: `${state.activeIds.length} ativo(s) · coordenado por ${AGENTS.find(a => a.id === state.leadId)?.name ?? "—"}`,
+      description: `${state.activeIds.length} ativo(s) · coordenado por ${AGENTS.find((a) => a.id === state.leadId)?.name ?? "—"}`,
     });
     onSaved?.(state);
     onOpenChange(false);
@@ -85,11 +99,17 @@ export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
             Equipe de agentes
           </DialogTitle>
           <DialogDescription>
-            Selecione agentes pré-configurados. O agente coordenador (coroa) orquestra os demais em paralelo.
-            Inspirado em{" "}
-            <a href="https://github.com/vudovn/antigravity-kit" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
+            Selecione agentes pré-configurados. O agente coordenador (coroa) orquestra os demais em
+            paralelo. Inspirado em{" "}
+            <a
+              href="https://github.com/vudovn/antigravity-kit"
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary underline underline-offset-2"
+            >
               antigravity-kit
-            </a>.
+            </a>
+            .
           </DialogDescription>
         </DialogHeader>
 
@@ -98,7 +118,7 @@ export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
-              onChange={e => setQuery(e.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar por nome, categoria ou skill…"
               className="pl-9"
             />
@@ -115,10 +135,12 @@ export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
               <div key={cat}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`h-2 w-2 rounded-full bg-gradient-to-br ${meta.color}`} />
-                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{meta.label}</h3>
+                  <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    {meta.label}
+                  </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {items.map(agent => {
+                  {items.map((agent) => {
                     const isActive = state.activeIds.includes(agent.id);
                     const isLead = state.leadId === agent.id;
                     return (
@@ -132,16 +154,22 @@ export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
                       >
                         <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${meta.color}`}>
-                              {agent.coordinator
-                                ? <Crown className="h-3.5 w-3.5 text-white" />
-                                : <Sparkles className="h-3.5 w-3.5 text-white" />}
+                            <div
+                              className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${meta.color}`}
+                            >
+                              {agent.coordinator ? (
+                                <Crown className="h-3.5 w-3.5 text-white" />
+                              ) : (
+                                <Sparkles className="h-3.5 w-3.5 text-white" />
+                              )}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-sm font-medium truncate">{agent.name}</p>
                                 {isLead && (
-                                  <Badge variant="default" className="h-4 px-1.5 text-[10px]">Lead</Badge>
+                                  <Badge variant="default" className="h-4 px-1.5 text-[10px]">
+                                    Lead
+                                  </Badge>
                                 )}
                               </div>
                               <p className="text-[11px] text-muted-foreground truncate">
@@ -196,10 +224,13 @@ export function AgentsDialog({ open, onOpenChange, onSaved }: Props) {
 
         <div className="flex items-center justify-between border-t border-border pt-3">
           <p className="text-xs text-muted-foreground">
-            Configurações salvas no navegador. O coordenador delega tarefas paralelas aos agentes ativos.
+            Configurações salvas no navegador. O coordenador delega tarefas paralelas aos agentes
+            ativos.
           </p>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
             <Button onClick={handleSave}>Salvar equipe</Button>
           </div>
         </div>

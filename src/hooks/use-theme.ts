@@ -18,7 +18,7 @@ export function useTheme() {
     root.classList.toggle("light", theme === "light");
     localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
-  return { theme, setTheme, toggleTheme: () => setTheme(t => t === "dark" ? "light" : "dark") };
+  return { theme, setTheme, toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")) };
 }
 
 export function useDensity() {
@@ -31,5 +31,9 @@ export function useDensity() {
     document.documentElement.dataset.density = density;
     localStorage.setItem(DENSITY_KEY, density);
   }, [density]);
-  return { density, setDensity, toggleDensity: () => setDensity(d => d === "cozy" ? "compact" : "cozy") };
+  return {
+    density,
+    setDensity,
+    toggleDensity: () => setDensity((d) => (d === "cozy" ? "compact" : "cozy")),
+  };
 }

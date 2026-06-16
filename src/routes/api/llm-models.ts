@@ -73,7 +73,8 @@ export const Route = createFileRoute("/api/llm-models")({
 
 function normalizeBaseUrl(raw: string) {
   const url = new URL(raw.trim());
-  if (!/^https?:$/.test(url.protocol)) throw new Error("A URL base deve começar com http:// ou https://");
+  if (!/^https?:$/.test(url.protocol))
+    throw new Error("A URL base deve começar com http:// ou https://");
   url.pathname = url.pathname.replace(/\/+$/, "");
   url.search = "";
   url.hash = "";
@@ -90,32 +91,49 @@ function buildModelUrls(provider: Provider, base: URL, apiKey: string) {
 }
 
 function buildHeaders(provider: Provider, apiKey: string): Record<string, string> {
+  const baseHeaders = {
+    Accept: "application/json",
+    "User-Agent": "OmniForge/1.0",
+    "HTTP-Referer": "http://localhost:8080",
+    "X-Title": "OmniForge",
+  };
   if (provider === "anthropic") {
-    return { "x-api-key": apiKey, "anthropic-version": "2023-06-01", Accept: "application/json" };
+    return { ...baseHeaders, "x-api-key": apiKey, "anthropic-version": "2023-06-01" };
   }
-  return { Authorization: `Bearer ${apiKey}`, Accept: "application/json" };
+  return { ...baseHeaders, Authorization: `Bearer ${apiKey}` };
 }
 
 function extractModels(data: any, provider: Provider): string[] {
   if (provider === "google") {
     return (data.models ?? [])
-      .filter((m: any) => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes("generateContent"))
+      .filter(
+        (m: any) =>
+          !m.supportedGenerationMethods || m.supportedGenerationMethods.includes("generateContent"),
+      )
       .map((m: any) => String(m.name ?? "").replace(/^models\//, ""))
       .filter(Boolean);
   }
 
-  const list = Array.isArray(data) ? data : data.data ?? data.models ?? [];
+  const list = Array.isArray(data) ? data : (data.data ?? data.models ?? []);
   return list
-    .map((m: any) => (typeof m === "string" ? m : m?.id ?? m?.name ?? m?.model))
+    .map((m: any) => (typeof m === "string" ? m : (m?.id ?? m?.name ?? m?.model)))
     .filter(Boolean)
     .map(String);
 }
 
 function isBlockedHost(hostname: string) {
   const h = hostname.toLowerCase();
-  return h === "localhost" || h.endsWith(".local") || h === "0.0.0.0" || h === "::1" ||
-    /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) || /^169\.254\./.test(h) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(h);
+  return (
+    h === "localhost" ||
+    h.endsWith(".local") ||
+    h === "0.0.0.0" ||
+    h === "::1" ||
+    /^127\./.test(h) ||
+    /^10\./.test(h) ||
+    /^192\.168\./.test(h) ||
+    /^169\.254\./.test(h) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(h)
+  );
 }
 
 function json(data: unknown, status = 200) {

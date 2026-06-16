@@ -1,17 +1,26 @@
 import { useEffect, useState } from "react";
 import { Bot, Cpu, Crown } from "lucide-react";
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  PROVIDERS, listEnabledModels, loadSelection, saveSelection,
+  PROVIDERS,
+  listEnabledModels,
+  loadSelection,
+  saveSelection,
   type ModelSelection,
 } from "@/lib/llm-providers";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 
 export function ChatComposerSelectors({
-  agents, onOpenSettings, onOpenAgents,
+  agents,
+  onOpenSettings,
+  onOpenAgents,
 }: {
   agents: AgentsState;
   onOpenSettings: () => void;
@@ -27,17 +36,27 @@ export function ChatComposerSelectors({
       setModels(list);
       const cur = loadSelection();
       const valid = cur && list.some((m) => m.provider === cur.provider && m.model === cur.model);
-      const next = valid ? cur : list[0] ?? null;
+      const next = valid ? cur : (list[0] ?? null);
       setSelection(next);
-      saveSelection(next);
+      
+      const changed = cur?.provider !== next?.provider || cur?.model !== next?.model;
+      if (changed) {
+        saveSelection(next);
+      }
     };
     refresh();
     const onStorage = (e: StorageEvent) => {
       if (e.key?.startsWith("omniforge.llm")) refresh();
     };
+    const onChanged = () => refresh();
     window.addEventListener("storage", onStorage);
+    window.addEventListener("omniforge.llm.providers-changed", onChanged);
     const id = setInterval(() => setTick((t) => t + 1), 1500);
-    return () => { window.removeEventListener("storage", onStorage); clearInterval(id); };
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("omniforge.llm.providers-changed", onChanged);
+      clearInterval(id);
+    };
   }, []);
 
   const providerName = (id: string) => PROVIDERS.find((p) => p.id === id)?.name ?? id;
@@ -57,7 +76,9 @@ export function ChatComposerSelectors({
         <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-2 py-1 text-[11px] hover:bg-accent transition-colors max-w-[200px]">
           <Cpu className="h-3 w-3 text-primary shrink-0" />
           <span className="truncate">
-            {selection ? `${providerName(selection.provider)} · ${selection.model}` : "Selecionar modelo"}
+            {selection
+              ? `${providerName(selection.provider)} · ${selection.model}`
+              : "Selecionar modelo"}
           </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto w-72">
@@ -78,7 +99,8 @@ export function ChatComposerSelectors({
                       key={`${prov}:${m}`}
                       onClick={() => {
                         const next = { provider: prov as ModelSelection["provider"], model: m };
-                        setSelection(next); saveSelection(next);
+                        setSelection(next);
+                        saveSelection(next);
                       }}
                       className={`font-mono text-xs ${isSel ? "bg-primary/15 text-foreground" : ""}`}
                     >
@@ -111,11 +133,17 @@ export function ChatComposerSelectors({
             activeAgents.map((a) => {
               const isLead = a.id === agents.leadId;
               return (
-                <DropdownMenuItem key={a.id} className="text-xs flex items-start gap-2" onClick={onOpenAgents}>
+                <DropdownMenuItem
+                  key={a.id}
+                  className="text-xs flex items-start gap-2"
+                  onClick={onOpenAgents}
+                >
                   {isLead && <Crown className="h-3 w-3 text-primary mt-0.5 shrink-0" />}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{a.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{a.skills.slice(0, 3).join(" · ")}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {a.skills.slice(0, 3).join(" · ")}
+                    </p>
                   </div>
                 </DropdownMenuItem>
               );

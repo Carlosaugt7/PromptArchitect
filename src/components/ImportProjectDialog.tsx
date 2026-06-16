@@ -1,13 +1,17 @@
 import { useRef, useState } from "react";
 import { FolderUp, Github, Loader2, FileCode2 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import {
-  importFromGithub, importLocalFolder, type ImportedProject,
-} from "@/lib/project-import";
+import { importFromGithub, importLocalFolder, type ImportedProject } from "@/lib/project-import";
 
 interface Props {
   open: boolean;
@@ -30,7 +34,9 @@ export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
       onOpenChange(false);
     } catch (e) {
       toast.error("Falha ao importar pasta", { description: (e as Error).message });
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleGithub = async () => {
@@ -38,13 +44,17 @@ export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
     setBusy(true);
     try {
       const p = await importFromGithub(url.trim());
-      toast.success("Repositório clonado", { description: `${p.files.length} arquivo(s) · ${p.name}` });
+      toast.success("Repositório clonado", {
+        description: `${p.files.length} arquivo(s) · ${p.name}`,
+      });
       onImported?.(p);
       onOpenChange(false);
       setUrl("");
     } catch (e) {
       toast.error("Falha ao clonar do GitHub", { description: (e as Error).message });
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -56,19 +66,25 @@ export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
             Importar projeto
           </DialogTitle>
           <DialogDescription>
-            Importe uma pasta local ou clone um repositório público do GitHub para usar como contexto.
+            Importe uma pasta local ou clone um repositório público do GitHub para usar como
+            contexto.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="local" className="mt-2">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="local" className="gap-1.5"><FolderUp className="h-3.5 w-3.5" /> Pasta local</TabsTrigger>
-            <TabsTrigger value="github" className="gap-1.5"><Github className="h-3.5 w-3.5" /> GitHub</TabsTrigger>
+            <TabsTrigger value="local" className="gap-1.5">
+              <FolderUp className="h-3.5 w-3.5" /> Pasta local
+            </TabsTrigger>
+            <TabsTrigger value="github" className="gap-1.5">
+              <Github className="h-3.5 w-3.5" /> GitHub
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="local" className="space-y-3 pt-4">
             <p className="text-xs text-muted-foreground">
-              Selecione a pasta raiz do seu projeto. Arquivos em <code>node_modules</code>, <code>.git</code> e <code>dist</code> são ignorados automaticamente.
+              Selecione a pasta raiz do seu projeto. Arquivos em <code>node_modules</code>,{" "}
+              <code>.git</code> e <code>dist</code> são ignorados automaticamente.
             </p>
             <input
               ref={folderRef}
@@ -78,14 +94,18 @@ export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
               directory=""
               multiple
               className="hidden"
-              onChange={e => handleLocal(e.target.files)}
+              onChange={(e) => handleLocal(e.target.files)}
             />
             <Button
               onClick={() => folderRef.current?.click()}
               disabled={busy}
               className="w-full gap-2"
             >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderUp className="h-4 w-4" />}
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FolderUp className="h-4 w-4" />
+              )}
               Escolher pasta…
             </Button>
           </TabsContent>
@@ -93,12 +113,13 @@ export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
           <TabsContent value="github" className="space-y-3 pt-4">
             <Input
               value={url}
-              onChange={e => setUrl(e.target.value)}
+              onChange={(e) => setUrl(e.target.value)}
               placeholder="https://github.com/usuario/repositorio"
               disabled={busy}
             />
             <p className="text-[11px] text-muted-foreground">
-              Suporta repositórios públicos. Para grandes repositórios, apenas os primeiros 60 arquivos têm conteúdo carregado (os demais ficam apenas indexados).
+              Suporta repositórios públicos. Para grandes repositórios, apenas os primeiros 60
+              arquivos têm conteúdo carregado (os demais ficam apenas indexados).
             </p>
             <Button onClick={handleGithub} disabled={busy || !url.trim()} className="w-full gap-2">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}

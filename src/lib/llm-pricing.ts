@@ -1,7 +1,10 @@
 // Tabela de preços (USD por 1M tokens) para estimar custo das chamadas.
 // Valores aproximados em jun/2026 — edite conforme novos modelos.
 
-export interface Price { in: number; out: number } // USD por 1M tokens
+export interface Price {
+  in: number;
+  out: number;
+} // USD por 1M tokens
 
 const TABLE: Record<string, Price> = {
   // OpenAI

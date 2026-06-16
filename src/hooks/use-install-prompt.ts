@@ -10,8 +10,14 @@ export function useInstallPrompt() {
   const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    const onBip = (e: Event) => { e.preventDefault(); setEvt(e as BIPEvent); };
-    const onInstalled = () => { setInstalled(true); setEvt(null); };
+    const onBip = (e: Event) => {
+      e.preventDefault();
+      setEvt(e as BIPEvent);
+    };
+    const onInstalled = () => {
+      setInstalled(true);
+      setEvt(null);
+    };
     window.addEventListener("beforeinstallprompt", onBip);
     window.addEventListener("appinstalled", onInstalled);
     if (window.matchMedia?.("(display-mode: standalone)").matches) setInstalled(true);

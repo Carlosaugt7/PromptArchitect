@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { Zap, RotateCcw, Pencil, Check, DollarSign } from "lucide-react";
 import {
-  loadTokens, subscribeTokens, formatTokens, setMonthlyLimit, resetTokens,
+  loadTokens,
+  subscribeTokens,
+  formatTokens,
+  setMonthlyLimit,
+  resetTokens,
   type TokenBudget,
 } from "@/lib/token-usage";
 import { formatUsd } from "@/lib/llm-pricing";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
 
 export function TokenMeter() {
   const [b, setB] = useState<TokenBudget>(() => loadTokens());
@@ -25,9 +28,11 @@ export function TokenMeter() {
   const pct = hasLimit ? Math.min(100, (b.used / b.monthlyLimit) * 100) : 0;
   const remaining = hasLimit ? Math.max(0, b.monthlyLimit - b.used) : 0;
   const tone =
-    pct >= 90 ? "bg-destructive" :
-    pct >= 70 ? "bg-amber-500" :
-    "bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)]";
+    pct >= 90
+      ? "bg-destructive"
+      : pct >= 70
+        ? "bg-amber-500"
+        : "bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)]";
 
   return (
     <Popover>
@@ -41,9 +46,14 @@ export function TokenMeter() {
           {hasLimit && (
             <>
               <span className="text-muted-foreground">/</span>
-              <span className="text-muted-foreground tabular-nums">{formatTokens(b.monthlyLimit)}</span>
+              <span className="text-muted-foreground tabular-nums">
+                {formatTokens(b.monthlyLimit)}
+              </span>
               <span className="ml-1 h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                <span className={`block h-full ${tone} transition-all`} style={{ width: `${pct}%` }} />
+                <span
+                  className={`block h-full ${tone} transition-all`}
+                  style={{ width: `${pct}%` }}
+                />
               </span>
             </>
           )}
@@ -66,9 +76,9 @@ export function TokenMeter() {
               )}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              Custo estimado: <strong className="text-foreground tabular-nums">{formatUsd(b.costUsd)}</strong>
+              Custo estimado:{" "}
+              <strong className="text-foreground tabular-nums">{formatUsd(b.costUsd)}</strong>
             </div>
-
 
             {hasLimit && (
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -91,17 +101,34 @@ export function TokenMeter() {
                 <Button
                   size="sm"
                   className="h-8"
-                  onClick={() => { setMonthlyLimit(Number(limitDraft) || 0); setEditing(false); }}
+                  onClick={() => {
+                    setMonthlyLimit(Number(limitDraft) || 0);
+                    setEditing(false);
+                  }}
                 >
                   <Check className="h-3.5 w-3.5" />
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="outline" size="sm" className="h-8 flex-1" onClick={() => { setLimitDraft(String(b.monthlyLimit)); setEditing(true); }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 flex-1"
+                  onClick={() => {
+                    setLimitDraft(String(b.monthlyLimit));
+                    setEditing(true);
+                  }}
+                >
                   <Pencil className="h-3.5 w-3.5 mr-1.5" /> Limite mensal
                 </Button>
-                <Button variant="ghost" size="sm" className="h-8" onClick={resetTokens} title="Zerar contador">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8"
+                  onClick={resetTokens}
+                  title="Zerar contador"
+                >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
               </>
@@ -109,8 +136,8 @@ export function TokenMeter() {
           </div>
 
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Tokens são contabilizados localmente a cada resposta das LLMs configuradas.
-            Defina <strong>0</strong> para desativar o limite.
+            Tokens são contabilizados localmente a cada resposta das LLMs configuradas. Defina{" "}
+            <strong>0</strong> para desativar o limite.
           </p>
         </div>
       </PopoverContent>

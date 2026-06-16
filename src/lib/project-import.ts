@@ -20,14 +20,17 @@ export interface ImportedProject {
 
 const KEY = "omniforge.project.current";
 const MAX_INLINE = 128 * 1024;
-const TEXT_EXT = /\.(ts|tsx|js|jsx|json|md|mdx|css|scss|html|yml|yaml|toml|txt|env|gitignore|prettierrc|sh|py|rs|go|java|kt|swift|rb|php|sql|vue|svelte)$/i;
+const TEXT_EXT =
+  /\.(ts|tsx|js|jsx|json|md|mdx|css|scss|html|yml|yaml|toml|txt|env|gitignore|prettierrc|sh|py|rs|go|java|kt|swift|rb|php|sql|vue|svelte)$/i;
 
 export function loadProject(): ImportedProject | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as ImportedProject) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export function saveProject(p: ImportedProject) {
@@ -43,7 +46,11 @@ export function clearProject() {
 async function readAsText(file: File): Promise<string | undefined> {
   if (file.size > MAX_INLINE) return undefined;
   if (!TEXT_EXT.test(file.name)) return undefined;
-  try { return await file.text(); } catch { return undefined; }
+  try {
+    return await file.text();
+  } catch {
+    return undefined;
+  }
 }
 
 /** Importa uma pasta local via input[webkitdirectory]. */
@@ -51,7 +58,7 @@ export async function importLocalFolder(fileList: FileList): Promise<ImportedPro
   const files: ImportedFile[] = [];
   const items = Array.from(fileList);
   // skip node_modules / .git
-  const filtered = items.filter(f => {
+  const filtered = items.filter((f) => {
     const p = (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;
     return !/(^|\/)(node_modules|\.git|dist|build|\.next|\.turbo)(\/|$)/.test(p);
   });
@@ -80,7 +87,9 @@ export function parseGithubUrl(url: string): { owner: string; repo: string; ref?
     if (parts.length < 2) return null;
     const [owner, repo, , ref] = parts;
     return { owner, repo, ref };
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Clona via API do GitHub (tarball estilo "git ls-tree"). Repo público. */
@@ -98,13 +107,15 @@ export async function importFromGithub(url: string): Promise<ImportedProject> {
   }
 
   // Lista a árvore completa
-  const tr = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+  const tr = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+  );
   if (!tr.ok) throw new Error(`Falha ao listar árvore (${tr.status}).`);
   const tree = (await tr.json()) as { tree: Array<{ path: string; type: string; size?: number }> };
 
   const blobs = tree.tree
-    .filter(n => n.type === "blob")
-    .filter(n => !/(^|\/)(node_modules|\.git|dist|build|\.next)(\/|$)/.test(n.path));
+    .filter((n) => n.type === "blob")
+    .filter((n) => !/(^|\/)(node_modules|\.git|dist|build|\.next)(\/|$)/.test(n.path));
 
   const files: ImportedFile[] = [];
   // baixa conteúdo dos arquivos de texto pequenos via raw.githubusercontent
@@ -113,9 +124,13 @@ export async function importFromGithub(url: string): Promise<ImportedProject> {
     let content: string | undefined;
     if (TEXT_EXT.test(node.path) && (node.size ?? 0) <= MAX_INLINE) {
       try {
-        const raw = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${node.path}`);
+        const raw = await fetch(
+          `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${node.path}`,
+        );
         if (raw.ok) content = await raw.text();
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     files.push({ path: node.path, size: node.size ?? 0, content });
   }

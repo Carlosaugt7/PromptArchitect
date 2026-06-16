@@ -1,13 +1,7 @@
 // Configuração e detecção de modelos para provedores de LLM (client-side).
 // Todas as chamadas são feitas direto do browser; chaves ficam em localStorage.
 
-export type ProviderId =
-  | "openai"
-  | "anthropic"
-  | "google"
-  | "deepseek"
-  | "openrouter"
-  | "custom";
+export type ProviderId = "openai" | "anthropic" | "google" | "deepseek" | "openrouter" | "custom";
 
 export interface ProviderConfig {
   id: ProviderId;
@@ -19,22 +13,69 @@ export interface ProviderConfig {
 }
 
 export const PROVIDERS: ProviderConfig[] = [
-  { id: "openai",     name: "OpenAI",         defaultBaseUrl: "https://api.openai.com/v1",                  helpUrl: "https://platform.openai.com/api-keys",    keyPlaceholder: "sk-..." },
-  { id: "anthropic",  name: "Anthropic",      defaultBaseUrl: "https://api.anthropic.com/v1",               helpUrl: "https://console.anthropic.com/settings/keys", keyPlaceholder: "sk-ant-..." },
-  { id: "google",     name: "Google Gemini",  defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta", helpUrl: "https://aistudio.google.com/apikey",  keyPlaceholder: "AIza..." },
-  { id: "deepseek",   name: "DeepSeek",       defaultBaseUrl: "https://api.deepseek.com/v1",                helpUrl: "https://platform.deepseek.com/api_keys",  keyPlaceholder: "sk-..." },
-  { id: "openrouter", name: "OpenRouter",     defaultBaseUrl: "https://openrouter.ai/api/v1",               helpUrl: "https://openrouter.ai/keys",              keyPlaceholder: "sk-or-..." },
-  { id: "custom",     name: "Personalizado",  defaultBaseUrl: "",                  needsBaseUrl: true,      helpUrl: "",                                        keyPlaceholder: "sua-chave" },
+  {
+    id: "openai",
+    name: "OpenAI",
+    defaultBaseUrl: "https://api.openai.com/v1",
+    helpUrl: "https://platform.openai.com/api-keys",
+    keyPlaceholder: "sk-...",
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    defaultBaseUrl: "https://api.anthropic.com/v1",
+    helpUrl: "https://console.anthropic.com/settings/keys",
+    keyPlaceholder: "sk-ant-...",
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    helpUrl: "https://aistudio.google.com/apikey",
+    keyPlaceholder: "AIza...",
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    defaultBaseUrl: "https://api.deepseek.com/v1",
+    helpUrl: "https://platform.deepseek.com/api_keys",
+    keyPlaceholder: "sk-...",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    defaultBaseUrl: "https://openrouter.ai/api/v1",
+    helpUrl: "https://openrouter.ai/keys",
+    keyPlaceholder: "sk-or-...",
+  },
+  {
+    id: "custom",
+    name: "Personalizado",
+    defaultBaseUrl: "",
+    needsBaseUrl: true,
+    helpUrl: "",
+    keyPlaceholder: "sua-chave",
+  },
 ];
 
 /** Modelos sugeridos por provedor, usados quando o usuário salva sem clicar em "Detectar". */
 export const DEFAULT_MODELS: Record<ProviderId, string[]> = {
-  openai:     ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-mini"],
-  anthropic:  ["claude-sonnet-4-5", "claude-opus-4-1", "claude-3-5-sonnet-latest", "claude-3-5-haiku-latest"],
-  google:     ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
-  deepseek:   ["deepseek-chat", "deepseek-reasoner"],
-  openrouter: ["anthropic/claude-sonnet-4-5", "openai/gpt-4o", "google/gemini-2.5-pro", "deepseek/deepseek-chat"],
-  custom:     [],
+  openai: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-mini"],
+  anthropic: [
+    "claude-sonnet-4-5",
+    "claude-opus-4-1",
+    "claude-3-5-sonnet-latest",
+    "claude-3-5-haiku-latest",
+  ],
+  google: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
+  deepseek: ["deepseek-chat", "deepseek-reasoner"],
+  openrouter: [
+    "anthropic/claude-sonnet-4-5",
+    "openai/gpt-4o",
+    "google/gemini-2.5-pro",
+    "deepseek/deepseek-chat",
+  ],
+  custom: [],
 };
 
 export interface SavedProvider {
@@ -51,7 +92,10 @@ export type ProvidersState = Partial<Record<ProviderId, SavedProvider>>;
 const STORAGE_KEY = "omniforge.llm.providers";
 const SELECTION_KEY = "omniforge.llm.selection";
 
-export interface ModelSelection { provider: ProviderId; model: string; }
+export interface ModelSelection {
+  provider: ProviderId;
+  model: string;
+}
 
 export function loadProviders(): ProvidersState {
   if (typeof window === "undefined") return {};
@@ -70,6 +114,9 @@ export function loadProviders(): ProvidersState {
 
 export function saveProviders(state: ProvidersState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("omniforge.llm.providers-changed"));
+  }
 }
 
 export function loadSelection(): ModelSelection | null {
@@ -77,12 +124,17 @@ export function loadSelection(): ModelSelection | null {
   try {
     const raw = localStorage.getItem(SELECTION_KEY);
     return raw ? (JSON.parse(raw) as ModelSelection) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export function saveSelection(sel: ModelSelection | null) {
   if (!sel) localStorage.removeItem(SELECTION_KEY);
   else localStorage.setItem(SELECTION_KEY, JSON.stringify(sel));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("omniforge.llm.providers-changed"));
+  }
 }
 
 /** Retorna todos os pares (provider, model) habilitados pelo usuário. */
@@ -92,7 +144,9 @@ export function listEnabledModels(state: ProvidersState = loadProviders()): Mode
     const saved = state[p.id];
     if (!saved?.apiKey) continue;
     const enabled = saved.enabled?.length ? saved.enabled : saved.models;
-    for (const m of enabled) out.push({ provider: p.id, model: m });
+    if (Array.isArray(enabled)) {
+      for (const m of enabled) out.push({ provider: p.id, model: m });
+    }
   }
   return out;
 }
@@ -118,8 +172,15 @@ export async function fetchModels(
   return data.models ?? [];
 }
 
-export interface ChatUsage { prompt: number; completion: number; total: number }
-export interface ChatResult { text: string; usage: ChatUsage }
+export interface ChatUsage {
+  prompt: number;
+  completion: number;
+  total: number;
+}
+export interface ChatResult {
+  text: string;
+  usage: ChatUsage;
+}
 
 export type ContentPart =
   | { type: "text"; text: string }
@@ -144,8 +205,12 @@ export async function sendChat(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      provider: selection.provider, apiKey: saved.apiKey, baseUrl: saved.baseUrl,
-      model: selection.model, system, messages,
+      provider: selection.provider,
+      apiKey: saved.apiKey,
+      baseUrl: saved.baseUrl,
+      model: selection.model,
+      system,
+      messages,
     }),
   });
   const data = (await res.json().catch(() => ({}))) as Partial<ChatResult> & { error?: string };
@@ -168,8 +233,13 @@ export async function sendChatStream(
     headers: { "Content-Type": "application/json" },
     signal: opts.signal,
     body: JSON.stringify({
-      provider: selection.provider, apiKey: saved.apiKey, baseUrl: saved.baseUrl,
-      model: selection.model, system: opts.system, messages, stream: true,
+      provider: selection.provider,
+      apiKey: saved.apiKey,
+      baseUrl: saved.baseUrl,
+      model: selection.model,
+      system: opts.system,
+      messages,
+      stream: true,
     }),
   });
   if (!res.ok || !res.body) {
@@ -178,7 +248,8 @@ export async function sendChatStream(
   }
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let buf = "", text = "";
+  let buf = "",
+    text = "";
   let usage: ChatUsage = { prompt: 0, completion: 0, total: 0 };
   try {
     for (;;) {
@@ -192,7 +263,10 @@ export async function sendChatStream(
         if (!line) continue;
         const j = JSON.parse(line) as { delta?: string; usage?: ChatUsage; error?: string };
         if (j.error) throw new Error(j.error);
-        if (j.delta) { text += j.delta; onDelta(j.delta); }
+        if (j.delta) {
+          text += j.delta;
+          onDelta(j.delta);
+        }
         if (j.usage) usage = j.usage;
       }
     }
@@ -202,6 +276,3 @@ export async function sendChatStream(
   }
   return { text, usage };
 }
-
-
-
