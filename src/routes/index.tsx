@@ -21,6 +21,7 @@ import { loadSelection, sendChatStream, type WireMessage, type ContentPart } fro
 import { addTokens } from "@/lib/token-usage";
 import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
 import { estimateTokens, estimatePromptCostUsd } from "@/lib/cost-estimate";
+import { extractArtifact, saveArtifact, loadArtifact, subscribeArtifact, type Artifact } from "@/lib/artifact-store";
 import { PROMPT_TEMPLATES, applyTemplate } from "@/lib/prompt-templates";
 import {
   loadConversations, saveConversation, deleteConversation, newConversation,
@@ -209,6 +210,8 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
       const final: Conversation = { ...convo, messages: [...convo.messages, assistantMsg] };
       setConversation(final);
       saveConversation(final);
+      const art = extractArtifact(assistantMsg.content);
+      if (art) saveArtifact(art);
       setStreaming("");
       if (!stopped) toast.success(`${usage.total} tokens · ${formatUsd(cost)} (${sel.model})`);
     } catch (e) {
@@ -589,6 +592,12 @@ function IconBtn({ children }: { children: React.ReactNode }) {
 /* ---------------- WORKSPACE PANEL ---------------- */
 function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | null; onOpenImport: () => void }) {
   const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
+  const [artifact, setArtifact] = useState<Artifact | null>(() => loadArtifact());
+
+  useEffect(() => subscribeArtifact(setArtifact), []);
+  useEffect(() => { if (artifact) setTab(artifact.html ? "preview" : "code"); }, [artifact?.updatedAt]);
+
+  const hasPreview = !!artifact?.html;
 
   return (
     <section className="flex flex-1 flex-col overflow-hidden pb-12 md:pb-0">
@@ -596,7 +605,7 @@ function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | 
         <div className="flex items-center gap-3">
           <button onClick={onOpenImport} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="font-medium">{project ? project.name : "Sem projeto"}</span>
+            <span className="font-medium">{project ? project.name : artifact ? "Artefato gerado" : "Sem projeto"}</span>
             {project && <span className="text-[10px] text-muted-foreground">· {project.files.length} arq.</span>}
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
@@ -628,14 +637,22 @@ function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | 
           <WorkTab active={tab === "database"} onClick={() => setTab("database")} icon={<Database className="h-3.5 w-3.5" />}>Database</WorkTab>
           <WorkTab active={tab === "logs"} onClick={() => setTab("logs")} icon={<ScrollText className="h-3.5 w-3.5" />}>Logs</WorkTab>
         </div>
-        <button className="text-muted-foreground hover:text-foreground p-2"><X className="h-4 w-4" /></button>
+        {artifact && (
+          <button
+            onClick={() => saveArtifact(null)}
+            aria-label="Limpar artefato"
+            className="text-muted-foreground hover:text-foreground p-2"
+          ><X className="h-4 w-4" /></button>
+        )}
       </div>
 
       <div className="flex items-center gap-3 border-b border-border bg-background/40 px-4 py-2">
         <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
         <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-1.5 text-xs">
           <Globe className="h-3 w-3 text-muted-foreground" />
-          <span className="text-muted-foreground">aguardando projeto…</span>
+          <span className="text-muted-foreground">
+            {artifact ? `${artifact.blocks.length} bloco${artifact.blocks.length > 1 ? "s" : ""} · ${artifact.lang}` : "aguardando projeto…"}
+          </span>
         </div>
         <IconBtn><RefreshCw className="h-3.5 w-3.5" /></IconBtn>
         <button className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground">
@@ -643,19 +660,35 @@ function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | 
         </button>
       </div>
 
-      <div className="flex-1 overflow-auto bg-background/20 flex items-center justify-center">
-        <div className="text-center max-w-md px-6">
-          <div className="relative mx-auto mb-6 w-fit">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
-            <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
-              <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
+      <div className="flex-1 overflow-auto bg-background/20">
+        {artifact ? (
+          tab === "preview" && hasPreview ? (
+            <iframe
+              key={artifact.updatedAt}
+              title="Artefato gerado"
+              sandbox="allow-scripts"
+              srcDoc={artifact.html}
+              className="w-full h-full border-0 bg-white"
+            />
+          ) : (
+            <pre className="text-xs p-4 font-mono whitespace-pre-wrap leading-relaxed">{artifact.code}</pre>
+          )
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center max-w-md px-6">
+              <div className="relative mx-auto mb-6 w-fit">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
+                <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
+                  <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
+                </div>
+              </div>
+              <h2 className="font-display text-2xl font-semibold mb-2">Seu artefato aparecerá aqui</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Peça à IA para gerar um dashboard, página HTML ou componente — o resultado renderiza automaticamente neste painel.
+              </p>
             </div>
           </div>
-          <h2 className="font-display text-2xl font-semibold mb-2">Seu artefato aparecerá aqui</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Inicie uma conversa no painel ao lado para gerar sua aplicação. Você poderá visualizar, inspecionar o código, banco de dados e logs em tempo real.
-          </p>
-        </div>
+        )}
       </div>
     </section>
   );
