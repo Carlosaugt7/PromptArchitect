@@ -86,8 +86,10 @@ function partsToGoogle(content: string | Part[]): any[] {
 async function nonStream(body: Body): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = baseUrl.replace(/\/+$/, "");
+  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(base);
+  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(base);
 
-  if (provider === "anthropic") {
+  if (isAnthropic) {
     const r = await fetch(`${base}/messages`, {
       method: "POST",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -102,7 +104,7 @@ async function nonStream(body: Body): Promise<Response> {
     return json({ text, usage: anthropicUsage(d.usage) });
   }
 
-  if (provider === "google") {
+  if (isGoogle) {
     const url = `${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const r = await fetch(url, {
       method: "POST", headers: { "content-type": "application/json" },
@@ -146,13 +148,15 @@ function openaiUsage(u: any) {
 async function streamResponse(body: Body, signal: AbortSignal): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = baseUrl.replace(/\/+$/, "");
+  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(base);
+  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(base);
   const enc = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (obj: unknown) => controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
       try {
-        if (provider === "anthropic") {
+        if (isAnthropic) {
           const r = await fetch(`${base}/messages`, {
             method: "POST", signal,
             headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -178,7 +182,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
           return controller.close();
         }
 
-        if (provider === "google") {
+        if (isGoogle) {
           const url = `${base}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
           const r = await fetch(url, {
             method: "POST", signal,
