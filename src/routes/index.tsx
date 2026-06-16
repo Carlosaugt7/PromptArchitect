@@ -192,7 +192,7 @@ function OmniForge() {
             </div>
           </div>
           <div className="flex-1 min-w-0 h-full overflow-hidden flex">
-            <div className="flex-1 min-w-0 h-full overflow-hidden">
+            <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
               <WorkspacePanel
                 project={project}
                 onOpenImport={() => setImportOpen(true)}
@@ -234,7 +234,7 @@ function OmniForge() {
           <div className={`${mobileView === "chat" ? "flex" : "hidden"} w-full`}>
             <ChatPanel onOpenImport={() => setImportOpen(true)} />
           </div>
-          <div className={`${mobileView === "work" ? "flex" : "hidden"} w-full min-w-0`}>
+          <div className={`${mobileView === "work" ? "flex flex-col" : "hidden"} w-full min-w-0 h-full overflow-hidden`}>
             <WorkspacePanel
               project={project}
               onOpenImport={() => setImportOpen(true)}
@@ -1026,7 +1026,7 @@ function WorkspacePanel({
   const hasPreview = !!artifact?.html || !!artifact?.hasReact;
 
   return (
-    <section className="flex flex-1 flex-col overflow-hidden pb-12 md:pb-0">
+    <section className="flex flex-col h-full overflow-hidden pb-12 md:pb-0">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <DropdownMenu>
