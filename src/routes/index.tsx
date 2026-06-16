@@ -43,12 +43,16 @@ import {
   Columns3,
   PanelLeft,
   LayoutGrid,
+  PanelRight,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
 import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
 import { FastReactPreview } from "@/components/FastReactPreview";
 import { ImportProjectDialog } from "@/components/ImportProjectDialog";
+import { ProjectExplorer } from "@/components/ProjectExplorer";
+import { IntegrationsDialog } from "@/components/IntegrationsDialog";
+import { PublishDialog } from "@/components/PublishDialog";
 import { TokenMeter } from "@/components/TokenMeter";
 import { Markdown } from "@/components/Markdown";
 import { InstallAppButton } from "@/components/InstallAppButton";
@@ -116,6 +120,10 @@ export const Route = createFileRoute("/")({
 
 function OmniForge() {
   const [importOpen, setImportOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [sidebarRightOpen, setSidebarRightOpen] = useState(true);
+  const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
   const [project, setProject] = useState<ImportedProject | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
   const [isDesktop, setIsDesktop] = useState(false);
@@ -183,8 +191,42 @@ function OmniForge() {
               </div>
             </div>
           </div>
-          <div className="flex-1 min-w-0 h-full overflow-hidden">
-            <WorkspacePanel project={project} onOpenImport={() => setImportOpen(true)} />
+          <div className="flex-1 min-w-0 h-full overflow-hidden flex">
+            <div className="flex-1 min-w-0 h-full overflow-hidden">
+              <WorkspacePanel
+                project={project}
+                onOpenImport={() => setImportOpen(true)}
+                onClearProject={() => {
+                  clearProject();
+                  setProject(null);
+                }}
+                viewport={viewport}
+                setViewport={setViewport}
+                onOpenIntegrations={() => setIntegrationsOpen(true)}
+                onOpenPublish={() => setPublishOpen(true)}
+                sidebarRightOpen={sidebarRightOpen}
+                setSidebarRightOpen={setSidebarRightOpen}
+              />
+            </div>
+            {sidebarRightOpen && (
+              <div className="w-64 flex-shrink-0 h-full">
+                <ProjectExplorer
+                  project={project}
+                  onSelectFile={(path, content) => {
+                    saveArtifact({
+                      id: path,
+                      title: path.split("/").pop() || path,
+                      lang: path.split(".").pop() || "tsx",
+                      code: content,
+                      blocks: [{ lang: path.split(".").pop() || "tsx", code: content }],
+                      hasReact: /\.(tsx|jsx)$/i.test(path),
+                      html: "",
+                      updatedAt: Date.now(),
+                    });
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -193,7 +235,20 @@ function OmniForge() {
             <ChatPanel onOpenImport={() => setImportOpen(true)} />
           </div>
           <div className={`${mobileView === "work" ? "flex" : "hidden"} w-full min-w-0`}>
-            <WorkspacePanel project={project} onOpenImport={() => setImportOpen(true)} />
+            <WorkspacePanel
+              project={project}
+              onOpenImport={() => setImportOpen(true)}
+              onClearProject={() => {
+                clearProject();
+                setProject(null);
+              }}
+              viewport={viewport}
+              setViewport={setViewport}
+              onOpenIntegrations={() => setIntegrationsOpen(true)}
+              onOpenPublish={() => setPublishOpen(true)}
+              sidebarRightOpen={sidebarRightOpen}
+              setSidebarRightOpen={setSidebarRightOpen}
+            />
           </div>
           <nav
             aria-label="Alternar painel"
@@ -217,6 +272,8 @@ function OmniForge() {
         </>
       )}
       <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} />
+      <IntegrationsDialog open={integrationsOpen} onOpenChange={setIntegrationsOpen} />
+      <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
     </div>
   );
 }
@@ -940,9 +997,23 @@ function IconBtn({ children }: { children: React.ReactNode }) {
 function WorkspacePanel({
   project,
   onOpenImport,
+  onClearProject,
+  viewport,
+  setViewport,
+  onOpenIntegrations,
+  onOpenPublish,
+  sidebarRightOpen,
+  setSidebarRightOpen,
 }: {
   project: ImportedProject | null;
   onOpenImport: () => void;
+  onClearProject: () => void;
+  viewport: "desktop" | "mobile";
+  setViewport: (v: "desktop" | "mobile") => void;
+  onOpenIntegrations: () => void;
+  onOpenPublish: () => void;
+  sidebarRightOpen: boolean;
+  setSidebarRightOpen: (open: boolean) => void;
 }) {
   const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
   const [artifact, setArtifact] = useState<Artifact | null>(() => loadArtifact());
@@ -958,48 +1029,75 @@ function WorkspacePanel({
     <section className="flex flex-1 flex-col overflow-hidden pb-12 md:pb-0">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <button
-            onClick={onOpenImport}
-            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="font-medium">
-              {project ? project.name : artifact ? "Artefato gerado" : "Sem projeto"}
-            </span>
-            {project && (
-              <span className="text-[10px] text-muted-foreground">
-                · {project.files.length} arq.
-              </span>
-            )}
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="font-medium">
+                  {project ? project.name : artifact ? "Artefato gerado" : "Sem projeto"}
+                </span>
+                {project && (
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    · {project.files.length} arq.
+                  </span>
+                )}
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="bg-card border-border">
+              <DropdownMenuItem onClick={onOpenImport} className="gap-2 text-xs">
+                <FolderOpen className="h-3.5 w-3.5 text-primary" /> Abrir Projeto
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpenImport} className="gap-2 text-xs">
+                <Plus className="h-3.5 w-3.5 text-primary" /> Novo Projeto
+              </DropdownMenuItem>
+              {project && (
+                <>
+                  <DropdownMenuSeparator className="border-border/50" />
+                  <DropdownMenuItem
+                    onClick={onClearProject}
+                    className="gap-2 text-xs text-destructive hover:bg-destructive/10"
+                  >
+                    <X className="h-3.5 w-3.5" /> Fechar Projeto Ativo
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex items-center gap-2">
-          <InstallAppButton />
           <TokenMeter />
           <div className="flex items-center rounded-lg border border-border bg-card/50 p-0.5">
-            <ViewportBtn active>
+            <ViewportBtn active={viewport === "desktop"} onClick={() => setViewport("desktop")}>
               <Monitor className="h-4 w-4" />
             </ViewportBtn>
-            <ViewportBtn>
+            <ViewportBtn active={viewport === "mobile"} onClick={() => setViewport("mobile")}>
               <Smartphone className="h-4 w-4" />
             </ViewportBtn>
-            <ViewportBtn>
-              <Code2 className="h-4 w-4" />
-            </ViewportBtn>
           </div>
-          <IconBtn>
-            <Undo2 className="h-4 w-4" />
-          </IconBtn>
-          <IconBtn>
-            <Redo2 className="h-4 w-4" />
-          </IconBtn>
-          <button className="flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-sm hover:bg-accent transition-colors">
-            <Share2 className="h-3.5 w-3.5" /> Compartilhar
+          <button 
+            onClick={onOpenIntegrations}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-accent transition-colors"
+          >
+            <Share2 className="h-3.5 w-3.5 text-muted-foreground" /> Integrações com
           </button>
-          <button className="rounded-lg bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] px-4 py-1.5 text-sm font-medium text-primary-foreground glow hover:opacity-95 transition">
+          <button 
+            onClick={onOpenPublish}
+            className="rounded-lg bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] px-3 py-1.5 text-xs font-medium text-primary-foreground glow hover:opacity-95 transition"
+          >
             Publicar
+          </button>
+          <button
+            onClick={() => setSidebarRightOpen(!sidebarRightOpen)}
+            title={sidebarRightOpen ? "Esconder Explorer" : "Mostrar Explorer"}
+            className={`p-1.5 rounded-lg border border-border bg-card/60 transition hover:bg-accent/40 ${
+              sidebarRightOpen ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <PanelRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
@@ -1050,7 +1148,7 @@ function WorkspacePanel({
         <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
         <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-1.5 text-xs">
           <Globe className="h-3 w-3 text-muted-foreground" />
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground font-mono">
             {artifact
               ? `${artifact.blocks.length} bloco${artifact.blocks.length > 1 ? "s" : ""} · ${artifact.lang}`
               : "aguardando projeto…"}
@@ -1067,17 +1165,29 @@ function WorkspacePanel({
       <div className="flex-1 overflow-auto bg-background/20">
         {artifact ? (
           tab === "preview" && hasPreview ? (
-            artifact.hasReact ? (
-              <FastReactPreview artifact={artifact} />
-            ) : (
-              <iframe
-                key={artifact.updatedAt}
-                title="Artefato gerado"
-                sandbox="allow-scripts"
-                srcDoc={artifact.html}
-                className="w-full h-full border-0 bg-white"
-              />
-            )
+            <div className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
+              viewport === "mobile" ? "bg-neutral-900/60" : ""
+            }`}>
+              <div
+                className={`transition-all duration-300 border-border bg-white overflow-hidden ${
+                  viewport === "mobile"
+                    ? "w-[390px] h-[720px] rounded-[36px] border-[12px] border-neutral-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative before:content-[''] before:absolute before:top-2 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-4 before:bg-neutral-900 before:rounded-full before:z-50"
+                    : "w-full h-full border-0"
+                }`}
+              >
+                {artifact.hasReact ? (
+                  <FastReactPreview artifact={artifact} />
+                ) : (
+                  <iframe
+                    key={artifact.updatedAt}
+                    title="Artefato gerado"
+                    sandbox="allow-scripts"
+                    srcDoc={artifact.html}
+                    className="w-full h-full border-0 bg-white"
+                  />
+                )}
+              </div>
+            </div>
           ) : (
             <pre className="text-xs p-4 font-mono whitespace-pre-wrap leading-relaxed">
               {artifact.code}
@@ -1107,9 +1217,10 @@ function WorkspacePanel({
   );
 }
 
-function ViewportBtn({ active, children }: { active?: boolean; children: React.ReactNode }) {
+function ViewportBtn({ active, children, onClick }: { active?: boolean; children: React.ReactNode; onClick?: () => void }) {
   return (
     <button
+      onClick={onClick}
       className={`grid h-7 w-9 place-items-center rounded-md transition-colors ${
         active ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
       }`}

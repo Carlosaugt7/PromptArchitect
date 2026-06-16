@@ -33,9 +33,43 @@ export function loadProject(): ImportedProject | null {
   }
 }
 
+const LIST_KEY = "omniforge.projects";
+
+export function listSavedProjects(): ImportedProject[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(LIST_KEY);
+    return raw ? (JSON.parse(raw) as ImportedProject[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function saveProject(p: ImportedProject) {
   localStorage.setItem(KEY, JSON.stringify(p));
+  
+  // Salva também na lista de projetos
+  const currentList = listSavedProjects();
+  const index = currentList.findIndex(item => item.id === p.id);
+  if (index >= 0) {
+    currentList[index] = p;
+  } else {
+    currentList.push(p);
+  }
+  localStorage.setItem(LIST_KEY, JSON.stringify(currentList));
+
   window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
+}
+
+export function deleteProjectFromList(id: string) {
+  const currentList = listSavedProjects();
+  const filtered = currentList.filter(item => item.id !== id);
+  localStorage.setItem(LIST_KEY, JSON.stringify(filtered));
+
+  const current = loadProject();
+  if (current?.id === id) {
+    clearProject();
+  }
 }
 
 export function clearProject() {
@@ -92,23 +126,31 @@ export function parseGithubUrl(url: string): { owner: string; repo: string; ref?
   }
 }
 
-/** Clona via API do GitHub (tarball estilo "git ls-tree"). Repo público. */
-export async function importFromGithub(url: string): Promise<ImportedProject> {
+/** Clona via API do GitHub (tarball estilo "git ls-tree"). Suporta token privado. */
+export async function importFromGithub(url: string, githubToken?: string): Promise<ImportedProject> {
   const parsed = parseGithubUrl(url);
   if (!parsed) throw new Error("URL do GitHub inválida.");
   const { owner, repo, ref } = parsed;
 
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+  if (githubToken) {
+    headers["Authorization"] = `token ${githubToken}`;
+  }
+
   // Descobre branch default se ref não foi passado
   let branch = ref;
   if (!branch) {
-    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
-    if (!r.ok) throw new Error(`Falha ao acessar ${owner}/${repo} (${r.status}).`);
+    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+    if (!r.ok) throw new Error(`Falha ao acessar ${owner}/${repo} (${r.status}). Verifique se é privado ou se o token está correto.`);
     branch = ((await r.json()) as { default_branch: string }).default_branch;
   }
 
   // Lista a árvore completa
   const tr = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+    { headers }
   );
   if (!tr.ok) throw new Error(`Falha ao listar árvore (${tr.status}).`);
   const tree = (await tr.json()) as { tree: Array<{ path: string; type: string; size?: number }> };
@@ -118,16 +160,32 @@ export async function importFromGithub(url: string): Promise<ImportedProject> {
     .filter((n) => !/(^|\/)(node_modules|\.git|dist|build|\.next)(\/|$)/.test(n.path));
 
   const files: ImportedFile[] = [];
-  // baixa conteúdo dos arquivos de texto pequenos via raw.githubusercontent
+  // baixa conteúdo dos arquivos de texto pequenos via API ou raw
   const limit = 60; // mantém leve
   for (const node of blobs.slice(0, limit)) {
     let content: string | undefined;
     if (TEXT_EXT.test(node.path) && (node.size ?? 0) <= MAX_INLINE) {
       try {
-        const raw = await fetch(
-          `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${node.path}`,
-        );
-        if (raw.ok) content = await raw.text();
+        if (githubToken) {
+          // Repositórios privados exigem obter via API em base64
+          const apiFileRes = await fetch(
+            `https://api.github.com/repos/${owner}/${repo}/contents/${node.path}?ref=${branch}`,
+            { headers }
+          );
+          if (apiFileRes.ok) {
+            const fileData = await apiFileRes.json();
+            // A API do GitHub retorna em Base64
+            if (fileData.encoding === "base64" && fileData.content) {
+              content = atob(fileData.content.replace(/\s/g, ""));
+            }
+          }
+        } else {
+          // Repositórios públicos funcionam diretamente com raw.githubusercontent
+          const raw = await fetch(
+            `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${node.path}`
+          );
+          if (raw.ok) content = await raw.text();
+        }
       } catch {
         /* ignore */
       }

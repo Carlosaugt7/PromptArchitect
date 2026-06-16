@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
 import { Route as ApiLlmModelsRouteImport } from './routes/api/llm-models'
 import { Route as ApiLlmChatRouteImport } from './routes/api/llm-chat'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceRoute = ApiWorkspaceRouteImport.update({
+  id: '/api/workspace',
+  path: '/api/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLlmModelsRoute = ApiLlmModelsRouteImport.update({
@@ -33,30 +39,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
+  '/api/workspace': typeof ApiWorkspaceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
+  '/api/workspace': typeof ApiWorkspaceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
+  '/api/workspace': typeof ApiWorkspaceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/llm-chat' | '/api/llm-models'
+  fullPaths: '/' | '/api/llm-chat' | '/api/llm-models' | '/api/workspace'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/llm-chat' | '/api/llm-models'
-  id: '__root__' | '/' | '/api/llm-chat' | '/api/llm-models'
+  to: '/' | '/api/llm-chat' | '/api/llm-models' | '/api/workspace'
+  id: '__root__' | '/' | '/api/llm-chat' | '/api/llm-models' | '/api/workspace'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiLlmChatRoute: typeof ApiLlmChatRoute
   ApiLlmModelsRoute: typeof ApiLlmModelsRoute
+  ApiWorkspaceRoute: typeof ApiWorkspaceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace': {
+      id: '/api/workspace'
+      path: '/api/workspace'
+      fullPath: '/api/workspace'
+      preLoaderRoute: typeof ApiWorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/llm-models': {
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiLlmChatRoute: ApiLlmChatRoute,
   ApiLlmModelsRoute: ApiLlmModelsRoute,
+  ApiWorkspaceRoute: ApiWorkspaceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
