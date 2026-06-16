@@ -279,19 +279,23 @@ function ProviderForm({
               return;
             }
             const base = saved ?? { models: [], enabled: [] };
+            const defaults = DEFAULT_MODELS[providerId] ?? [];
+            const finalModels = base.models?.length ? base.models : defaults;
+            const finalEnabled = base.enabled?.length ? base.enabled : finalModels;
             const next: ProvidersState = {
               ...state,
               [providerId]: {
                 ...base,
                 apiKey: apiKey.trim(),
                 baseUrl: baseUrl.trim() || provider.defaultBaseUrl,
-                models: base.models ?? [],
-                enabled: base.enabled ?? [],
+                models: finalModels,
+                enabled: finalEnabled,
                 updatedAt: Date.now(),
               },
             };
             onChange(next);
-            toast.success(`${provider.name} salvo`);
+            setModels(finalModels);
+            toast.success(`${provider.name} salvo · ${finalEnabled.length} modelos disponíveis`);
           }}
         >
           <Save className="h-4 w-4 mr-1.5" /> Salvar
