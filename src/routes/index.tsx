@@ -210,6 +210,8 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
       const final: Conversation = { ...convo, messages: [...convo.messages, assistantMsg] };
       setConversation(final);
       saveConversation(final);
+      const art = extractArtifact(assistantMsg.content);
+      if (art) saveArtifact(art);
       setStreaming("");
       if (!stopped) toast.success(`${usage.total} tokens · ${formatUsd(cost)} (${sel.model})`);
     } catch (e) {
