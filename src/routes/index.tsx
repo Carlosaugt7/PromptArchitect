@@ -22,7 +22,7 @@ import { runOrchestration } from "@/lib/orchestrator";
 import { addTokens } from "@/lib/token-usage";
 import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
 import { estimateTokens, estimatePromptCostUsd } from "@/lib/cost-estimate";
-import { extractArtifact, saveArtifact, loadArtifact, subscribeArtifact, type Artifact } from "@/lib/artifact-store";
+import { extractArtifact, saveArtifact, loadArtifact, subscribeArtifact, projectToArtifact, type Artifact } from "@/lib/artifact-store";
 import { PROMPT_TEMPLATES, applyTemplate } from "@/lib/prompt-templates";
 import {
   loadConversations, saveConversation, deleteConversation, newConversation,
@@ -48,7 +48,11 @@ function OmniForge() {
   const [importOpen, setImportOpen] = useState(false);
   const [project, setProject] = useState<ImportedProject | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
-  useEffect(() => { setProject(loadProject()); }, []);
+  useEffect(() => {
+    const p = loadProject();
+    setProject(p);
+    if (p) saveArtifact(projectToArtifact(p));
+  }, []);
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
       <div className={`${mobileView === "chat" ? "flex" : "hidden"} md:flex w-full md:w-[380px] shrink-0`}>
