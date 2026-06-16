@@ -22,7 +22,7 @@ export const PROVIDERS: ProviderConfig[] = [
   { id: "openai",     name: "OpenAI",         defaultBaseUrl: "https://api.openai.com/v1",                  helpUrl: "https://platform.openai.com/api-keys",    keyPlaceholder: "sk-..." },
   { id: "anthropic",  name: "Anthropic",      defaultBaseUrl: "https://api.anthropic.com/v1",               helpUrl: "https://console.anthropic.com/settings/keys", keyPlaceholder: "sk-ant-..." },
   { id: "google",     name: "Google Gemini",  defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta", helpUrl: "https://aistudio.google.com/apikey",  keyPlaceholder: "AIza..." },
-  { id: "deepseek",   name: "DeepSeek",       defaultBaseUrl: "https://api.deepseek.com",                   helpUrl: "https://platform.deepseek.com/api_keys",  keyPlaceholder: "sk-..." },
+  { id: "deepseek",   name: "DeepSeek",       defaultBaseUrl: "https://api.deepseek.com/v1",                helpUrl: "https://platform.deepseek.com/api_keys",  keyPlaceholder: "sk-..." },
   { id: "openrouter", name: "OpenRouter",     defaultBaseUrl: "https://openrouter.ai/api/v1",               helpUrl: "https://openrouter.ai/keys",              keyPlaceholder: "sk-or-..." },
   { id: "custom",     name: "Personalizado",  defaultBaseUrl: "",                  needsBaseUrl: true,      helpUrl: "",                                        keyPlaceholder: "sua-chave" },
 ];
