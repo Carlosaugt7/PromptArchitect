@@ -44,6 +44,7 @@ import {
   PanelLeft,
   LayoutGrid,
   PanelRight,
+  FolderOpen,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
