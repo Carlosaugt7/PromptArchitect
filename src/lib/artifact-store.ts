@@ -69,3 +69,17 @@ export function extractArtifact(markdown: string): Artifact | null {
     updatedAt: Date.now(),
   };
 }
+
+/** Converte um projeto importado em artefato visualizável. */
+export function projectToArtifact(p: { name: string; files: { path: string; size: number; content?: string }[] }): Artifact {
+  // 1) tenta index.html
+  const idx = p.files.find(f => /(^|\/)index\.html?$/i.test(f.path) && f.content)
+           ?? p.files.find(f => /\.html?$/i.test(f.path) && f.content);
+  if (idx?.content) {
+    return { lang: "html", code: idx.content, html: idx.content, blocks: [{ lang: "html", code: idx.content }], updatedAt: Date.now() };
+  }
+  // 2) fallback: árvore de arquivos
+  const tree = p.files.slice(0, 500).map(f => `<li><code>${f.path}</code> <span style="opacity:.5">(${(f.size/1024).toFixed(1)} KB)</span></li>`).join("");
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${p.name}</title><style>body{margin:0;font-family:system-ui;background:#0a0a0f;color:#eee;padding:24px}h1{font-size:18px}code{color:#9ad}ul{line-height:1.6;padding-left:18px}.note{opacity:.6;font-size:13px;margin:8px 0 18px}</style></head><body><h1>📦 ${p.name}</h1><p class="note">Projeto importado — ${p.files.length} arquivo(s). Sem index.html renderizável; exibindo árvore.</p><ul>${tree}</ul></body></html>`;
+  return { lang: "tree", code: p.files.map(f => f.path).join("\n"), html, blocks: [], updatedAt: Date.now() };
+}
