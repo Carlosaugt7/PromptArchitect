@@ -121,6 +121,11 @@ export const Route = createFileRoute("/")({
 
 function OmniForge() {
   const [importOpen, setImportOpen] = useState(false);
+  const [importTab, setImportTab] = useState<"saved" | "local" | "github">("saved");
+  const handleOpenImport = (tab: "saved" | "local" | "github") => {
+    setImportTab(tab);
+    setImportOpen(true);
+  };
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [sidebarRightOpen, setSidebarRightOpen] = useState(true);
@@ -180,7 +185,7 @@ function OmniForge() {
       {isDesktop ? (
         <div className="flex w-full h-full overflow-hidden relative">
           <div style={{ width: sidebarWidth }} className="flex-shrink-0 h-full relative border-r border-border/50">
-            <ChatPanel onOpenImport={() => setImportOpen(true)} />
+            <ChatPanel onOpenImport={() => handleOpenImport("local")} />
             <div 
               onPointerDown={handlePointerDown}
               className="absolute top-0 -right-2.5 w-5 h-full cursor-col-resize z-50 flex items-center justify-center group"
@@ -196,7 +201,7 @@ function OmniForge() {
             <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
               <WorkspacePanel
                 project={project}
-                onOpenImport={() => setImportOpen(true)}
+                onOpenImport={handleOpenImport}
                 onClearProject={() => {
                   clearProject();
                   setProject(null);
@@ -233,12 +238,12 @@ function OmniForge() {
       ) : (
         <>
           <div className={`${mobileView === "chat" ? "flex" : "hidden"} w-full`}>
-            <ChatPanel onOpenImport={() => setImportOpen(true)} />
+            <ChatPanel onOpenImport={() => handleOpenImport("local")} />
           </div>
           <div className={`${mobileView === "work" ? "flex flex-col" : "hidden"} w-full min-w-0 h-full overflow-hidden`}>
             <WorkspacePanel
               project={project}
-              onOpenImport={() => setImportOpen(true)}
+              onOpenImport={handleOpenImport}
               onClearProject={() => {
                 clearProject();
                 setProject(null);
@@ -272,7 +277,7 @@ function OmniForge() {
           </nav>
         </>
       )}
-      <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} />
+      <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} defaultTab={importTab} />
       <IntegrationsDialog open={integrationsOpen} onOpenChange={setIntegrationsOpen} />
       <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
     </div>
@@ -986,9 +991,9 @@ function TabButton({
   );
 }
 
-function IconBtn({ children }: { children: React.ReactNode }) {
+function IconBtn({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <button className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+    <button onClick={onClick} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
       {children}
     </button>
   );
@@ -1007,7 +1012,7 @@ function WorkspacePanel({
   setSidebarRightOpen,
 }: {
   project: ImportedProject | null;
-  onOpenImport: () => void;
+  onOpenImport: (tab: "saved" | "local" | "github") => void;
   onClearProject: () => void;
   viewport: "desktop" | "mobile";
   setViewport: (v: "desktop" | "mobile") => void;
@@ -1025,6 +1030,60 @@ function WorkspacePanel({
   }, [artifact?.updatedAt]);
 
   const hasPreview = !!artifact?.html || !!artifact?.hasReact;
+
+  const handleOpenExternal = () => {
+    if (!artifact) return;
+    let htmlContent = "";
+    if (artifact.hasReact) {
+      htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>\${artifact.title || "OmniForge Preview"}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.3.1",
+      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+      "lucide-react": "https://esm.sh/lucide-react@0.400.0"
+    }
+  }
+  </script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; font-family: system-ui; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
+    const code = \${JSON.stringify(artifact.code)};
+    const root = createRoot(document.getElementById('root'));
+    try {
+      const transformed = Babel.transform(code, { presets: ['react'] }).code;
+      const blob = new Blob([transformed], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      import(url).then(mod => {
+        const Component = mod.default;
+        root.render(React.createElement(Component));
+      });
+    } catch (err) {
+      root.render(React.createElement('pre', { style: { color: '#ff4444', padding: '16px', background: '#fee', whiteSpace: 'pre-wrap' } }, err.toString()));
+    }
+  </script>
+</body>
+</html>`;
+    } else {
+      htmlContent = artifact.html || `<!DOCTYPE html><html><head><style>body { margin: 0; font-family: system-ui; }</style></head><body>\${artifact.code}</body></html>`;
+    }
+
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  };
 
   return (
     <section className="flex flex-col h-full overflow-hidden pb-12 md:pb-0">
@@ -1048,17 +1107,17 @@ function WorkspacePanel({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="bg-card border-border">
-              <DropdownMenuItem onClick={onOpenImport} className="gap-2 text-xs">
+              <DropdownMenuItem onSelect={() => onOpenImport("saved")} className="gap-2 text-xs">
                 <FolderOpen className="h-3.5 w-3.5 text-primary" /> Abrir Projeto
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onOpenImport} className="gap-2 text-xs">
+              <DropdownMenuItem onSelect={() => onOpenImport("local")} className="gap-2 text-xs">
                 <Plus className="h-3.5 w-3.5 text-primary" /> Novo Projeto
               </DropdownMenuItem>
               {project && (
                 <>
                   <DropdownMenuSeparator className="border-border/50" />
                   <DropdownMenuItem
-                    onClick={onClearProject}
+                    onSelect={onClearProject}
                     className="gap-2 text-xs text-destructive hover:bg-destructive/10"
                   >
                     <X className="h-3.5 w-3.5" /> Fechar Projeto Ativo
@@ -1155,10 +1214,13 @@ function WorkspacePanel({
               : "aguardando projeto…"}
           </span>
         </div>
-        <IconBtn>
+        <IconBtn onClick={() => setArtifact(loadArtifact())}>
           <RefreshCw className="h-3.5 w-3.5" />
         </IconBtn>
-        <button className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground">
+        <button 
+          onClick={handleOpenExternal}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground"
+        >
           <ExternalLink className="h-3.5 w-3.5" /> Abrir
         </button>
       </div>
