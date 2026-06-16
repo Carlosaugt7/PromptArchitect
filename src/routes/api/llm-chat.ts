@@ -86,8 +86,10 @@ function partsToGoogle(content: string | Part[]): any[] {
 async function nonStream(body: Body): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = baseUrl.replace(/\/+$/, "");
+  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(base);
+  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(base);
 
-  if (provider === "anthropic") {
+  if (isAnthropic) {
     const r = await fetch(`${base}/messages`, {
       method: "POST",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
