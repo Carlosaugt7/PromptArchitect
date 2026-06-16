@@ -112,7 +112,9 @@ export async function readDirectoryTree(
       try {
         const file = await (entryHandle as FileSystemFileHandle).getFile();
         size = file.size;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       nodes.push({ name, path, type: "file", size });
     }
   }
@@ -167,7 +169,7 @@ export function saveProject(p: ImportedProject) {
   localStorage.setItem(KEY, JSON.stringify(p));
 
   const currentList = listSavedProjects();
-  const index = currentList.findIndex(item => item.id === p.id);
+  const index = currentList.findIndex((item) => item.id === p.id);
   if (index >= 0) {
     currentList[index] = p;
   } else {
@@ -180,7 +182,7 @@ export function saveProject(p: ImportedProject) {
 
 export function deleteProjectFromList(id: string) {
   const currentList = listSavedProjects();
-  const filtered = currentList.filter(item => item.id !== id);
+  const filtered = currentList.filter((item) => item.id !== id);
   localStorage.setItem(LIST_KEY, JSON.stringify(filtered));
 
   const current = loadProject();
@@ -285,7 +287,10 @@ export function parseGithubUrl(url: string): { owner: string; repo: string; ref?
   }
 }
 
-export async function importFromGithub(url: string, githubToken?: string): Promise<ImportedProject> {
+export async function importFromGithub(
+  url: string,
+  githubToken?: string,
+): Promise<ImportedProject> {
   const parsed = parseGithubUrl(url);
   if (!parsed) throw new Error("URL do GitHub inválida.");
   const { owner, repo, ref } = parsed;
@@ -304,7 +309,7 @@ export async function importFromGithub(url: string, githubToken?: string): Promi
 
   const tr = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-    { headers }
+    { headers },
   );
   if (!tr.ok) throw new Error(`Falha ao listar árvore (${tr.status}).`);
   const tree = (await tr.json()) as { tree: Array<{ path: string; type: string; size?: number }> };
@@ -322,7 +327,7 @@ export async function importFromGithub(url: string, githubToken?: string): Promi
         if (githubToken) {
           const apiFileRes = await fetch(
             `https://api.github.com/repos/${owner}/${repo}/contents/${node.path}?ref=${branch}`,
-            { headers }
+            { headers },
           );
           if (apiFileRes.ok) {
             const fileData = await apiFileRes.json();
@@ -332,11 +337,13 @@ export async function importFromGithub(url: string, githubToken?: string): Promi
           }
         } else {
           const raw = await fetch(
-            `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${node.path}`
+            `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${node.path}`,
           );
           if (raw.ok) content = await raw.text();
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     files.push({ path: node.path, size: node.size ?? 0, content });
   }
@@ -359,15 +366,15 @@ export async function importFromGithub(url: string, githubToken?: string): Promi
 // ---------- Artifact helper ----------
 
 export function projectToArtifact(project: ImportedProject) {
-  const mainFile = project.files.find(
-    (f) => f.content && /\.(tsx|jsx|html)$/i.test(f.path),
-  );
+  const mainFile = project.files.find((f) => f.content && /\.(tsx|jsx|html)$/i.test(f.path));
   return {
     id: project.id,
     title: project.name,
     lang: mainFile?.path.split(".").pop() || "tsx",
     code: mainFile?.content || `// Projeto: ${project.name}`,
-    blocks: mainFile ? [{ lang: mainFile.path.split(".").pop() || "tsx", code: mainFile.content || "" }] : [],
+    blocks: mainFile
+      ? [{ lang: mainFile.path.split(".").pop() || "tsx", code: mainFile.content || "" }]
+      : [],
     hasReact: mainFile ? /\.(tsx|jsx)$/i.test(mainFile.path) : false,
     html: "",
     updatedAt: Date.now(),

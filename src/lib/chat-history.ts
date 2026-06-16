@@ -98,7 +98,7 @@ export function saveConversation(c: Conversation) {
     setDoc(doc(db, "conversations", updatedConvo.id), {
       ...updatedConvo,
       userId: getUserId(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     }).catch((e) => console.error("Erro ao salvar no Firestore (background):", e));
   }
 }
@@ -107,8 +107,9 @@ export function deleteConversation(id: string) {
   persist(loadConversations().filter((c) => c.id !== id));
 
   if (isFirestoreActive && db) {
-    deleteDoc(doc(db, "conversations", id))
-      .catch((e) => console.error("Erro ao excluir no Firestore (background):", e));
+    deleteDoc(doc(db, "conversations", id)).catch((e) =>
+      console.error("Erro ao excluir no Firestore (background):", e),
+    );
   }
 }
 
@@ -123,7 +124,7 @@ export function renameConversation(id: string, title: string) {
     setDoc(doc(db, "conversations", updated.id), {
       ...updated,
       userId: getUserId(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     }).catch(() => {});
   }
 }
@@ -139,7 +140,7 @@ export function togglePinned(id: string) {
     setDoc(doc(db, "conversations", updated.id), {
       ...updated,
       userId: getUserId(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     }).catch(() => {});
   }
 }
@@ -152,7 +153,7 @@ export function importConversation(c: Conversation) {
     setDoc(doc(db, "conversations", c.id), {
       ...c,
       userId: getUserId(),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     }).catch(() => {});
   }
 }
@@ -240,7 +241,7 @@ export async function initSync(): Promise<void> {
         // 1. Carrega dados remotos do Firestore
         const q = query(collection(db!, "conversations"), where("userId", "==", userId));
         const snap = await getDocs(q);
-        const remoteList: Conversation[] = snap.docs.map(docSnap => {
+        const remoteList: Conversation[] = snap.docs.map((docSnap) => {
           const d = docSnap.data();
           return {
             id: d.id,
@@ -271,7 +272,7 @@ export async function initSync(): Promise<void> {
             setDoc(doc(db!, "conversations", c.id), {
               ...c,
               userId,
-              updatedAt: Date.now()
+              updatedAt: Date.now(),
             }).catch(() => {});
           }
         }

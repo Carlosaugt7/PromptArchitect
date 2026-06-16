@@ -30,7 +30,13 @@ interface Props {
   defaultTab?: "saved" | "local" | "github" | "new";
 }
 
-export function ImportProjectDialog({ open, onOpenChange, onImported, onDirectoryHandle, defaultTab = "saved" }: Props) {
+export function ImportProjectDialog({
+  open,
+  onOpenChange,
+  onImported,
+  onDirectoryHandle,
+  defaultTab = "saved",
+}: Props) {
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
@@ -51,7 +57,9 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, onDirector
     setBusy(true);
     try {
       const { project, handle } = await openLocalDirectory();
-      toast.success("Pasta aberta", { description: `${project.files.length} arquivo(s) · ${project.name}` });
+      toast.success("Pasta aberta", {
+        description: `${project.files.length} arquivo(s) · ${project.name}`,
+      });
       onImported?.(project);
       onDirectoryHandle?.(handle);
       onOpenChange(false);
@@ -154,7 +162,11 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, onDirector
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mt-2">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+          className="mt-2"
+        >
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="saved" className="gap-1.5 text-xs">
               <FolderOpen className="h-3.5 w-3.5" /> Projetos
@@ -194,8 +206,7 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, onDirector
                         {p.name}
                       </h4>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {p.files.length} arquivos ·{" "}
-                        {new Date(p.importedAt).toLocaleDateString()}
+                        {p.files.length} arquivos · {new Date(p.importedAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex gap-1.5">
@@ -223,7 +234,9 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, onDirector
               Crie um projeto em branco para começar a desenvolver do zero com IA.
             </p>
             <div className="space-y-2">
-              <label className="text-[10px] text-muted-foreground font-medium">Nome do Projeto</label>
+              <label className="text-[10px] text-muted-foreground font-medium">
+                Nome do Projeto
+              </label>
               <Input
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
@@ -245,13 +258,10 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, onDirector
             {fsAccessSupported ? (
               <>
                 <p className="text-xs text-muted-foreground">
-                  Selecione a pasta raiz do seu projeto. Os arquivos serão lidos diretamente do seu sistema — <strong>sem upload</strong>.
+                  Selecione a pasta raiz do seu projeto. Os arquivos serão lidos diretamente do seu
+                  sistema — <strong>sem upload</strong>.
                 </p>
-                <Button
-                  onClick={handleOpenLocalFS}
-                  disabled={busy}
-                  className="w-full gap-2"
-                >
+                <Button onClick={handleOpenLocalFS} disabled={busy} className="w-full gap-2">
                   {busy ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -295,7 +305,9 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, onDirector
           {/* GitHub */}
           <TabsContent value="github" className="space-y-3 pt-4">
             <div className="space-y-2">
-              <label className="text-[10px] text-muted-foreground font-medium">Link do Repositório</label>
+              <label className="text-[10px] text-muted-foreground font-medium">
+                Link do Repositório
+              </label>
               <Input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -308,7 +320,9 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, onDirector
             <div className="space-y-2">
               <label className="text-[10px] text-muted-foreground font-medium flex justify-between">
                 <span>GitHub Personal Access Token (PAT)</span>
-                <span className="text-[9px] opacity-75">Opcional, mas exigido para repositórios privados</span>
+                <span className="text-[9px] opacity-75">
+                  Opcional, mas exigido para repositórios privados
+                </span>
               </label>
               <Input
                 type="password"
@@ -320,7 +334,11 @@ export function ImportProjectDialog({ open, onOpenChange, onImported, onDirector
               />
             </div>
 
-            <Button onClick={handleGithub} disabled={busy || !url.trim()} className="w-full gap-2 mt-2">
+            <Button
+              onClick={handleGithub}
+              disabled={busy || !url.trim()}
+              className="w-full gap-2 mt-2"
+            >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
               Clonar repositório
             </Button>

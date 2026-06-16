@@ -62,8 +62,7 @@ export function extractArtifact(markdown: string): Artifact | null {
   const js = blocks.find((b) => /^(js|javascript)$/.test(b.lang))?.code ?? "";
 
   const isRenderableHTML =
-    /^html?$/.test(htmlBlock.lang) ||
-    (htmlBlock.lang === "" && /<\w+[\s>]/.test(htmlBlock.code));
+    /^html?$/.test(htmlBlock.lang) || (htmlBlock.lang === "" && /<\w+[\s>]/.test(htmlBlock.code));
 
   let html: string;
   if (/<html[\s>]/i.test(htmlBlock.code)) {

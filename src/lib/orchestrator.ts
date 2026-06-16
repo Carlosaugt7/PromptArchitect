@@ -145,7 +145,7 @@ export async function runOrchestration(
   );
   usage = addUsage(usage, planUsage);
 
-  let plan = rawPlan;
+  const plan = rawPlan;
   if (plan.length === 0 || (isAutoOrchestration && plan.length === helpers.length)) {
     onPhase(`🪄 ${lead.name} processando solicitação diretamente…`);
     const sys = agentSystem(lead);

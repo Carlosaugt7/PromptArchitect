@@ -59,11 +59,7 @@ import { TokenMeter } from "@/components/TokenMeter";
 import { Markdown } from "@/components/Markdown";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { CompareDialog } from "@/components/CompareDialog";
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, clearProject, type ImportedProject } from "@/lib/project-import";
 import { useAuth } from "@/lib/auth-context";
@@ -187,9 +183,12 @@ function OmniForge() {
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
       {isDesktop ? (
         <div className="flex w-full h-full overflow-hidden relative">
-          <div style={{ width: sidebarWidth }} className="flex-shrink-0 h-full relative border-r border-border/50">
+          <div
+            style={{ width: sidebarWidth }}
+            className="flex-shrink-0 h-full relative border-r border-border/50"
+          >
             <ChatPanel onOpenImport={() => handleOpenImport("local")} />
-            <div 
+            <div
               onPointerDown={handlePointerDown}
               className="absolute top-0 -right-2.5 w-5 h-full cursor-col-resize z-50 flex items-center justify-center group"
             >
@@ -244,7 +243,9 @@ function OmniForge() {
           <div className={`${mobileView === "chat" ? "flex" : "hidden"} w-full`}>
             <ChatPanel onOpenImport={() => handleOpenImport("local")} />
           </div>
-          <div className={`${mobileView === "work" ? "flex flex-col" : "hidden"} w-full min-w-0 h-full overflow-hidden`}>
+          <div
+            className={`${mobileView === "work" ? "flex flex-col" : "hidden"} w-full min-w-0 h-full overflow-hidden`}
+          >
             <WorkspacePanel
               project={project}
               onOpenImport={handleOpenImport}
@@ -281,7 +282,13 @@ function OmniForge() {
           </nav>
         </>
       )}
-      <ImportProjectDialog open={importOpen} onOpenChange={setImportOpen} onImported={setProject} onDirectoryHandle={setDirHandle} defaultTab={importTab} />
+      <ImportProjectDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={setProject}
+        onDirectoryHandle={setDirHandle}
+        defaultTab={importTab}
+      />
       <IntegrationsDialog open={integrationsOpen} onOpenChange={setIntegrationsOpen} />
       <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
     </div>
@@ -312,7 +319,9 @@ function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="bg-card border-border min-w-[200px]">
         <div className="flex flex-col px-3 py-2 text-xs border-b border-border/50">
-          <span className="font-semibold text-foreground truncate">{user.displayName || "Usuário"}</span>
+          <span className="font-semibold text-foreground truncate">
+            {user.displayName || "Usuário"}
+          </span>
           <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
         </div>
         <DropdownMenuItem
@@ -1037,7 +1046,10 @@ function TabButton({
 
 function IconBtn({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <button onClick={onClick} className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+    <button
+      onClick={onClick}
+      className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+    >
       {children}
     </button>
   );
@@ -1071,7 +1083,7 @@ function WorkspacePanel({
   useEffect(() => subscribeArtifact(setArtifact), []);
   useEffect(() => {
     if (artifact) setTab(artifact.html || artifact.hasReact ? "preview" : "code");
-  }, [artifact?.updatedAt]);
+  }, [artifact?.updatedAt, artifact]);
 
   const hasPreview = !!artifact?.html || !!artifact?.hasReact;
 
@@ -1121,7 +1133,9 @@ function WorkspacePanel({
 </body>
 </html>`;
     } else {
-      htmlContent = artifact.html || `<!DOCTYPE html><html><head><style>body { margin: 0; font-family: system-ui; }</style></head><body>\${artifact.code}</body></html>`;
+      htmlContent =
+        artifact.html ||
+        `<!DOCTYPE html><html><head><style>body { margin: 0; font-family: system-ui; }</style></head><body>\${artifact.code}</body></html>`;
     }
 
     const blob = new Blob([htmlContent], { type: "text/html" });
@@ -1135,9 +1149,7 @@ function WorkspacePanel({
         <div className="flex items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm"
-              >
+              <button className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 <span className="font-medium">
                   {project ? project.name : artifact ? "Artefato gerado" : "Sem projeto"}
@@ -1182,13 +1194,13 @@ function WorkspacePanel({
               <Smartphone className="h-4 w-4" />
             </ViewportBtn>
           </div>
-          <button 
+          <button
             onClick={onOpenIntegrations}
             className="flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-accent transition-colors"
           >
             <Share2 className="h-3.5 w-3.5 text-muted-foreground" /> Integrações com
           </button>
-          <button 
+          <button
             onClick={onOpenPublish}
             className="rounded-lg bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] px-3 py-1.5 text-xs font-medium text-primary-foreground glow hover:opacity-95 transition"
           >
@@ -1261,7 +1273,7 @@ function WorkspacePanel({
         <IconBtn onClick={() => setArtifact(loadArtifact())}>
           <RefreshCw className="h-3.5 w-3.5" />
         </IconBtn>
-        <button 
+        <button
           onClick={handleOpenExternal}
           className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground"
         >
@@ -1272,9 +1284,11 @@ function WorkspacePanel({
       <div className="flex-1 overflow-auto bg-background/20">
         {artifact ? (
           tab === "preview" && hasPreview ? (
-            <div className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
-              viewport === "mobile" ? "bg-neutral-900/60" : ""
-            }`}>
+            <div
+              className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
+                viewport === "mobile" ? "bg-neutral-900/60" : ""
+              }`}
+            >
               <div
                 className={`transition-all duration-300 border-border bg-white overflow-hidden ${
                   viewport === "mobile"
@@ -1324,7 +1338,15 @@ function WorkspacePanel({
   );
 }
 
-function ViewportBtn({ active, children, onClick }: { active?: boolean; children: React.ReactNode; onClick?: () => void }) {
+function ViewportBtn({
+  active,
+  children,
+  onClick,
+}: {
+  active?: boolean;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
   return (
     <button
       onClick={onClick}
