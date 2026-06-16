@@ -27,6 +27,16 @@ export const PROVIDERS: ProviderConfig[] = [
   { id: "custom",     name: "Personalizado",  defaultBaseUrl: "",                  needsBaseUrl: true,      helpUrl: "",                                        keyPlaceholder: "sua-chave" },
 ];
 
+/** Modelos sugeridos por provedor, usados quando o usuário salva sem clicar em "Detectar". */
+export const DEFAULT_MODELS: Record<ProviderId, string[]> = {
+  openai:     ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-mini"],
+  anthropic:  ["claude-sonnet-4-5", "claude-opus-4-1", "claude-3-5-sonnet-latest", "claude-3-5-haiku-latest"],
+  google:     ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
+  deepseek:   ["deepseek-chat", "deepseek-reasoner"],
+  openrouter: ["anthropic/claude-sonnet-4-5", "openai/gpt-4o", "google/gemini-2.5-pro", "deepseek/deepseek-chat"],
+  custom:     [],
+};
+
 export interface SavedProvider {
   apiKey: string;
   baseUrl: string;
