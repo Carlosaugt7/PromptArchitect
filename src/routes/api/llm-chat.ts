@@ -104,7 +104,7 @@ async function nonStream(body: Body): Promise<Response> {
     return json({ text, usage: anthropicUsage(d.usage) });
   }
 
-  if (provider === "google") {
+  if (isGoogle) {
     const url = `${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const r = await fetch(url, {
       method: "POST", headers: { "content-type": "application/json" },
