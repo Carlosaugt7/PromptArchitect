@@ -121,8 +121,8 @@ export const Route = createFileRoute("/")({
 
 function OmniForge() {
   const [importOpen, setImportOpen] = useState(false);
-  const [importTab, setImportTab] = useState<"saved" | "local" | "github">("saved");
-  const handleOpenImport = (tab: "saved" | "local" | "github") => {
+  const [importTab, setImportTab] = useState<"saved" | "local" | "github" | "new">("saved");
+  const handleOpenImport = (tab: "saved" | "local" | "github" | "new") => {
     setImportTab(tab);
     setImportOpen(true);
   };
@@ -1012,7 +1012,7 @@ function WorkspacePanel({
   setSidebarRightOpen,
 }: {
   project: ImportedProject | null;
-  onOpenImport: (tab: "saved" | "local" | "github") => void;
+  onOpenImport: (tab: "saved" | "local" | "github" | "new") => void;
   onClearProject: () => void;
   viewport: "desktop" | "mobile";
   setViewport: (v: "desktop" | "mobile") => void;
@@ -1110,7 +1110,7 @@ function WorkspacePanel({
               <DropdownMenuItem onSelect={() => onOpenImport("saved")} className="gap-2 text-xs">
                 <FolderOpen className="h-3.5 w-3.5 text-primary" /> Abrir Projeto
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onOpenImport("local")} className="gap-2 text-xs">
+              <DropdownMenuItem onSelect={() => onOpenImport("new")} className="gap-2 text-xs">
                 <Plus className="h-3.5 w-3.5 text-primary" /> Novo Projeto
               </DropdownMenuItem>
               {project && (

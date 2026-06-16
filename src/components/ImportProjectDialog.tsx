@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FolderUp, Github, Loader2, FileCode2, Trash2, FolderOpen, Plus } from "lucide-react";
+import { FolderUp, Github, Loader2, FileCode2, Trash2, FolderOpen, Plus, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,21 +24,26 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImported?: (p: ImportedProject | null) => void;
+  defaultTab?: "saved" | "local" | "github" | "new";
 }
 
-export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
+export function ImportProjectDialog({ open, onOpenChange, onImported, defaultTab = "saved" }: Props) {
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
   const [savedProjects, setSavedProjects] = useState<ImportedProject[]>([]);
   const folderRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [newProjectName, setNewProjectName] = useState("");
 
   // Carrega chaves salvas e projetos salvos
   useEffect(() => {
     if (!open) return;
     setToken(localStorage.getItem("omniforge.integration.github_token") || "");
     setSavedProjects(listSavedProjects());
-  }, [open]);
+    setActiveTab(defaultTab);
+    setNewProjectName("");
+  }, [open, defaultTab]);
 
   const handleLocal = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -95,6 +100,27 @@ export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
     }
   };
 
+  const handleNewProject = () => {
+    const name = newProjectName.trim() || "Novo Projeto";
+    const project: ImportedProject = {
+      id: crypto.randomUUID(),
+      name,
+      source: "local",
+      files: [
+        {
+          path: `${name}/index.html`,
+          size: 200,
+          content: `<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n  <meta charset="UTF-8">\n  <title>${name}</title>\n</head>\n<body>\n  <h1>${name}</h1>\n</body>\n</html>`,
+        },
+      ],
+      importedAt: Date.now(),
+    };
+    saveProject(project);
+    toast.success(`Projeto "${name}" criado`);
+    onImported?.(project);
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg bg-card border-border max-h-[80vh] overflow-y-auto">
@@ -108,13 +134,16 @@ export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={savedProjects.length > 0 ? "saved" : "local"} className="mt-2">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="mt-2">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="saved" className="gap-1.5 text-xs">
               <FolderOpen className="h-3.5 w-3.5" /> Projetos
             </TabsTrigger>
+            <TabsTrigger value="new" className="gap-1.5 text-xs">
+              <Sparkles className="h-3.5 w-3.5" /> Novo
+            </TabsTrigger>
             <TabsTrigger value="local" className="gap-1.5 text-xs">
-              <FolderUp className="h-3.5 w-3.5" /> Importar Pasta
+              <FolderUp className="h-3.5 w-3.5" /> Pasta Local
             </TabsTrigger>
             <TabsTrigger value="github" className="gap-1.5 text-xs">
               <Github className="h-3.5 w-3.5" /> GitHub
@@ -166,6 +195,29 @@ export function ImportProjectDialog({ open, onOpenChange, onImported }: Props) {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Novo Projeto */}
+          <TabsContent value="new" className="space-y-4 pt-4">
+            <p className="text-xs text-muted-foreground">
+              Crie um projeto em branco para começar a desenvolver do zero com IA.
+            </p>
+            <div className="space-y-2">
+              <label className="text-[10px] text-muted-foreground font-medium">Nome do Projeto</label>
+              <Input
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="meu-app-incrivel"
+                className="text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleNewProject();
+                }}
+              />
+            </div>
+            <Button onClick={handleNewProject} className="w-full gap-2">
+              <Sparkles className="h-4 w-4" />
+              Criar Projeto
+            </Button>
           </TabsContent>
 
           {/* Pasta Local */}
