@@ -87,16 +87,21 @@ export async function runOrchestration(
   const { plan, usage: planUsage } = await planAssignments(sel, lead, helpers, history, userText, signal);
   usage = addUsage(usage, planUsage);
 
-  onPhase(`👥 Executando ${plan.length} agente(s) em paralelo:\n${plan.map(p => `  • ${AGENTS.find(a => a.id === p.agentId)?.name}: ${p.task}`).join("\n")}`);
+  onPhase(`👥 Executando ${plan.length} agente(s) em sequência:\n${plan.map(p => `  • ${AGENTS.find(a => a.id === p.agentId)?.name}: ${p.task}`).join("\n")}`);
 
-  const results = await Promise.all(plan.map(async (item) => {
+  // Execução sequencial: vários provedores (ex.: DeepSeek) limitam conexões simultâneas por API key.
+  const results: { agent: AgentDefinition; text: string; usage: ChatUsage }[] = [];
+  for (let i = 0; i < plan.length; i++) {
+    const item = plan[i];
     const agent = AGENTS.find(a => a.id === item.agentId)!;
+    onPhase(`👥 (${i + 1}/${plan.length}) ${agent.name}: ${item.task}`);
+    if (signal?.aborted) break;
     const { text, usage: u } = await sendChat(sel, [
       ...history,
       { role: "user", content: `Solicitação do usuário:\n${userText}\n\nSua sub-tarefa: ${item.task}` },
     ], agentSystem(agent));
-    return { agent, text, usage: u };
-  }));
+    results.push({ agent, text, usage: u });
+  }
   for (const r of results) usage = addUsage(usage, r.usage);
 
   onPhase(`🪄 ${lead.name} consolidando resultados…`);
