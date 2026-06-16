@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  PROVIDERS, type ProviderId, type ProvidersState,
+  PROVIDERS, DEFAULT_MODELS, type ProviderId, type ProvidersState,
   loadProviders, saveProviders, fetchModels,
 } from "@/lib/llm-providers";
 import { loadDirectives, saveDirectives, type LlmDirectives } from "@/lib/llm-directives";
