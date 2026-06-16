@@ -83,14 +83,23 @@ function partsToGoogle(content: string | Part[]): any[] {
 
 /* ---------- Non-streaming ---------- */
 
+/** Remove sufixos como /chat/completions, /messages, /v1 finais e barras extras. */
+function normalizeBase(url: string): string {
+  return url
+    .replace(/\/+$/, "")
+    .replace(/\/(chat\/completions|messages|generateContent)$/i, "")
+    .replace(/\/+$/, "");
+}
+
 async function nonStream(body: Body): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
-  const base = baseUrl.replace(/\/+$/, "");
-  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(base);
-  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(base);
+  const base = normalizeBase(baseUrl);
+  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(base) || /^claude[-_.]/i.test(model);
+  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(base) || /^gemini[-_.]/i.test(model);
 
   if (isAnthropic) {
-    const r = await fetch(`${base}/messages`, {
+    const anthropicBase = /\/v\d+$/.test(base) ? base : `${base}/v1`;
+    const r = await fetch(`${anthropicBase}/messages`, {
       method: "POST",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
