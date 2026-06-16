@@ -17,7 +17,8 @@ import { InstallAppButton } from "@/components/InstallAppButton";
 import { CompareDialog } from "@/components/CompareDialog";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { loadProject, type ImportedProject } from "@/lib/project-import";
-import { loadSelection, sendChatStream, type WireMessage, type ContentPart } from "@/lib/llm-providers";
+import { loadSelection, type WireMessage, type ContentPart } from "@/lib/llm-providers";
+import { runOrchestration } from "@/lib/orchestrator";
 import { addTokens } from "@/lib/token-usage";
 import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
 import { estimateTokens, estimatePromptCostUsd } from "@/lib/cost-estimate";
@@ -190,15 +191,20 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
     setSending(true);
     setStreaming("");
     try {
-      const wire: WireMessage[] = convo.messages.map(m => ({
-        role: m.role,
-        content: m.id === userMsgId ? userContent : m.content,
-      }));
+      // Histórico sem a última mensagem do usuário (vai como userContent separado)
+      const baseWire: WireMessage[] = convo.messages
+        .filter(m => m.id !== userMsgId)
+        .map(m => ({ role: m.role, content: m.content }));
       let acc = "";
-      const { usage } = await sendChatStream(sel, wire, (chunk) => {
-        acc += chunk;
-        setStreaming(acc);
-      }, { signal: ctrl.signal });
+      let phase = "";
+      const render = () => setStreaming(phase ? `${phase}\n\n${acc}` : acc);
+      const { usage } = await runOrchestration(
+        sel, baseWire, userContent,
+        agents.activeIds, agents.leadId ?? "orchestrator",
+        (label) => { phase = label; render(); },
+        (chunk) => { acc += chunk; render(); },
+        ctrl.signal,
+      );
       const cost = estimateCostUsd(sel.model, usage.prompt, usage.completion);
       addTokens(usage.total, cost);
       const stopped = ctrl.signal.aborted;
@@ -213,7 +219,10 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
       const art = extractArtifact(assistantMsg.content);
       if (art) saveArtifact(art);
       setStreaming("");
-      if (!stopped) toast.success(`${usage.total} tokens · ${formatUsd(cost)} (${sel.model})`);
+      if (!stopped) {
+        const n = agents.activeIds.length;
+        toast.success(`${usage.total} tokens · ${formatUsd(cost)} · ${n} agente(s)`);
+      }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
         toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
