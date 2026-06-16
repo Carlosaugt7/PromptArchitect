@@ -591,7 +591,7 @@ function WorkspacePanel({ project, onOpenImport }: { project: ImportedProject | 
   const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
 
   return (
-    <section className="flex flex-1 flex-col overflow-hidden">
+    <section className="flex flex-1 flex-col overflow-hidden pb-12 md:pb-0">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <button onClick={onOpenImport} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm">
