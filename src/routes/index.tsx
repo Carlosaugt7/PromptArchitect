@@ -21,6 +21,7 @@ import { loadSelection, sendChatStream, type WireMessage, type ContentPart } fro
 import { addTokens } from "@/lib/token-usage";
 import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
 import { estimateTokens, estimatePromptCostUsd } from "@/lib/cost-estimate";
+import { extractArtifact, saveArtifact, loadArtifact, subscribeArtifact, type Artifact } from "@/lib/artifact-store";
 import { PROMPT_TEMPLATES, applyTemplate } from "@/lib/prompt-templates";
 import {
   loadConversations, saveConversation, deleteConversation, newConversation,
