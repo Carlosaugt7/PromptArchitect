@@ -182,7 +182,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
           return controller.close();
         }
 
-        if (provider === "google") {
+        if (isGoogle) {
           const url = `${base}/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
           const r = await fetch(url, {
             method: "POST", signal,
