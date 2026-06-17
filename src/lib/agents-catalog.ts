@@ -89,6 +89,15 @@ export const AGENTS: AgentDefinition[] = [
     skills: ["plan-writing", "brainstorming"],
   },
   {
+    id: "prompt-architect",
+    name: "Prompt Architect",
+    category: "planning",
+    description:
+      "Transforma ideias brutas em PRDs executáveis e prompts otimizados para LLMs, com pesquisa técnica, arquitetura Clean Code e conformidade LGPD/GDPR nativas.",
+    skills: ["clean-code", "plan-writing", "brainstorming", "privacy-by-design", "data-mapping"],
+    triggers: ["prd", "requisitos", "prompt", "prompt engineering", "lgpd", "gdpr", "privacidade"],
+  },
+  {
     id: "frontend-specialist",
     name: "Frontend Specialist",
     category: "frontend",
