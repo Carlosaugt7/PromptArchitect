@@ -119,10 +119,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const isServer = typeof window === "undefined";
+  const env = isServer ? (globalThis as any).process?.env : {};
+
+  // Serializa as variáveis do Firebase de forma segura para o cliente
+  const envScript = `
+    window.__ENV__ = {
+      VITE_FIREBASE_API_KEY: ${JSON.stringify(env?.VITE_FIREBASE_API_KEY || env?.FIREBASE_API_KEY || "")},
+      VITE_FIREBASE_AUTH_DOMAIN: ${JSON.stringify(env?.VITE_FIREBASE_AUTH_DOMAIN || env?.FIREBASE_AUTH_DOMAIN || "")},
+      VITE_FIREBASE_PROJECT_ID: ${JSON.stringify(env?.VITE_FIREBASE_PROJECT_ID || env?.FIREBASE_PROJECT_ID || "")},
+      VITE_FIREBASE_STORAGE_BUCKET: ${JSON.stringify(env?.VITE_FIREBASE_STORAGE_BUCKET || env?.FIREBASE_STORAGE_BUCKET || "")},
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${JSON.stringify(env?.VITE_FIREBASE_MESSAGING_SENDER_ID || env?.FIREBASE_MESSAGING_SENDER_ID || "")},
+      VITE_FIREBASE_APP_ID: ${JSON.stringify(env?.VITE_FIREBASE_APP_ID || env?.FIREBASE_APP_ID || "")},
+      VITE_FIREBASE_MEASUREMENT_ID: ${JSON.stringify(env?.VITE_FIREBASE_MEASUREMENT_ID || env?.FIREBASE_MEASUREMENT_ID || "")}
+    };
+  `;
+
   return (
     <html lang="pt-BR" className="dark">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: envScript }} />
       </head>
       <body data-density="cozy">
         {children}
