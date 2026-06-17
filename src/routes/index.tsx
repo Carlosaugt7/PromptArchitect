@@ -132,6 +132,8 @@ function OmniForge() {
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
   const [isDesktop, setIsDesktop] = useState(false);
+  // Logs de execução da IA em tempo real
+  const [executionLogs, setExecutionLogs] = useState<string[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof localStorage !== "undefined") {
       return parseInt(localStorage.getItem("omniforge-sidebar") || "360", 10);
@@ -144,6 +146,16 @@ function OmniForge() {
     setProject(p);
     if (p) saveArtifact(projectToArtifact(p));
   }, []);
+
+  // Callback quando uma pasta é aberta diretamente pelo Explorer
+  const handleProjectOpenedFromExplorer = (
+    newProject: ImportedProject,
+    handle: FileSystemDirectoryHandle,
+  ) => {
+    setProject(newProject);
+    setDirHandle(handle);
+    saveArtifact(projectToArtifact(newProject));
+  };
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
@@ -187,7 +199,10 @@ function OmniForge() {
             style={{ width: sidebarWidth }}
             className="flex-shrink-0 h-full relative border-r border-border/50"
           >
-            <ChatPanel onOpenImport={() => handleOpenImport("local")} />
+            <ChatPanel
+              onOpenImport={() => handleOpenImport("local")}
+              onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
+            />
             <div
               onPointerDown={handlePointerDown}
               className="absolute top-0 -right-2.5 w-5 h-full cursor-col-resize z-50 flex items-center justify-center group"
@@ -214,6 +229,8 @@ function OmniForge() {
                 onOpenPublish={() => setPublishOpen(true)}
                 sidebarRightOpen={sidebarRightOpen}
                 setSidebarRightOpen={setSidebarRightOpen}
+                executionLogs={executionLogs}
+                onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
               />
             </div>
             {sidebarRightOpen && (
@@ -233,6 +250,7 @@ function OmniForge() {
                       updatedAt: Date.now(),
                     });
                   }}
+                  onProjectOpened={handleProjectOpenedFromExplorer}
                 />
               </div>
             )}
@@ -241,7 +259,10 @@ function OmniForge() {
       ) : (
         <>
           <div className={`${mobileView === "chat" ? "flex" : "hidden"} w-full`}>
-            <ChatPanel onOpenImport={() => handleOpenImport("local")} />
+            <ChatPanel
+              onOpenImport={() => handleOpenImport("local")}
+              onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
+            />
           </div>
           <div
             className={`${mobileView === "work" ? "flex flex-col" : "hidden"} w-full min-w-0 h-full overflow-hidden`}
@@ -259,6 +280,8 @@ function OmniForge() {
               onOpenPublish={() => setPublishOpen(true)}
               sidebarRightOpen={sidebarRightOpen}
               setSidebarRightOpen={setSidebarRightOpen}
+              executionLogs={executionLogs}
+              onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
             />
           </div>
           <nav
@@ -337,7 +360,13 @@ function UserMenu() {
 }
 
 /* ---------------- CHAT PANEL ---------------- */
-function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
+function ChatPanel({
+  onOpenImport,
+  onAddLog,
+}: {
+  onOpenImport: () => void;
+  onAddLog?: (log: string) => void;
+}) {
   const [tab, setTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -501,6 +530,7 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
         (label) => {
           phase = label;
           render();
+          onAddLog?.(`[AGENT] ${label}`);
         },
         (chunk) => {
           acc += chunk;
@@ -510,7 +540,10 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
           if (now - lastArtifactAt > 300 && acc.lastIndexOf("```") > acc.indexOf("```")) {
             lastArtifactAt = now;
             const art = extractArtifact(acc);
-            if (art) saveArtifact(art);
+            if (art) {
+              saveArtifact(art);
+              onAddLog?.(`[ARTIFACT] Artefato extraído: ${art.title} (${art.lang})`);
+            }
           }
         },
         ctrl.signal,
@@ -518,6 +551,11 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
       const cost = estimateCostUsd(sel.model, usage.prompt, usage.completion);
       addTokens(usage.total, cost);
       const stopped = ctrl.signal.aborted;
+      if (!stopped) {
+        onAddLog?.(`[DONE] ${usage.total} tokens · ${formatUsd(cost)} · modelo: ${sel.model}`);
+      } else {
+        onAddLog?.(`[STOP] Interrompido pelo usuário após ${usage.total} tokens`);
+      }
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -539,7 +577,9 @@ function ChatPanel({ onOpenImport }: { onOpenImport: () => void }) {
       }
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
-        toast.error(e instanceof Error ? e.message : "Falha ao chamar a LLM");
+        const errMsg = e instanceof Error ? e.message : "Falha ao chamar a LLM";
+        toast.error(errMsg);
+        onAddLog?.(`[ERROR] ${errMsg}`);
       }
       setStreaming("");
     } finally {
@@ -1066,6 +1106,7 @@ function WorkspacePanel({
   onOpenPublish,
   sidebarRightOpen,
   setSidebarRightOpen,
+  executionLogs,
 }: {
   project: ImportedProject | null;
   onOpenImport: (tab: "saved" | "local" | "github" | "new") => void;
@@ -1076,16 +1117,38 @@ function WorkspacePanel({
   onOpenPublish: () => void;
   sidebarRightOpen: boolean;
   setSidebarRightOpen: (open: boolean) => void;
+  executionLogs?: string[];
+  onAddLog?: (log: string) => void;
 }) {
   const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
   const [artifact, setArtifact] = useState<Artifact | null>(() => loadArtifact());
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => subscribeArtifact(setArtifact), []);
   useEffect(() => {
     if (artifact) setTab(artifact.html || artifact.hasReact ? "preview" : "code");
   }, [artifact?.updatedAt, artifact]);
 
+  // Auto-scroll logs ao final quando novos logs chegam
+  useEffect(() => {
+    if (tab === "logs") {
+      logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [executionLogs, tab]);
+
   const hasPreview = !!artifact?.html || !!artifact?.hasReact;
+
+  // Extrai schema de banco do projeto
+  const databaseSchema = useMemo(() => {
+    if (!project) return null;
+    const schemaFiles = project.files.filter(
+      (f) =>
+        /\.(prisma|sql)$/i.test(f.path) ||
+        f.path.includes("schema") ||
+        f.path.includes("migration"),
+    );
+    return schemaFiles;
+  }, [project]);
 
   const handleOpenExternal = () => {
     if (!artifact) return;
@@ -1282,8 +1345,9 @@ function WorkspacePanel({
       </div>
 
       <div className="flex-1 overflow-auto bg-background/20">
-        {artifact ? (
-          tab === "preview" && hasPreview ? (
+        {/* ABA PREVIEW */}
+        {tab === "preview" && (
+          artifact && hasPreview ? (
             <div
               className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
                 viewport === "mobile" ? "bg-neutral-900/60" : ""
@@ -1310,26 +1374,137 @@ function WorkspacePanel({
               </div>
             </div>
           ) : (
-            <pre className="text-xs p-4 font-mono whitespace-pre-wrap leading-relaxed">
-              {artifact.code}
-            </pre>
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center max-w-md px-6">
+                <div className="relative mx-auto mb-6 w-fit">
+                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
+                  <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
+                    <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
+                  </div>
+                </div>
+                <h2 className="font-display text-2xl font-semibold mb-2">
+                  Seu artefato aparecerá aqui
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Peça à IA para gerar um dashboard, página HTML ou componente — o resultado renderiza
+                  automaticamente neste painel.
+                </p>
+              </div>
+            </div>
           )
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center max-w-md px-6">
-              <div className="relative mx-auto mb-6 w-fit">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
-                <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
-                  <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
+        )}
+
+        {/* ABA CÓDIGO */}
+        {tab === "code" && (
+          artifact ? (
+            <div className="h-full overflow-auto">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/20 sticky top-0 z-10">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded">
+                    {artifact.lang}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{artifact.title}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {artifact.code.split("\n").length} linhas
+                </span>
+              </div>
+              <pre className="text-xs p-4 font-mono whitespace-pre-wrap leading-relaxed text-foreground/90 min-h-full">
+                <code>{artifact.code}</code>
+                {/* Cursor animado para indicar que o agente pode estar escrevendo */}
+              </pre>
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <Code2 className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p className="text-sm font-medium">Nenhum código gerado ainda</p>
+                <p className="text-xs opacity-70 mt-1">O agente irá escrever o código aqui</p>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* ABA DATABASE */}
+        {tab === "database" && (
+          <div className="h-full overflow-auto">
+            {databaseSchema && databaseSchema.length > 0 ? (
+              <div className="p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Database className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Schema do Banco de Dados</span>
+                  <span className="text-[10px] text-muted-foreground bg-card/60 px-2 py-0.5 rounded">
+                    {databaseSchema.length} arquivo(s)
+                  </span>
+                </div>
+                {databaseSchema.map((f) => (
+                  <div key={f.path} className="rounded-xl border border-border bg-card/30 overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-card/50 border-b border-border/50">
+                      <Database className="h-3.5 w-3.5 text-teal-400" />
+                      <span className="text-xs font-mono text-muted-foreground">{f.path}</span>
+                    </div>
+                    {f.content ? (
+                      <pre className="text-xs p-4 font-mono whitespace-pre-wrap text-foreground/80 max-h-80 overflow-auto leading-relaxed">
+                        {f.content}
+                      </pre>
+                    ) : (
+                      <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                        Conteúdo não carregado — abra o arquivo no Explorer
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center text-muted-foreground max-w-sm px-6">
+                  <Database className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm font-medium">Nenhum schema encontrado</p>
+                  <p className="text-xs opacity-70 mt-1 leading-relaxed">
+                    Importe um projeto com arquivos <code className="font-mono">.prisma</code>,{" "}
+                    <code className="font-mono">.sql</code> ou com "schema" no nome para visualizar aqui.
+                  </p>
                 </div>
               </div>
-              <h2 className="font-display text-2xl font-semibold mb-2">
-                Seu artefato aparecerá aqui
-              </h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Peça à IA para gerar um dashboard, página HTML ou componente — o resultado renderiza
-                automaticamente neste painel.
-              </p>
+            )}
+          </div>
+        )}
+
+        {/* ABA LOGS */}
+        {tab === "logs" && (
+          <div className="h-full overflow-auto bg-[#0d1117] font-mono">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 sticky top-0 bg-[#0d1117] z-10">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[11px] text-white/60">Execution Logs</span>
+              </div>
+              <span className="text-[10px] text-white/30">{executionLogs?.length ?? 0} entradas</span>
+            </div>
+            <div className="p-4 space-y-1">
+              {!executionLogs || executionLogs.length === 0 ? (
+                <div className="text-center py-12 text-white/30">
+                  <ScrollText className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                  <p className="text-xs">Nenhum log ainda.</p>
+                  <p className="text-[10px] mt-1 opacity-60">Envie uma mensagem para ver a execução aqui.</p>
+                </div>
+              ) : (
+                executionLogs.map((log, i) => (
+                  <div key={i} className="flex gap-3 text-[11px] leading-relaxed">
+                    <span className="text-white/25 select-none w-8 text-right flex-shrink-0">
+                      {String(i + 1).padStart(3, "0")}
+                    </span>
+                    <span className={`flex-1 ${
+                      log.startsWith("[ERROR]") ? "text-red-400" :
+                      log.startsWith("[WARN]") ? "text-yellow-400" :
+                      log.startsWith("[") ? "text-cyan-400" :
+                      "text-white/70"
+                    }`}>
+                      {log}
+                    </span>
+                  </div>
+                ))
+              )}
+              <div ref={logsEndRef} />
             </div>
           </div>
         )}

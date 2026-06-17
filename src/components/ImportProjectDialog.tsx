@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { FolderUp, Github, Loader2, FileCode2, Trash2, FolderOpen, Sparkles } from "lucide-react";
+import {
+  FolderUp,
+  Github,
+  Loader2,
+  FileCode2,
+  Trash2,
+  FolderOpen,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +30,7 @@ import {
   listSavedProjects,
   deleteProjectFromList,
   saveProject,
+  parseGithubUrl,
   type ImportedProject,
 } from "@/lib/project-import";
 
@@ -44,6 +56,13 @@ export function ImportProjectDialog({
   const folderRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [newProjectName, setNewProjectName] = useState("");
+  const [githubStatus, setGithubStatus] = useState<
+    | { step: "idle" }
+    | { step: "validating" }
+    | { step: "fetching"; msg: string }
+    | { step: "done"; files: number; name: string }
+    | { step: "error"; msg: string }
+  >({ step: "idle" });
 
   useEffect(() => {
     if (!open) return;
@@ -51,6 +70,7 @@ export function ImportProjectDialog({
     setSavedProjects(listSavedProjects());
     setActiveTab(defaultTab);
     setNewProjectName("");
+    setGithubStatus({ step: "idle" });
   }, [open, defaultTab]);
 
   const handleOpenLocalFS = async () => {
@@ -89,10 +109,29 @@ export function ImportProjectDialog({
   };
 
   const handleGithub = async () => {
-    if (!url.trim()) return;
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) return;
+
+    // Valida URL antes de disparar
+    const parsed = parseGithubUrl(trimmedUrl);
+    if (!parsed) {
+      setGithubStatus({ step: "error", msg: "URL inválida. Use: https://github.com/usuario/repositorio" });
+      return;
+    }
+
     setBusy(true);
+    setGithubStatus({ step: "validating" });
+
     try {
-      const p = await importFromGithub(url.trim(), token.trim() || undefined);
+      setGithubStatus({
+        step: "fetching",
+        msg: `Conectando a ${parsed.owner}/${parsed.repo}…`,
+      });
+
+      const p = await importFromGithub(trimmedUrl, token.trim() || undefined);
+
+      setGithubStatus({ step: "done", files: p.files.length, name: p.name });
+
       toast.success("Repositório clonado", {
         description: `${p.files.length} arquivo(s) · ${p.name}`,
       });
@@ -100,10 +139,17 @@ export function ImportProjectDialog({
         localStorage.setItem("omniforge.integration.github_token", token.trim());
       }
       onImported?.(p);
-      onOpenChange(false);
-      setUrl("");
+
+      // Fecha o dialog após breve delay para mostrar sucesso
+      setTimeout(() => {
+        onOpenChange(false);
+        setUrl("");
+        setGithubStatus({ step: "idle" });
+      }, 800);
     } catch (e) {
-      toast.error("Falha ao clonar do GitHub", { description: (e as Error).message });
+      const errMsg = (e as Error).message;
+      setGithubStatus({ step: "error", msg: errMsg });
+      toast.error("Falha ao clonar do GitHub", { description: errMsg });
     } finally {
       setBusy(false);
     }
@@ -257,10 +303,12 @@ export function ImportProjectDialog({
           <TabsContent value="local" className="space-y-3 pt-4">
             {fsAccessSupported ? (
               <>
-                <p className="text-xs text-muted-foreground">
-                  Selecione a pasta raiz do seu projeto. Os arquivos serão lidos diretamente do seu
-                  sistema — <strong>sem upload</strong>.
-                </p>
+                <div className="rounded-lg border border-border/60 bg-card/20 p-3 text-xs text-muted-foreground leading-relaxed">
+                  <p className="font-medium text-foreground/80 mb-1">📁 Abrir pasta do computador</p>
+                  <p>
+                    Selecione a pasta raiz do seu projeto. Os arquivos são lidos diretamente — <strong>sem upload</strong>. A estrutura aparece no Explorer.
+                  </p>
+                </div>
                 <Button onClick={handleOpenLocalFS} disabled={busy} className="w-full gap-2">
                   {busy ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -272,10 +320,13 @@ export function ImportProjectDialog({
               </>
             ) : (
               <>
-                <p className="text-xs text-muted-foreground">
-                  Selecione a pasta raiz do seu projeto. Arquivos em <code>node_modules</code>,{" "}
-                  <code>.git</code> e <code>dist</code> são ignorados automaticamente.
-                </p>
+                <div className="rounded-lg border border-border/60 bg-card/20 p-3 text-xs text-muted-foreground leading-relaxed">
+                  <p className="font-medium text-foreground/80 mb-1">📤 Upload de pasta</p>
+                  <p>
+                    Selecione os arquivos da pasta. Arquivos em <code>node_modules</code>,{" "}
+                    <code>.git</code> e <code>dist</code> são ignorados automaticamente.
+                  </p>
+                </div>
                 <input
                   ref={folderRef}
                   type="file"
@@ -304,25 +355,47 @@ export function ImportProjectDialog({
 
           {/* GitHub */}
           <TabsContent value="github" className="space-y-3 pt-4">
+            <div className="rounded-lg border border-border/60 bg-card/20 p-3 text-xs text-muted-foreground leading-relaxed">
+              <p className="font-medium text-foreground/80 mb-1 flex items-center gap-1.5">
+                <Github className="h-3.5 w-3.5" /> Clonar do GitHub
+              </p>
+              <p>
+                Repositórios públicos funcionam sem token. Para privados, adicione um{" "}
+                <a
+                  href="https://github.com/settings/tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-0.5"
+                >
+                  PAT <ExternalLink className="h-2.5 w-2.5" />
+                </a>{" "}
+                com escopo <code>repo</code>.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <label className="text-[10px] text-muted-foreground font-medium">
                 Link do Repositório
               </label>
               <Input
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  if (githubStatus.step === "error") setGithubStatus({ step: "idle" });
+                }}
                 placeholder="https://github.com/usuario/repositorio"
                 disabled={busy}
                 className="text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !busy && url.trim()) handleGithub();
+                }}
               />
             </div>
 
             <div className="space-y-2">
               <label className="text-[10px] text-muted-foreground font-medium flex justify-between">
                 <span>GitHub Personal Access Token (PAT)</span>
-                <span className="text-[9px] opacity-75">
-                  Opcional, mas exigido para repositórios privados
-                </span>
+                <span className="text-[9px] opacity-75">Opcional — necessário para repos privados</span>
               </label>
               <Input
                 type="password"
@@ -333,6 +406,34 @@ export function ImportProjectDialog({
                 className="text-xs font-mono"
               />
             </div>
+
+            {/* Status do clone */}
+            {githubStatus.step !== "idle" && (
+              <div
+                className={`rounded-lg border p-3 text-xs flex items-start gap-2 ${
+                  githubStatus.step === "error"
+                    ? "border-destructive/50 bg-destructive/10 text-destructive"
+                    : githubStatus.step === "done"
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "border-border bg-card/30 text-muted-foreground"
+                }`}
+              >
+                {githubStatus.step === "error" ? (
+                  <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                ) : githubStatus.step === "done" ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <Loader2 className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 animate-spin" />
+                )}
+                <span>
+                  {githubStatus.step === "validating" && "Validando URL…"}
+                  {githubStatus.step === "fetching" && githubStatus.msg}
+                  {githubStatus.step === "done" &&
+                    `✓ ${githubStatus.files} arquivo(s) clonados de "${githubStatus.name}"`}
+                  {githubStatus.step === "error" && githubStatus.msg}
+                </span>
+              </div>
+            )}
 
             <Button
               onClick={handleGithub}
