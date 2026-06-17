@@ -163,6 +163,29 @@ function AuthGate() {
 
   // Firebase indisponível (API key inválida/ausente) — modo offline
   if (!firebaseAvailable) {
+    // Se estiver em produção, mostra um erro de configuração em vez de liberar o acesso bypassado
+    if (import.meta.env.PROD) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+          <div className="max-w-md text-center border border-destructive/30 bg-destructive/5 p-6 rounded-2xl">
+            <h2 className="text-lg font-semibold text-destructive">
+              Erro de Configuração do Firebase
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+              As variáveis de ambiente do Firebase (como{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">VITE_FIREBASE_API_KEY</code>)
+              não foram configuradas ou não foram expostas no seu painel de hospedagem de produção.
+            </p>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Configure as variáveis de ambiente com o prefixo{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">VITE_</code> no seu provedor de
+              deploy e realize um novo build.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <>
         <Outlet />
