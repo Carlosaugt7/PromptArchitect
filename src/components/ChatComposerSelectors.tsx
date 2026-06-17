@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, Cpu, Crown } from "lucide-react";
+import { Bot, Cpu, Crown, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -15,16 +15,18 @@ import {
   saveSelection,
   type ModelSelection,
 } from "@/lib/llm-providers";
-import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
+import { AGENTS, loadAgentsState, saveAgentsState, type AgentsState } from "@/lib/agents-catalog";
 
 export function ChatComposerSelectors({
   agents,
   onOpenSettings,
   onOpenAgents,
+  onAgentsChange,
 }: {
   agents: AgentsState;
   onOpenSettings: () => void;
   onOpenAgents: () => void;
+  onAgentsChange?: (state: AgentsState) => void;
 }) {
   const [models, setModels] = useState<ModelSelection[]>([]);
   const [selection, setSelection] = useState<ModelSelection | null>(null);
@@ -61,7 +63,18 @@ export function ChatComposerSelectors({
 
   const providerName = (id: string) => PROVIDERS.find((p) => p.id === id)?.name ?? id;
   const lead = AGENTS.find((a) => a.id === agents.leadId);
-  const activeAgents = AGENTS.filter((a) => agents.activeIds.includes(a.id));
+
+  const coordinators = AGENTS.filter((a) => a.coordinator);
+  const specialists = AGENTS.filter((a) => !a.coordinator);
+
+  const handleSelectAgent = (agentId: string) => {
+    const next: AgentsState = {
+      leadId: agentId,
+      activeIds: [agentId],
+    };
+    saveAgentsState(next);
+    onAgentsChange?.(next);
+  };
 
   // Agrupa modelos por provider
   const grouped = models.reduce<Record<string, string[]>>((acc, m) => {
@@ -123,34 +136,74 @@ export function ChatComposerSelectors({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto w-72">
           <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">
-            Coordenador ativo
+            Coordenadores (Multi-Agente)
           </DropdownMenuLabel>
-          {activeAgents.length === 0 ? (
-            <DropdownMenuItem onClick={onOpenAgents}>
-              Nenhum agente ativo — gerenciar equipe…
-            </DropdownMenuItem>
-          ) : (
-            activeAgents.map((a) => {
-              const isLead = a.id === agents.leadId;
-              return (
-                <DropdownMenuItem
-                  key={a.id}
-                  className="text-xs flex items-start gap-2"
-                  onClick={onOpenAgents}
-                >
-                  {isLead && <Crown className="h-3 w-3 text-primary mt-0.5 shrink-0" />}
-                  <div className="flex-1 min-w-0">
+          {coordinators.map((a) => {
+            const isLead = a.id === agents.leadId;
+            return (
+              <DropdownMenuItem
+                key={a.id}
+                className="text-xs flex items-start gap-2 cursor-pointer"
+                onClick={() => handleSelectAgent(a.id)}
+              >
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center">
+                  {isLead ? (
+                    <Crown className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <Bot className="h-3 w-3 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
                     <p className="font-medium truncate">{a.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      {a.skills.slice(0, 3).join(" · ")}
-                    </p>
+                    {isLead && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
                   </div>
-                </DropdownMenuItem>
-              );
-            })
-          )}
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    Orquestração automática do projeto
+                  </p>
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
+
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onOpenAgents} className="text-xs text-primary">
+
+          <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">
+            Especialistas Individuais
+          </DropdownMenuLabel>
+          {specialists.map((a) => {
+            const isLead = a.id === agents.leadId;
+            return (
+              <DropdownMenuItem
+                key={a.id}
+                className="text-xs flex items-start gap-2 cursor-pointer"
+                onClick={() => handleSelectAgent(a.id)}
+              >
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center">
+                  {isLead ? (
+                    <Check className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium truncate">{a.name}</p>
+                    {isLead && (
+                      <span className="text-[9px] text-primary font-mono uppercase">Ativo</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground truncate">{a.description}</p>
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={onOpenAgents}
+            className="text-xs text-primary font-medium cursor-pointer"
+          >
             Gerenciar equipe de agentes…
           </DropdownMenuItem>
         </DropdownMenuContent>

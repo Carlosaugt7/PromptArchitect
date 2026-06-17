@@ -955,6 +955,7 @@ function ChatPanel({
               agents={agents}
               onOpenSettings={() => setSettingsOpen(true)}
               onOpenAgents={() => setAgentsOpen(true)}
+              onAgentsChange={setAgents}
             />
           </div>
           {attachments.length > 0 && (
