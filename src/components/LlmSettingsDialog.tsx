@@ -83,7 +83,7 @@ export function LlmSettingsDialog({ open, onOpenChange, onSaved }: Props) {
 
           <TabsContent value="providers" className="mt-4">
             <Tabs value={tab} onValueChange={(v) => setTab(v as ProviderId)}>
-              <TabsList className="grid grid-cols-6 bg-muted/40">
+              <TabsList className="grid grid-cols-7 bg-muted/40">
                 {PROVIDERS.map((p) => (
                   <TabsTrigger key={p.id} value={p.id} className="text-xs relative">
                     {p.name}
@@ -204,7 +204,10 @@ function ProviderForm({
   const provider = useMemo(() => PROVIDERS.find((p) => p.id === providerId)!, [providerId]);
   const saved = state[providerId];
 
-  const [apiKey, setApiKey] = useState(saved?.apiKey ?? "");
+  const [apiKey, setApiKey] = useState(() => {
+    const s = saved?.apiKey ?? "";
+    return s === "ollama" ? "" : s;
+  });
   const [baseUrl, setBaseUrl] = useState(saved?.baseUrl ?? provider.defaultBaseUrl);
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -212,13 +215,13 @@ function ProviderForm({
 
   useEffect(() => {
     const s = state[providerId];
-    setApiKey(s?.apiKey ?? "");
+    setApiKey(s?.apiKey === "ollama" ? "" : (s?.apiKey ?? ""));
     setBaseUrl(s?.baseUrl ?? provider.defaultBaseUrl);
     setModels(s?.models ?? []);
   }, [providerId, state, provider.defaultBaseUrl]);
 
   async function handleTest() {
-    if (!apiKey.trim()) {
+    if (!apiKey.trim() && providerId !== "ollama") {
       toast.error("Informe a chave de API");
       return;
     }
@@ -227,13 +230,14 @@ function ProviderForm({
       return;
     }
     setLoading(true);
+    const effectiveKey = apiKey.trim() || (providerId === "ollama" ? "ollama" : "");
     try {
-      const list = await fetchModels(providerId, apiKey.trim(), baseUrl.trim());
+      const list = await fetchModels(providerId, effectiveKey, baseUrl.trim());
       setModels(list);
       const next: ProvidersState = {
         ...state,
         [providerId]: {
-          apiKey: apiKey.trim(),
+          apiKey: effectiveKey,
           baseUrl: baseUrl.trim(),
           models: list,
           enabled: list,
@@ -284,7 +288,9 @@ function ProviderForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={`${providerId}-key`}>Chave de API</Label>
+        <Label htmlFor={`${providerId}-key`}>
+          {providerId === "ollama" ? "Chave de API (Opcional)" : "Chave de API"}
+        </Label>
         <div className="relative">
           <Input
             id={`${providerId}-key`}
@@ -294,13 +300,15 @@ function ProviderForm({
             placeholder={provider.keyPlaceholder}
             className="pr-10 font-mono text-xs"
           />
-          <button
-            type="button"
-            onClick={() => setShowKey((s) => !s)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
+          {providerId !== "ollama" && (
+            <button
+              type="button"
+              onClick={() => setShowKey((s) => !s)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -339,10 +347,11 @@ function ProviderForm({
         <Button
           variant="outline"
           onClick={() => {
-            if (!apiKey.trim()) {
+            if (!apiKey.trim() && providerId !== "ollama") {
               toast.error("Informe a chave de API");
               return;
             }
+            const effectiveKey = apiKey.trim() || (providerId === "ollama" ? "ollama" : "");
             const base = saved ?? { models: [], enabled: [] };
             const defaults = DEFAULT_MODELS[providerId] ?? [];
             const finalModels = base.models?.length ? base.models : defaults;
@@ -351,7 +360,7 @@ function ProviderForm({
               ...state,
               [providerId]: {
                 ...base,
-                apiKey: apiKey.trim(),
+                apiKey: effectiveKey,
                 baseUrl: baseUrl.trim() || provider.defaultBaseUrl,
                 models: finalModels,
                 enabled: finalEnabled,
@@ -386,10 +395,16 @@ function ProviderForm({
               <button
                 className="text-[11px] text-primary hover:underline"
                 onClick={() => {
+                  const effectiveKey = apiKey.trim() || (providerId === "ollama" ? "ollama" : "");
                   const next: ProvidersState = {
                     ...state,
                     [providerId]: {
-                      ...(saved ?? { apiKey, baseUrl, models, updatedAt: Date.now() }),
+                      ...(saved ?? {
+                        apiKey: effectiveKey,
+                        baseUrl,
+                        models,
+                        updatedAt: Date.now(),
+                      }),
                       enabled: [...models],
                     },
                   };
@@ -421,7 +436,13 @@ function ProviderForm({
                   key={m}
                   type="button"
                   onClick={() => {
-                    const base = saved ?? { apiKey, baseUrl, models, updatedAt: Date.now() };
+                    const effectiveKey = apiKey.trim() || (providerId === "ollama" ? "ollama" : "");
+                    const base = saved ?? {
+                      apiKey: effectiveKey,
+                      baseUrl,
+                      models,
+                      updatedAt: Date.now(),
+                    };
                     const enabled = new Set(base.enabled ?? []);
                     if (enabled.has(m)) enabled.delete(m);
                     else enabled.add(m);

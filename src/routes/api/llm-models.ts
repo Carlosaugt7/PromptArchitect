@@ -7,7 +7,7 @@ const cors = {
   "Access-Control-Max-Age": "86400",
 };
 
-type Provider = "openai" | "anthropic" | "google" | "deepseek" | "openrouter" | "custom";
+type Provider = "openai" | "anthropic" | "google" | "deepseek" | "openrouter" | "ollama" | "custom";
 
 interface Body {
   provider: Provider;
@@ -22,12 +22,12 @@ export const Route = createFileRoute("/api/llm-models")({
       POST: async ({ request }) => {
         try {
           const { provider, apiKey, baseUrl } = (await request.json()) as Body;
-          if (!provider || !apiKey || !baseUrl) {
+          if (!provider || (provider !== "ollama" && !apiKey) || !baseUrl) {
             return json({ error: "provider, apiKey e URL base são obrigatórios" }, 400);
           }
 
           const base = normalizeBaseUrl(baseUrl);
-          if (isBlockedHost(base.hostname)) {
+          if (provider !== "ollama" && isBlockedHost(base.hostname)) {
             return json({ error: "Use uma URL pública HTTPS do provedor de LLM" }, 400);
           }
 
@@ -84,6 +84,14 @@ function normalizeBaseUrl(raw: string) {
 function buildModelUrls(provider: Provider, base: URL, apiKey: string) {
   const clean = base.toString().replace(/\/$/, "");
   if (provider === "google") return [`${clean}/models?key=${encodeURIComponent(apiKey)}`];
+  if (provider === "ollama") {
+    // Para o Ollama, tentamos tanto o endpoint nativo /api/tags (na raiz)
+    // quanto a compatibilidade com a API OpenAI em /v1/models.
+    const urlObj = new URL(clean);
+    const hasV1 = urlObj.pathname.endsWith("/v1");
+    const rootClean = hasV1 ? clean.slice(0, -3) : clean;
+    return [`${rootClean}/api/tags`, `${clean}/v1/models`, `${clean}/models`];
+  }
   if (/\/models$/i.test(base.pathname)) return [clean];
   const urls = new Set<string>([`${clean}/models`]);
   if (!/\/v\d+(beta)?$/i.test(base.pathname)) urls.add(`${clean}/v1/models`);
@@ -99,6 +107,9 @@ function buildHeaders(provider: Provider, apiKey: string): Record<string, string
   };
   if (provider === "anthropic") {
     return { ...baseHeaders, "x-api-key": apiKey, "anthropic-version": "2023-06-01" };
+  }
+  if (provider === "ollama") {
+    return baseHeaders;
   }
   return { ...baseHeaders, Authorization: `Bearer ${apiKey}` };
 }

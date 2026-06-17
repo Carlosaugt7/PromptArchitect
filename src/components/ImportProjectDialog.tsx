@@ -115,7 +115,10 @@ export function ImportProjectDialog({
     // Valida URL antes de disparar
     const parsed = parseGithubUrl(trimmedUrl);
     if (!parsed) {
-      setGithubStatus({ step: "error", msg: "URL inválida. Use: https://github.com/usuario/repositorio" });
+      setGithubStatus({
+        step: "error",
+        msg: "URL inválida. Use: https://github.com/usuario/repositorio",
+      });
       return;
     }
 
@@ -304,9 +307,12 @@ export function ImportProjectDialog({
             {fsAccessSupported ? (
               <>
                 <div className="rounded-lg border border-border/60 bg-card/20 p-3 text-xs text-muted-foreground leading-relaxed">
-                  <p className="font-medium text-foreground/80 mb-1">📁 Abrir pasta do computador</p>
+                  <p className="font-medium text-foreground/80 mb-1">
+                    📁 Abrir pasta do computador
+                  </p>
                   <p>
-                    Selecione a pasta raiz do seu projeto. Os arquivos são lidos diretamente — <strong>sem upload</strong>. A estrutura aparece no Explorer.
+                    Selecione a pasta raiz do seu projeto. Os arquivos são lidos diretamente —{" "}
+                    <strong>sem upload</strong>. A estrutura aparece no Explorer.
                   </p>
                 </div>
                 <Button onClick={handleOpenLocalFS} disabled={busy} className="w-full gap-2">
@@ -395,7 +401,9 @@ export function ImportProjectDialog({
             <div className="space-y-2">
               <label className="text-[10px] text-muted-foreground font-medium flex justify-between">
                 <span>GitHub Personal Access Token (PAT)</span>
-                <span className="text-[9px] opacity-75">Opcional — necessário para repos privados</span>
+                <span className="text-[9px] opacity-75">
+                  Opcional — necessário para repos privados
+                </span>
               </label>
               <Input
                 type="password"

@@ -38,7 +38,8 @@ function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
   if (name === ".env") return <Lock className="h-4 w-4 text-yellow-500" />;
   if (name.startsWith("package")) return <FileJson className="h-4 w-4 text-emerald-500" />;
-  if (name === "Dockerfile" || name.includes("docker")) return <FileCode className="h-4 w-4 text-sky-500" />;
+  if (name === "Dockerfile" || name.includes("docker"))
+    return <FileCode className="h-4 w-4 text-sky-500" />;
 
   switch (ext) {
     case "tsx":
@@ -146,6 +147,7 @@ export function ProjectExplorer({
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeHandle, setActiveHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [staleHandle, setStaleHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [sourceLabel, setSourceLabel] = useState<string>("sem projeto");
   // Contador para forçar re-fetch quando dirHandle muda
   const fetchCountRef = useRef(0);
@@ -153,6 +155,7 @@ export function ProjectExplorer({
   const fetchTree = useCallback(
     async (forceHandle?: FileSystemDirectoryHandle | null) => {
       setLoading(true);
+      setStaleHandle(null);
       try {
         // Prioridade 1: handle explícito passado (via prop ou ao abrir pasta)
         let handle = forceHandle !== undefined ? forceHandle : dirHandle;
@@ -160,18 +163,20 @@ export function ProjectExplorer({
         // Prioridade 2: handle salvo no IndexedDB para o projeto atual
         if (!handle && project) {
           try {
-            const saved = await getDirectoryHandle(project.id);
+            const saved = await Promise.race([
+              getDirectoryHandle(project.id),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+            ]);
             if (saved) {
               const perm = await (saved as any).queryPermission({ mode: "readwrite" });
               if (perm === "granted") {
                 handle = saved;
               } else {
-                const req = await (saved as any).requestPermission({ mode: "readwrite" });
-                if (req === "granted") handle = saved;
+                setStaleHandle(saved);
               }
             }
-          } catch {
-            /* ignore */
+          } catch (e) {
+            console.warn("[ProjectExplorer] Failed to query directory handle:", e);
           }
         }
 
@@ -196,7 +201,8 @@ export function ProjectExplorer({
           setTree([]);
           setSourceLabel("sem projeto");
         }
-      } catch {
+      } catch (e) {
+        console.error("[ProjectExplorer] fetchTree error:", e);
         if (project) {
           setTree(buildTreeFromFiles(project.files));
           setSourceLabel(project.name || "projeto virtual");
@@ -262,6 +268,25 @@ export function ProjectExplorer({
     }
   };
 
+  const handleGrantPermission = async () => {
+    if (!staleHandle) return;
+    try {
+      setLoading(true);
+      const req = await (staleHandle as any).requestPermission({ mode: "readwrite" });
+      if (req === "granted") {
+        const handle = staleHandle;
+        setStaleHandle(null);
+        await fetchTree(handle);
+      } else {
+        toast.error("Permissão negada pelo navegador.");
+      }
+    } catch (e) {
+      toast.error("Falha ao obter permissão: " + (e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col border-l border-border bg-card/25 backdrop-blur-xl">
       {/* Topo do Explorer */}
@@ -308,6 +333,21 @@ export function ProjectExplorer({
           />
         </div>
       </div>
+
+      {/* Banner de Permissão Pendente */}
+      {staleHandle && (
+        <div className="mx-2 my-1.5 p-2 bg-yellow-500/10 border border-yellow-500/25 rounded-lg flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+          <p className="text-[10px] text-yellow-500/90 leading-tight">
+            Acesso à pasta local <strong>{staleHandle.name}</strong> requer permissão.
+          </p>
+          <button
+            onClick={handleGrantPermission}
+            className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-500 font-semibold py-1 px-2 rounded text-[10px] transition-colors"
+          >
+            Conceder Acesso
+          </button>
+        </div>
+      )}
 
       {/* Árvore de Arquivos */}
       <div className="flex-1 overflow-y-auto px-2 py-3 scrollbar-thin">

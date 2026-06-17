@@ -7,7 +7,7 @@ const cors = {
   "Access-Control-Max-Age": "86400",
 };
 
-type Provider = "openai" | "anthropic" | "google" | "deepseek" | "openrouter" | "custom";
+type Provider = "openai" | "anthropic" | "google" | "deepseek" | "openrouter" | "ollama" | "custom";
 
 type Part =
   | { type: "text"; text: string }
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/api/llm-chat")({
           const body = (await request.json()) as Body;
           if (
             !body.provider ||
-            !body.apiKey ||
+            (body.provider !== "ollama" && !body.apiKey) ||
             !body.baseUrl ||
             !body.model ||
             !body.messages?.length
@@ -131,7 +131,7 @@ async function nonStream(body: Body): Promise<Response> {
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
         "User-Agent": "OmniForge/1.0",
-        "Accept": "application/json"
+        Accept: "application/json",
       },
       body: JSON.stringify({
         model,
@@ -155,10 +155,10 @@ async function nonStream(body: Body): Promise<Response> {
     const url = `${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const r = await fetch(url, {
       method: "POST",
-      headers: { 
+      headers: {
         "content-type": "application/json",
         "User-Agent": "OmniForge/1.0",
-        "Accept": "application/json"
+        Accept: "application/json",
       },
       body: JSON.stringify({
         systemInstruction: system ? { parts: [{ text: system }] } : undefined,
@@ -178,15 +178,25 @@ async function nonStream(body: Body): Promise<Response> {
   }
 
   const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
-  const r = await fetch(`${base}/chat/completions`, {
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    "User-Agent": "OmniForge/1.0",
+    "HTTP-Referer": "http://localhost:8080",
+    "X-Title": "OmniForge",
+  };
+  if (apiKey && apiKey !== "undefined" && apiKey !== "ollama") {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+  const endpoint =
+    provider === "ollama"
+      ? base.endsWith("/v1")
+        ? `${base}/chat/completions`
+        : `${base}/v1/chat/completions`
+      : `${base}/chat/completions`;
+
+  const r = await fetch(endpoint, {
     method: "POST",
-    headers: { 
-      Authorization: `Bearer ${apiKey}`, 
-      "content-type": "application/json",
-      "User-Agent": "OmniForge/1.0",
-      "HTTP-Referer": "http://localhost:8080",
-      "X-Title": "OmniForge"
-    },
+    headers,
     body: JSON.stringify({ model, messages: all }),
   });
   const d = await r.json();
@@ -273,11 +283,11 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
           const r = await fetch(url, {
             method: "POST",
             signal,
-            headers: { 
-        "content-type": "application/json",
-        "User-Agent": "OmniForge/1.0",
-        "Accept": "application/json"
-      },
+            headers: {
+              "content-type": "application/json",
+              "User-Agent": "OmniForge/1.0",
+              Accept: "application/json",
+            },
             body: JSON.stringify({
               systemInstruction: system ? { parts: [{ text: system }] } : undefined,
               contents: messages.map((m) => ({
@@ -307,22 +317,36 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
         }
 
         const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
-        const r = await fetch(`${base}/chat/completions`, {
+        const headers: Record<string, string> = {
+          "content-type": "application/json",
+          "User-Agent": "OmniForge/1.0",
+          "HTTP-Referer": "http://localhost:8080",
+          "X-Title": "OmniForge",
+        };
+        if (apiKey && apiKey !== "undefined" && apiKey !== "ollama") {
+          headers["Authorization"] = `Bearer ${apiKey}`;
+        }
+        const endpoint =
+          provider === "ollama"
+            ? base.endsWith("/v1")
+              ? `${base}/chat/completions`
+              : `${base}/v1/chat/completions`
+            : `${base}/chat/completions`;
+
+        const requestBody: Record<string, any> = {
+          model,
+          messages: all,
+          stream: true,
+        };
+        if (provider !== "ollama") {
+          requestBody.stream_options = { include_usage: true };
+        }
+
+        const r = await fetch(endpoint, {
           method: "POST",
           signal,
-          headers: { 
-      Authorization: `Bearer ${apiKey}`, 
-      "content-type": "application/json",
-      "User-Agent": "OmniForge/1.0",
-      "HTTP-Referer": "http://localhost:8080",
-      "X-Title": "OmniForge"
-    },
-          body: JSON.stringify({
-            model,
-            messages: all,
-            stream: true,
-            stream_options: { include_usage: true },
-          }),
+          headers,
+          body: JSON.stringify(requestBody),
         });
         if (!r.ok || !r.body) {
           send({ error: `${r.status} ${await r.text()}` });

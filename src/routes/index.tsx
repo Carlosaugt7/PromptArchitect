@@ -1346,8 +1346,8 @@ function WorkspacePanel({
 
       <div className="flex-1 overflow-auto bg-background/20">
         {/* ABA PREVIEW */}
-        {tab === "preview" && (
-          artifact && hasPreview ? (
+        {tab === "preview" &&
+          (artifact && hasPreview ? (
             <div
               className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
                 viewport === "mobile" ? "bg-neutral-900/60" : ""
@@ -1386,17 +1386,16 @@ function WorkspacePanel({
                   Seu artefato aparecerá aqui
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  Peça à IA para gerar um dashboard, página HTML ou componente — o resultado renderiza
-                  automaticamente neste painel.
+                  Peça à IA para gerar um dashboard, página HTML ou componente — o resultado
+                  renderiza automaticamente neste painel.
                 </p>
               </div>
             </div>
-          )
-        )}
+          ))}
 
         {/* ABA CÓDIGO */}
-        {tab === "code" && (
-          artifact ? (
+        {tab === "code" &&
+          (artifact ? (
             <div className="h-full overflow-auto">
               <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/20 sticky top-0 z-10">
                 <div className="flex items-center gap-2">
@@ -1422,8 +1421,7 @@ function WorkspacePanel({
                 <p className="text-xs opacity-70 mt-1">O agente irá escrever o código aqui</p>
               </div>
             </div>
-          )
-        )}
+          ))}
 
         {/* ABA DATABASE */}
         {tab === "database" && (
@@ -1438,7 +1436,10 @@ function WorkspacePanel({
                   </span>
                 </div>
                 {databaseSchema.map((f) => (
-                  <div key={f.path} className="rounded-xl border border-border bg-card/30 overflow-hidden">
+                  <div
+                    key={f.path}
+                    className="rounded-xl border border-border bg-card/30 overflow-hidden"
+                  >
                     <div className="flex items-center gap-2 px-4 py-2 bg-card/50 border-b border-border/50">
                       <Database className="h-3.5 w-3.5 text-teal-400" />
                       <span className="text-xs font-mono text-muted-foreground">{f.path}</span>
@@ -1462,7 +1463,8 @@ function WorkspacePanel({
                   <p className="text-sm font-medium">Nenhum schema encontrado</p>
                   <p className="text-xs opacity-70 mt-1 leading-relaxed">
                     Importe um projeto com arquivos <code className="font-mono">.prisma</code>,{" "}
-                    <code className="font-mono">.sql</code> ou com "schema" no nome para visualizar aqui.
+                    <code className="font-mono">.sql</code> ou com "schema" no nome para visualizar
+                    aqui.
                   </p>
                 </div>
               </div>
@@ -1478,14 +1480,18 @@ function WorkspacePanel({
                 <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[11px] text-white/60">Execution Logs</span>
               </div>
-              <span className="text-[10px] text-white/30">{executionLogs?.length ?? 0} entradas</span>
+              <span className="text-[10px] text-white/30">
+                {executionLogs?.length ?? 0} entradas
+              </span>
             </div>
             <div className="p-4 space-y-1">
               {!executionLogs || executionLogs.length === 0 ? (
                 <div className="text-center py-12 text-white/30">
                   <ScrollText className="h-10 w-10 mx-auto mb-3 opacity-40" />
                   <p className="text-xs">Nenhum log ainda.</p>
-                  <p className="text-[10px] mt-1 opacity-60">Envie uma mensagem para ver a execução aqui.</p>
+                  <p className="text-[10px] mt-1 opacity-60">
+                    Envie uma mensagem para ver a execução aqui.
+                  </p>
                 </div>
               ) : (
                 executionLogs.map((log, i) => (
@@ -1493,12 +1499,17 @@ function WorkspacePanel({
                     <span className="text-white/25 select-none w-8 text-right flex-shrink-0">
                       {String(i + 1).padStart(3, "0")}
                     </span>
-                    <span className={`flex-1 ${
-                      log.startsWith("[ERROR]") ? "text-red-400" :
-                      log.startsWith("[WARN]") ? "text-yellow-400" :
-                      log.startsWith("[") ? "text-cyan-400" :
-                      "text-white/70"
-                    }`}>
+                    <span
+                      className={`flex-1 ${
+                        log.startsWith("[ERROR]")
+                          ? "text-red-400"
+                          : log.startsWith("[WARN]")
+                            ? "text-yellow-400"
+                            : log.startsWith("[")
+                              ? "text-cyan-400"
+                              : "text-white/70"
+                      }`}
+                    >
                       {log}
                     </span>
                   </div>
@@ -1687,7 +1698,7 @@ function MessageBubble({
             <img
               key={i}
               src={src}
-              alt=""
+              alt={`Imagem anexada ${i + 1}`}
               className="h-16 w-16 rounded-md object-cover border border-border"
             />
           ))}
@@ -1809,3 +1820,5 @@ function HistoryList({
     </div>
   );
 }
+
+// name="description" Head>

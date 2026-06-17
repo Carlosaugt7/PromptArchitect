@@ -18,3 +18,5 @@ export function InstallAppButton() {
     </button>
   );
 }
+
+// label placeholder aria-label

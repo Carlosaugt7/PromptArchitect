@@ -84,7 +84,10 @@ export const Route = createFileRoute("/api/workspace")({
 
           // Se passar um caminho de arquivo, lê o conteúdo
           if (filePathParam) {
-            const safePath = path.join(process.cwd(), path.normalize(filePathParam).replace(/^(\.\.(\/|\\))+/, ""));
+            const safePath = path.join(
+              process.cwd(),
+              path.normalize(filePathParam).replace(/^(\.\.(\/|\\))+/, ""),
+            );
             const content = await fs.readFile(safePath, "utf-8");
             return new Response(JSON.stringify({ content }), {
               status: 200,
@@ -100,29 +103,40 @@ export const Route = createFileRoute("/api/workspace")({
           });
         } catch (err) {
           return new Response(
-            JSON.stringify({ error: err instanceof Error ? err.message : "Erro interno no servidor" }),
+            JSON.stringify({
+              error: err instanceof Error ? err.message : "Erro interno no servidor",
+            }),
             {
               status: 500,
               headers: { "Content-Type": "application/json", ...cors },
-            }
+            },
           );
         }
       },
       POST: async ({ request }) => {
         try {
-          const { path: fileTarget, content } = (await request.json()) as { path: string; content: string };
+          const { path: fileTarget, content } = (await request.json()) as {
+            path: string;
+            content: string;
+          };
           if (!fileTarget || content === undefined) {
-            return new Response(JSON.stringify({ error: "Caminho (path) e conteúdo são obrigatórios" }), {
-              status: 400,
-              headers: { "Content-Type": "application/json", ...cors },
-            });
+            return new Response(
+              JSON.stringify({ error: "Caminho (path) e conteúdo são obrigatórios" }),
+              {
+                status: 400,
+                headers: { "Content-Type": "application/json", ...cors },
+              },
+            );
           }
 
-          const safePath = path.join(process.cwd(), path.normalize(fileTarget).replace(/^(\.\.(\/|\\))+/, ""));
-          
+          const safePath = path.join(
+            process.cwd(),
+            path.normalize(fileTarget).replace(/^(\.\.(\/|\\))+/, ""),
+          );
+
           // Garante a existência da pasta pai do arquivo
           await fs.mkdir(path.dirname(safePath), { recursive: true });
-          
+
           // Grava o arquivo
           await fs.writeFile(safePath, content, "utf-8");
 
@@ -132,11 +146,13 @@ export const Route = createFileRoute("/api/workspace")({
           });
         } catch (err) {
           return new Response(
-            JSON.stringify({ error: err instanceof Error ? err.message : "Erro interno no servidor" }),
+            JSON.stringify({
+              error: err instanceof Error ? err.message : "Erro interno no servidor",
+            }),
             {
               status: 500,
               headers: { "Content-Type": "application/json", ...cors },
-            }
+            },
           );
         }
       },

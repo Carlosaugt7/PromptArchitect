@@ -66,8 +66,8 @@ export function IntegrationsDialog({ open, onOpenChange }: Props) {
             },
           },
           null,
-          2
-        )
+          2,
+        ),
     );
   }, [open]);
 
@@ -87,8 +87,8 @@ export function IntegrationsDialog({ open, onOpenChange }: Props) {
             Integrações do Projeto
           </DialogTitle>
           <DialogDescription>
-            Conecte ferramentas de pagamentos, banco de dados e repositórios diretamente ao fluxo
-            de desenvolvimento da IA.
+            Conecte ferramentas de pagamentos, banco de dados e repositórios diretamente ao fluxo de
+            desenvolvimento da IA.
           </DialogDescription>
         </DialogHeader>
 
@@ -197,7 +197,8 @@ export function IntegrationsDialog({ open, onOpenChange }: Props) {
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Gerencie checkouts transparente e integrações de pagamento via Mercado Pago na América Latina.
+                Gerencie checkouts transparente e integrações de pagamento via Mercado Pago na
+                América Latina.
               </p>
               <div className="flex gap-2">
                 <Input
@@ -226,8 +227,8 @@ export function IntegrationsDialog({ open, onOpenChange }: Props) {
                 Conexão em Tempo Real com GitHub
               </h4>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Injete seu Personal Access Token (PAT) para habilitar commits automáticos de artefatos
-                e clonar repositórios privados em tempo de desenvolvimento.
+                Injete seu Personal Access Token (PAT) para habilitar commits automáticos de
+                artefatos e clonar repositórios privados em tempo de desenvolvimento.
               </p>
               <div className="space-y-2">
                 <label className="text-[10px] text-muted-foreground">Token de Acesso (PAT)</label>
@@ -240,7 +241,9 @@ export function IntegrationsDialog({ open, onOpenChange }: Props) {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] text-muted-foreground">Repositório Alvo (Dono/Repo)</label>
+                <label className="text-[10px] text-muted-foreground">
+                  Repositório Alvo (Dono/Repo)
+                </label>
                 <Input
                   type="text"
                   value={githubRepo}
@@ -339,7 +342,9 @@ export function IntegrationsDialog({ open, onOpenChange }: Props) {
                 placeholder="config.json do MCP..."
               />
               <Button
-                onClick={() => save("omniforge.integration.mcp_config", mcpConfig, "Configuração MCP")}
+                onClick={() =>
+                  save("omniforge.integration.mcp_config", mcpConfig, "Configuração MCP")
+                }
                 className="w-full"
               >
                 Salvar Configurações do MCP

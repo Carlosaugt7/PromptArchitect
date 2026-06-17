@@ -1,7 +1,14 @@
 // Configuração e detecção de modelos para provedores de LLM (client-side).
 // Todas as chamadas são feitas direto do browser; chaves ficam em localStorage.
 
-export type ProviderId = "openai" | "anthropic" | "google" | "deepseek" | "openrouter" | "custom";
+export type ProviderId =
+  | "openai"
+  | "anthropic"
+  | "google"
+  | "deepseek"
+  | "openrouter"
+  | "ollama"
+  | "custom";
 
 export interface ProviderConfig {
   id: ProviderId;
@@ -49,6 +56,13 @@ export const PROVIDERS: ProviderConfig[] = [
     keyPlaceholder: "sk-or-...",
   },
   {
+    id: "ollama",
+    name: "Ollama (Local)",
+    defaultBaseUrl: "http://localhost:11434",
+    helpUrl: "https://github.com/ollama/ollama",
+    keyPlaceholder: "Não aplicável (sem chave)",
+  },
+  {
     id: "custom",
     name: "Personalizado",
     defaultBaseUrl: "",
@@ -75,6 +89,7 @@ export const DEFAULT_MODELS: Record<ProviderId, string[]> = {
     "google/gemini-2.5-pro",
     "deepseek/deepseek-chat",
   ],
+  ollama: ["llama3", "mistral", "phi3", "gemma"],
   custom: [],
 };
 

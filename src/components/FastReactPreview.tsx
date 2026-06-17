@@ -89,10 +89,7 @@ export function FastReactPreview({ artifact }: { artifact: Artifact }) {
 
     const handleMessage = (e: MessageEvent) => {
       if (e.data?.type === "iframe-ready") {
-        iframe.contentWindow?.postMessage(
-          { type: "update-code", code },
-          "*"
-        );
+        iframe.contentWindow?.postMessage({ type: "update-code", code }, "*");
       }
     };
 
@@ -100,10 +97,7 @@ export function FastReactPreview({ artifact }: { artifact: Artifact }) {
 
     // Se o iframe já estiver carregado (hot-reload ou re-render), manda direto
     if (iframe.contentDocument?.readyState === "complete") {
-      iframe.contentWindow?.postMessage(
-        { type: "update-code", code },
-        "*"
-      );
+      iframe.contentWindow?.postMessage({ type: "update-code", code }, "*");
     }
 
     return () => {

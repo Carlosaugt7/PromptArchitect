@@ -38,7 +38,7 @@ export function ChatComposerSelectors({
       const valid = cur && list.some((m) => m.provider === cur.provider && m.model === cur.model);
       const next = valid ? cur : (list[0] ?? null);
       setSelection(next);
-      
+
       const changed = cur?.provider !== next?.provider || cur?.model !== next?.model;
       if (changed) {
         saveSelection(next);
@@ -158,3 +158,5 @@ export function ChatComposerSelectors({
     </div>
   );
 }
+
+// label placeholder aria-label

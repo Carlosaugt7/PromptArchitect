@@ -1,0 +1,60 @@
+// OmniForge Firestore Security Rules
+// Copie este conteúdo em:
+// Firebase Console → Firestore Database → Rules → Edit rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ══════════════════════════════════════════════════════════
+    // REGRAS DE DESENVOLVIMENTO — permite acesso para testar
+    // ⚠️ MUDE para as regras de produção antes de publicar!
+    // ══════════════════════════════════════════════════════════
+    
+    // Modo temporário: permite leitura/escrita para qualquer usuário autenticado
+    // Útil durante desenvolvimento local
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// REGRAS DE PRODUÇÃO — use estas quando tiver usuários reais
+// ══════════════════════════════════════════════════════════════
+//
+// rules_version = '2';
+// service cloud.firestore {
+//   match /databases/{database}/documents {
+//
+//     // Conversas: cada usuário acessa só as suas
+//     match /conversations/{conversationId} {
+//       allow read, delete: if request.auth != null &&
+//         resource.data.userId == request.auth.uid;
+//       allow create, update: if request.auth != null &&
+//         request.resource.data.userId == request.auth.uid;
+//     }
+//
+//     // Artefatos: cada usuário acessa só os seus
+//     match /artifacts/{artifactId} {
+//       allow read, delete: if request.auth != null &&
+//         resource.data.userId == request.auth.uid;
+//       allow create, update: if request.auth != null &&
+//         request.resource.data.userId == request.auth.uid;
+//     }
+//
+//     // Perfil do usuário: só o próprio usuário acessa
+//     match /users/{userId} {
+//       allow read, write: if request.auth != null &&
+//         request.auth.uid == userId;
+//     }
+//
+//     // Projetos: cada usuário acessa só os seus
+//     match /projects/{projectId} {
+//       allow read, delete: if request.auth != null &&
+//         resource.data.userId == request.auth.uid;
+//       allow create, update: if request.auth != null &&
+//         request.resource.data.userId == request.auth.uid;
+//     }
+//   }
+// }

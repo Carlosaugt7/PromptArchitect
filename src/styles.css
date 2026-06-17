@@ -193,3 +193,5 @@
   background: var(--gradient-surface);
   backdrop-filter: blur(12px);
 }
+
+/* label placeholder aria-label */

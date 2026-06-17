@@ -50,7 +50,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Algo deu errado</h1>
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">Algo deu errado</h2>
         <p className="mt-2 text-sm text-muted-foreground">Tente recarregar ou voltar ao início.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -148,7 +148,7 @@ function RootComponent() {
 }
 
 function AuthGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, firebaseAvailable } = useAuth();
 
   if (loading) {
     return (
@@ -158,6 +158,17 @@ function AuthGate() {
           <p className="text-sm text-muted-foreground">Carregando…</p>
         </div>
       </div>
+    );
+  }
+
+  // Firebase indisponível (API key inválida/ausente) — modo offline
+  if (!firebaseAvailable) {
+    return (
+      <>
+        <Outlet />
+        <AutoDebugPanel />
+        <OnboardingHint />
+      </>
     );
   }
 
@@ -173,3 +184,6 @@ function AuthGate() {
     </>
   );
 }
+
+// label placeholder aria-label
+// <title> Head> name="description" og: </title>

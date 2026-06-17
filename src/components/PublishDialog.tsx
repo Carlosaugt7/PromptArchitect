@@ -106,9 +106,7 @@ export function PublishDialog({ open, onOpenChange }: Props) {
                     className="bg-background/50 text-xs"
                   />
                   <Button
-                    onClick={() =>
-                      save("omniforge.publish.easypanel_url", easypanelWebhook)
-                    }
+                    onClick={() => save("omniforge.publish.easypanel_url", easypanelWebhook)}
                     size="sm"
                     variant="outline"
                   >
@@ -139,7 +137,9 @@ export function PublishDialog({ open, onOpenChange }: Props) {
                 &gt; Git &gt; Deploy Hooks) para startar builds automáticos.
               </p>
               <div className="space-y-1">
-                <label className="text-[10px] text-muted-foreground font-medium">Deploy Hook URL</label>
+                <label className="text-[10px] text-muted-foreground font-medium">
+                  Deploy Hook URL
+                </label>
                 <div className="flex gap-2">
                   <Input
                     value={vercelWebhook}
