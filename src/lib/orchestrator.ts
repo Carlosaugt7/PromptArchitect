@@ -12,6 +12,7 @@ import {
   type ContentPart,
 } from "./llm-providers";
 import { AGENTS, type AgentDefinition } from "./agents-catalog";
+import { buildSystemPreamble } from "./llm-directives";
 
 export interface OrchestrationResult {
   text: string;
@@ -19,7 +20,10 @@ export interface OrchestrationResult {
 }
 
 function agentSystem(agent: AgentDefinition): string {
+  const preamble = buildSystemPreamble();
   return [
+    preamble,
+    "",
     `Você é "${agent.name}" — ${agent.description}`,
     `Categoria: ${agent.category}. Skills: ${agent.skills.join(", ")}.`,
     `Diretrizes obrigatórias de execução:`,
@@ -32,8 +36,11 @@ function agentSystem(agent: AgentDefinition): string {
 }
 
 function leadSystem(lead: AgentDefinition, team: AgentDefinition[]): string {
+  const preamble = buildSystemPreamble();
   const roster = team.map((a) => `- ${a.id} (${a.name}): ${a.description}`).join("\n");
   return [
+    preamble,
+    "",
     `Você é "${lead.name}", o líder e coordenador técnico do time de agentes. ${lead.description}`,
     `Seu papel principal é receber as contribuições individuais da equipe e sintetizá-las de forma unificada e profissional.`,
     `Equipe disponível:\n${roster}`,
@@ -83,12 +90,10 @@ async function planAssignments(
     `- Responda SOMENTE com um JSON válido no formato:`,
     `{"assignments":[{"agentId":"<id>","task":"<o que esse agente deve produzir>"}]}`,
   ].join("\n");
-  const { text, usage } = await sendChat(
-    sel,
-    [...history, { role: "user", content: userText }],
-    sys,
-  );
-  void signal;
+  const { text, usage } = await sendChat(sel, [...history, { role: "user", content: userText }], {
+    system: sys,
+    signal,
+  });
   let plan: PlanItem[] = [];
   try {
     const m = text.match(/\{[\s\S]*\}/);
@@ -175,11 +180,16 @@ export async function runOrchestration(
           content: `Solicitação do usuário:\n${userText}\n\nSua sub-tarefa: ${item.task}`,
         },
       ],
-      agentSystem(agent),
+      { system: agentSystem(agent), signal },
     );
     results.push({ agent, text, usage: u });
   }
   for (const r of results) usage = addUsage(usage, r.usage);
+
+  if (signal?.aborted) {
+    onPhase(`⏹ Processo cancelado pelo usuário.`);
+    return { text: "Orquestração interrompida.", usage };
+  }
 
   onPhase(`🪄 ${lead.name} consolidando resultados…`);
   const consolidated = results

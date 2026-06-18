@@ -222,13 +222,11 @@ export function ProjectExplorer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirHandle]);
 
-  // Re-fetch quando projeto muda (mas sem sobrescrever se já temos handle)
+  // Re-fetch quando projeto ou dirHandle muda
   useEffect(() => {
-    if (!dirHandle) {
-      fetchTree();
-    }
+    fetchTree(dirHandle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project]);
+  }, [project, dirHandle]);
 
   const filteredTree = useMemo(() => filterTree(tree, search), [tree, search]);
 

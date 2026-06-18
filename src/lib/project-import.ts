@@ -237,6 +237,41 @@ function flattenTree(nodes: FileNode[], result: ImportedFile[] = []): ImportedFi
   return result;
 }
 
+export async function createLocalProjectOnDisk(name: string): Promise<{
+  project: ImportedProject;
+  handle: FileSystemDirectoryHandle;
+}> {
+  const handle = await (window as any).showDirectoryPicker({ mode: "readwrite" });
+
+  const fileHandle = await handle.getFileHandle("index.html", { create: true });
+  const writable = await (fileHandle as any).createWritable();
+  await writable.write(
+    `<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n  <meta charset="UTF-8">\n  <title>${name}</title>\n</head>\n<body>\n  <h1>${name}</h1>\n</body>\n</html>`,
+  );
+  await writable.close();
+
+  const tree = await readDirectoryTree(handle);
+  const files = flattenTree(tree);
+
+  const indexFile = files.find((f) => f.path === "index.html");
+  if (indexFile) {
+    indexFile.content = await readFileContent(handle, "index.html");
+  }
+
+  const project: ImportedProject = {
+    id: crypto.randomUUID(),
+    name: handle.name, // Usar o nome da pasta escolhida pelo usuário
+    source: "local",
+    files,
+    importedAt: Date.now(),
+  };
+
+  await saveDirectoryHandle(project.id, handle);
+  saveProject(project);
+
+  return { project, handle };
+}
+
 // ---------- Fallback: Upload via webkitdirectory ----------
 
 async function readAsText(file: File): Promise<string | undefined> {
@@ -379,4 +414,105 @@ export function projectToArtifact(project: ImportedProject) {
     html: "",
     updatedAt: Date.now(),
   };
+}
+
+export async function writeLocalFile(
+  handle: FileSystemDirectoryHandle,
+  filePath: string,
+  content: string,
+): Promise<void> {
+  const parts = filePath.split("/");
+  let current: FileSystemDirectoryHandle = handle;
+
+  // Cria subdiretórios se necessário
+  for (let i = 0; i < parts.length - 1; i++) {
+    current = await current.getDirectoryHandle(parts[i], { create: true });
+  }
+
+  const fileHandle = await current.getFileHandle(parts[parts.length - 1], { create: true });
+  const writable = await (fileHandle as any).createWritable();
+  await writable.write(content);
+  await writable.close();
+}
+
+export function parseFilePathFromBlock(lang: string, code: string): string | null {
+  const lines = code.split("\n");
+  const firstLine = (lines[0] || "").trim();
+
+  // Procura comentários com caminhos de arquivo, como:
+  // // src/App.tsx
+  // /* src/index.css */
+  // <!-- index.html -->
+  // # package.json
+  const match = firstLine.match(
+    /^(?:\/\/\/|\/\/|\/\*|<!--|#)\s*([a-zA-Z0-9_./-]+\.[a-zA-Z0-9]+)\s*(?:\*\/|-->)?/,
+  );
+  if (match) {
+    return match[1].replace(/^\//, ""); // remove barra inicial se houver
+  }
+  return null;
+}
+
+export async function writeArtifactToProject(
+  art: { blocks: Array<{ lang: string; code: string }> },
+  project: ImportedProject,
+  dirHandle: FileSystemDirectoryHandle | null,
+): Promise<ImportedProject> {
+  const updatedFiles = [...project.files];
+
+  for (const block of art.blocks) {
+    let filePath = parseFilePathFromBlock(block.lang, block.code);
+
+    // Fallbacks inteligentes caso a IA não tenha especificado o nome do arquivo na primeira linha
+    if (!filePath) {
+      if (/^(html|htm)$/i.test(block.lang) || /<html[\s>]/i.test(block.code)) {
+        filePath = "index.html";
+      } else if (/^(tsx|jsx)$/i.test(block.lang)) {
+        filePath = "src/App.tsx";
+      } else if (block.lang === "css") {
+        filePath = "src/styles.css";
+      } else if (/^(ts|js)$/i.test(block.lang)) {
+        filePath = "src/index.ts";
+      } else {
+        continue; // Ignora se não for possível associar a um arquivo válido
+      }
+    }
+
+    // Previne diretórios maliciosos/inválidos
+    filePath = filePath.replace(/^[./\\]+/, "");
+
+    // Se é um projeto local e temos o handle do diretório
+    if (dirHandle) {
+      try {
+        await writeLocalFile(dirHandle, filePath, block.code);
+        console.log(`[OmniForge] Salvo localmente: ${filePath}`);
+      } catch (err) {
+        console.error(`[OmniForge] Falha ao gravar no disco: ${filePath}`, err);
+      }
+    }
+
+    // Atualiza na lista em memória
+    const idx = updatedFiles.findIndex((f) => f.path === filePath);
+    if (idx >= 0) {
+      updatedFiles[idx] = {
+        path: filePath,
+        size: block.code.length,
+        content: block.code,
+      };
+    } else {
+      updatedFiles.push({
+        path: filePath,
+        size: block.code.length,
+        content: block.code,
+      });
+    }
+  }
+
+  const nextProj: ImportedProject = {
+    ...project,
+    files: updatedFiles,
+  };
+
+  saveProject(nextProj);
+  return nextProj;
 }

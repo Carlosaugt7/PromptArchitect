@@ -57,7 +57,7 @@ export function AutoDebugPanel() {
       const { text } = await sendChat(
         sel,
         [{ role: "user", content: formatIssueForPrompt(issue) }],
-        SYSTEM,
+        { system: SYSTEM },
       );
       setAnalysis(text);
     } catch (e) {

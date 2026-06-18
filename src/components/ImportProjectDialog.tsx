@@ -31,6 +31,7 @@ import {
   deleteProjectFromList,
   saveProject,
   parseGithubUrl,
+  createLocalProjectOnDisk,
   type ImportedProject,
 } from "@/lib/project-import";
 
@@ -175,25 +176,45 @@ export function ImportProjectDialog({
     }
   };
 
-  const handleNewProject = () => {
+  const handleNewProject = async () => {
     const name = newProjectName.trim() || "Novo Projeto";
-    const project: ImportedProject = {
-      id: crypto.randomUUID(),
-      name,
-      source: "local",
-      files: [
-        {
-          path: `${name}/index.html`,
-          size: 200,
-          content: `<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n  <meta charset="UTF-8">\n  <title>${name}</title>\n</head>\n<body>\n  <h1>${name}</h1>\n</body>\n</html>`,
-        },
-      ],
-      importedAt: Date.now(),
-    };
-    saveProject(project);
-    toast.success(`Projeto "${name}" criado`);
-    onImported?.(project);
-    onOpenChange(false);
+    const fsAccessSupported = isFileSystemAccessSupported();
+
+    if (fsAccessSupported) {
+      setBusy(true);
+      try {
+        const { project, handle } = await createLocalProjectOnDisk(name);
+        toast.success(`Projeto "${project.name}" criado no disco`);
+        onImported?.(project);
+        onDirectoryHandle?.(handle);
+        onOpenChange(false);
+      } catch (e: unknown) {
+        const errName = (e as Error).name;
+        if (errName !== "AbortError") {
+          toast.error("Falha ao criar projeto", { description: (e as Error).message });
+        }
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      const project: ImportedProject = {
+        id: crypto.randomUUID(),
+        name,
+        source: "local",
+        files: [
+          {
+            path: `index.html`,
+            size: 200,
+            content: `<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n  <meta charset="UTF-8">\n  <title>${name}</title>\n</head>\n<body>\n  <h1>${name}</h1>\n</body>\n</html>`,
+          },
+        ],
+        importedAt: Date.now(),
+      };
+      saveProject(project);
+      toast.success(`Projeto "${name}" criado`);
+      onImported?.(project);
+      onOpenChange(false);
+    }
   };
 
   const fsAccessSupported = isFileSystemAccessSupported();
@@ -296,8 +317,12 @@ export function ImportProjectDialog({
                 }}
               />
             </div>
-            <Button onClick={handleNewProject} className="w-full gap-2">
-              <Sparkles className="h-4 w-4" />
+            <Button onClick={handleNewProject} disabled={busy} className="w-full gap-2">
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
               Criar Projeto
             </Button>
           </TabsContent>

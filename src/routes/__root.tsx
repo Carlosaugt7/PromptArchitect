@@ -139,7 +139,7 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="pt-BR" className="dark">
       <head>
         <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: envScript }} />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: envScript }} />
       </head>
       <body data-density="cozy">
         {children}

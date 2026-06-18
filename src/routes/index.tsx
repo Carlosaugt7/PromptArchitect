@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import Editor, { DiffEditor } from "@monaco-editor/react";
 import {
   Sparkles,
   Plus,
@@ -61,7 +62,16 @@ import { InstallAppButton } from "@/components/InstallAppButton";
 import { CompareDialog } from "@/components/CompareDialog";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
-import { loadProject, clearProject, type ImportedProject } from "@/lib/project-import";
+import {
+  loadProject,
+  clearProject,
+  writeArtifactToProject,
+  type ImportedProject,
+  readFileContent,
+  saveProject,
+  writeLocalFile,
+  parseFilePathFromBlock,
+} from "@/lib/project-import";
 import { useAuth } from "@/lib/auth-context";
 import { loadSelection, type WireMessage, type ContentPart } from "@/lib/llm-providers";
 import { runOrchestration } from "@/lib/orchestrator";
@@ -117,7 +127,15 @@ export const Route = createFileRoute("/")({
   component: OmniForge,
 });
 
+export interface PendingDiff {
+  path: string;
+  original: string;
+  proposed: string;
+}
+
 function OmniForge() {
+  const { theme, toggleTheme } = useTheme();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importTab, setImportTab] = useState<"saved" | "local" | "github" | "new">("saved");
   const handleOpenImport = (tab: "saved" | "local" | "github" | "new") => {
@@ -132,8 +150,21 @@ function OmniForge() {
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "work">("chat");
   const [isDesktop, setIsDesktop] = useState(false);
-  // Logs de execução da IA em tempo real
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [pendingDiffs, setPendingDiffs] = useState<PendingDiff[]>([]);
+  const [activeSidebar, setActiveSidebar] = useState<
+    "chat" | "explorer" | "database" | "logs" | null
+  >("chat");
   const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    setOpenTabs([]);
+    setActiveTab(null);
+    setPendingDiffs([]);
+    setActiveSidebar("chat");
+  }, [project?.id]);
+
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     if (typeof localStorage !== "undefined") {
       return parseInt(localStorage.getItem("omniforge-sidebar") || "360", 10);
@@ -195,27 +226,160 @@ function OmniForge() {
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground font-sans">
       {isDesktop ? (
         <div className="flex w-full h-full overflow-hidden relative">
-          <div
-            style={{ width: sidebarWidth }}
-            className="flex-shrink-0 h-full relative border-r border-border/50"
-          >
-            <ChatPanel
-              onOpenImport={() => handleOpenImport("local")}
-              onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
-            />
-            <div
-              onPointerDown={handlePointerDown}
-              className="absolute top-0 -right-2.5 w-5 h-full cursor-col-resize z-50 flex items-center justify-center group"
-            >
-              <div className="h-full w-1.5 bg-border/40 group-hover:bg-primary/50 transition-colors flex items-center justify-center">
-                <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border shadow-sm">
-                  <GripVertical className="h-2.5 w-2.5 text-muted-foreground" />
-                </div>
+          {/* 1. Activity Bar (Extremo Esquerdo) */}
+          <div className="w-14 flex-shrink-0 h-full border-r border-border/40 bg-card/25 backdrop-blur-md flex flex-col items-center py-4 justify-between select-none">
+            {/* Atalhos Superiores */}
+            <div className="flex flex-col items-center gap-4 w-full">
+              <div className="mb-2">
+                <Logo />
               </div>
+
+              <ActivityBarButton
+                active={activeSidebar === "chat"}
+                onClick={() => setActiveSidebar(activeSidebar === "chat" ? null : "chat")}
+                icon={<MessageSquare className="h-5 w-5" />}
+                title="Chat com IA"
+              />
+              <ActivityBarButton
+                active={activeSidebar === "explorer"}
+                onClick={() => setActiveSidebar(activeSidebar === "explorer" ? null : "explorer")}
+                icon={<FolderOpen className="h-5 w-5" />}
+                title="Explorer"
+              />
+              <ActivityBarButton
+                active={activeSidebar === "database"}
+                onClick={() => setActiveSidebar(activeSidebar === "database" ? null : "database")}
+                icon={<Database className="h-5 w-5" />}
+                title="Database Schema"
+              />
+              <ActivityBarButton
+                active={activeSidebar === "logs"}
+                onClick={() => setActiveSidebar(activeSidebar === "logs" ? null : "logs")}
+                icon={<ScrollText className="h-5 w-5" />}
+                title="Execution Logs"
+              />
+            </div>
+
+            {/* Atalhos Inferiores */}
+            <div className="flex flex-col items-center gap-4 w-full">
+              <button
+                onClick={toggleTheme}
+                title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+                className="grid h-10 w-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              >
+                {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </button>
+              <button
+                onClick={() => setSettingsOpen(true)}
+                title="Configurações de LLM"
+                className="grid h-10 w-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
+              <UserMenu />
             </div>
           </div>
-          <div className="flex-1 min-w-0 h-full overflow-hidden flex">
-            <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
+
+          {/* 2. Workbench com Resizable Panels */}
+          <div className="flex-1 min-w-0 h-full overflow-hidden">
+            {activeSidebar !== null ? (
+              <ResizablePanelGroup
+                id="outer-workbench-group"
+                key={activeSidebar}
+                direction="horizontal"
+              >
+                <ResizablePanel
+                  id="sidebar-left"
+                  defaultSize="22"
+                  minSize="15"
+                  maxSize="40"
+                  className="h-full border-r border-border/30 bg-sidebar/25 backdrop-blur-xl"
+                >
+                  <div className="h-full w-full overflow-hidden flex flex-col">
+                    {activeSidebar === "chat" && (
+                      <ChatPanel
+                        project={project}
+                        dirHandle={dirHandle}
+                        setProject={setProject}
+                        onOpenImport={() => handleOpenImport("local")}
+                        onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
+                        openTabs={openTabs}
+                        setOpenTabs={setOpenTabs}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        pendingDiffs={pendingDiffs}
+                        setPendingDiffs={setPendingDiffs}
+                      />
+                    )}
+                    {activeSidebar === "explorer" && (
+                      <ProjectExplorer
+                        project={project}
+                        dirHandle={dirHandle}
+                        onSelectFile={(path, content) => {
+                          const ext = (path.split(".").pop() || "").toLowerCase();
+                          const isHtml = /^(html|htm)$/.test(ext);
+                          const isReact = /^(tsx|jsx)$/.test(ext);
+
+                          setOpenTabs((prev) => (prev.includes(path) ? prev : [...prev, path]));
+                          setActiveTab(path);
+
+                          saveArtifact({
+                            id: path,
+                            title: path.split("/").pop() || path,
+                            lang: ext,
+                            code: content,
+                            blocks: [{ lang: ext, code: content }],
+                            hasReact: isReact,
+                            html: isHtml ? content : "",
+                            updatedAt: Date.now(),
+                          });
+                        }}
+                        onProjectOpened={handleProjectOpenedFromExplorer}
+                      />
+                    )}
+                    {activeSidebar === "database" && <DesktopDatabasePanel project={project} />}
+                    {activeSidebar === "logs" && <DesktopLogsPanel executionLogs={executionLogs} />}
+                  </div>
+                </ResizablePanel>
+                <ResizableHandle
+                  withHandle
+                  className="bg-border/20 hover:bg-primary/40 transition-colors"
+                />
+
+                {/* Área de Trabalho Principal (Workspace) */}
+                <ResizablePanel id="workspace-main" defaultSize="78" minSize="55" className="h-full overflow-hidden">
+                  <WorkspacePanel
+                    project={project}
+                    onOpenImport={handleOpenImport}
+                    onClearProject={() => {
+                      clearProject();
+                      setProject(null);
+                    }}
+                    viewport={viewport}
+                    setViewport={setViewport}
+                    onOpenIntegrations={() => setIntegrationsOpen(true)}
+                    onOpenPublish={() => setPublishOpen(true)}
+                    sidebarRightOpen={activeSidebar === "explorer"}
+                    setSidebarRightOpen={(open) =>
+                      setActiveSidebar(
+                        open ? "explorer" : activeSidebar === "explorer" ? null : activeSidebar,
+                      )
+                    }
+                    executionLogs={executionLogs}
+                    onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
+                    openTabs={openTabs}
+                    activeTab={activeTab}
+                    setOpenTabs={setOpenTabs}
+                    setActiveTab={setActiveTab}
+                    dirHandle={dirHandle}
+                    setProject={setProject}
+                    pendingDiffs={pendingDiffs}
+                    setPendingDiffs={setPendingDiffs}
+                    isDesktop={isDesktop}
+                  />
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            ) : (
               <WorkspacePanel
                 project={project}
                 onOpenImport={handleOpenImport}
@@ -227,32 +391,22 @@ function OmniForge() {
                 setViewport={setViewport}
                 onOpenIntegrations={() => setIntegrationsOpen(true)}
                 onOpenPublish={() => setPublishOpen(true)}
-                sidebarRightOpen={sidebarRightOpen}
-                setSidebarRightOpen={setSidebarRightOpen}
+                sidebarRightOpen={false}
+                setSidebarRightOpen={(open) => {
+                  if (open) setActiveSidebar("explorer");
+                }}
                 executionLogs={executionLogs}
                 onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
+                openTabs={openTabs}
+                activeTab={activeTab}
+                setOpenTabs={setOpenTabs}
+                setActiveTab={setActiveTab}
+                dirHandle={dirHandle}
+                setProject={setProject}
+                pendingDiffs={pendingDiffs}
+                setPendingDiffs={setPendingDiffs}
+                isDesktop={isDesktop}
               />
-            </div>
-            {sidebarRightOpen && (
-              <div className="w-64 flex-shrink-0 h-full">
-                <ProjectExplorer
-                  project={project}
-                  dirHandle={dirHandle}
-                  onSelectFile={(path, content) => {
-                    saveArtifact({
-                      id: path,
-                      title: path.split("/").pop() || path,
-                      lang: path.split(".").pop() || "tsx",
-                      code: content,
-                      blocks: [{ lang: path.split(".").pop() || "tsx", code: content }],
-                      hasReact: /\.(tsx|jsx)$/i.test(path),
-                      html: "",
-                      updatedAt: Date.now(),
-                    });
-                  }}
-                  onProjectOpened={handleProjectOpenedFromExplorer}
-                />
-              </div>
             )}
           </div>
         </div>
@@ -260,8 +414,17 @@ function OmniForge() {
         <>
           <div className={`${mobileView === "chat" ? "flex" : "hidden"} w-full`}>
             <ChatPanel
+              project={project}
+              dirHandle={dirHandle}
+              setProject={setProject}
               onOpenImport={() => handleOpenImport("local")}
               onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
+              openTabs={openTabs}
+              setOpenTabs={setOpenTabs}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              pendingDiffs={pendingDiffs}
+              setPendingDiffs={setPendingDiffs}
             />
           </div>
           <div
@@ -278,10 +441,23 @@ function OmniForge() {
               setViewport={setViewport}
               onOpenIntegrations={() => setIntegrationsOpen(true)}
               onOpenPublish={() => setPublishOpen(true)}
-              sidebarRightOpen={sidebarRightOpen}
-              setSidebarRightOpen={setSidebarRightOpen}
+              sidebarRightOpen={activeSidebar === "explorer"}
+              setSidebarRightOpen={(open) =>
+                setActiveSidebar(
+                  open ? "explorer" : activeSidebar === "explorer" ? null : activeSidebar,
+                )
+              }
               executionLogs={executionLogs}
               onAddLog={(log) => setExecutionLogs((prev) => [...prev.slice(-199), log])}
+              openTabs={openTabs}
+              activeTab={activeTab}
+              setOpenTabs={setOpenTabs}
+              setActiveTab={setActiveTab}
+              dirHandle={dirHandle}
+              setProject={setProject}
+              pendingDiffs={pendingDiffs}
+              setPendingDiffs={setPendingDiffs}
+              isDesktop={isDesktop}
             />
           </div>
           <nav
@@ -312,6 +488,7 @@ function OmniForge() {
         onDirectoryHandle={setDirHandle}
         defaultTab={importTab}
       />
+      <LlmSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <IntegrationsDialog open={integrationsOpen} onOpenChange={setIntegrationsOpen} />
       <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} />
     </div>
@@ -361,11 +538,29 @@ function UserMenu() {
 
 /* ---------------- CHAT PANEL ---------------- */
 function ChatPanel({
+  project,
+  dirHandle,
+  setProject,
   onOpenImport,
   onAddLog,
+  openTabs,
+  setOpenTabs,
+  activeTab,
+  setActiveTab,
+  pendingDiffs,
+  setPendingDiffs,
 }: {
+  project: ImportedProject | null;
+  dirHandle: FileSystemDirectoryHandle | null;
+  setProject: React.Dispatch<React.SetStateAction<ImportedProject | null>>;
   onOpenImport: () => void;
   onAddLog?: (log: string) => void;
+  openTabs: string[];
+  setOpenTabs: React.Dispatch<React.SetStateAction<string[]>>;
+  activeTab: string | null;
+  setActiveTab: React.Dispatch<React.SetStateAction<string | null>>;
+  pendingDiffs: PendingDiff[];
+  setPendingDiffs: React.Dispatch<React.SetStateAction<PendingDiff[]>>;
 }) {
   const [tab, setTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
@@ -569,7 +764,71 @@ function ChatPanel({
       setConversation(final);
       saveConversation(final);
       const art = extractArtifact(assistantMsg.content);
-      if (art) saveArtifact(art);
+      if (art) {
+        saveArtifact(art);
+        if (project) {
+          let hasPendingDiffs = false;
+          const nextDiffs: PendingDiff[] = [];
+
+          for (const block of art.blocks) {
+            let filePath = parseFilePathFromBlock(block.lang, block.code);
+            if (!filePath) {
+              if (/^(html|htm)$/i.test(block.lang) || /<html[\s>]/i.test(block.code)) {
+                filePath = "index.html";
+              } else if (/^(tsx|jsx)$/i.test(block.lang)) {
+                filePath = "src/App.tsx";
+              } else if (block.lang === "css") {
+                filePath = "src/styles.css";
+              } else if (/^(ts|js)$/i.test(block.lang)) {
+                filePath = "src/index.ts";
+              } else {
+                continue;
+              }
+            }
+            filePath = filePath.replace(/^[./\\]+/, "");
+
+            const currentFile = project.files.find((f) => f.path === filePath);
+            const originalContent = currentFile?.content ?? "";
+
+            if (originalContent !== block.code) {
+              nextDiffs.push({
+                path: filePath,
+                original: originalContent,
+                proposed: block.code,
+              });
+              hasPendingDiffs = true;
+            }
+          }
+
+          if (hasPendingDiffs) {
+            setPendingDiffs((prev) => {
+              const filtered = prev.filter((d) => !nextDiffs.some((n) => n.path === d.path));
+              return [...filtered, ...nextDiffs];
+            });
+
+            const diffTabPaths = nextDiffs.map((d) => "diff:" + d.path);
+            setOpenTabs((prev) => {
+              const nextTabs = [...prev];
+              diffTabPaths.forEach((tabPath) => {
+                if (!nextTabs.includes(tabPath)) {
+                  nextTabs.push(tabPath);
+                }
+              });
+              return nextTabs;
+            });
+
+            setActiveTab(diffTabPaths[diffTabPaths.length - 1]);
+            onAddLog?.(
+              `[DIFF] ${nextDiffs.length} arquivo(s) aguardando aprovação na barra de abas`,
+            );
+            toast.info(`${nextDiffs.length} arquivo(s) aguardando aprovação`);
+          } else {
+            const nextProj = await writeArtifactToProject(art, project, dirHandle);
+            setProject(nextProj);
+            onAddLog?.(`[PROJECT] Sem alterações novas detectadas`);
+          }
+        }
+      }
       setStreaming("");
       if (!stopped) {
         const n = agents.activeIds.length;
@@ -726,39 +985,7 @@ function ChatPanel({
 
   return (
     <aside className="flex w-full h-full min-w-0 flex-col bg-sidebar/80 backdrop-blur-xl pb-12 md:pb-0">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-        <div className="flex items-center gap-2.5">
-          <Logo />
-          <div className="flex items-center gap-1.5">
-            <span className="font-display text-lg font-semibold tracking-tight">OmniForge</span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <UserMenu />
-          <button
-            onClick={toggleTheme}
-            title={theme === "dark" ? "Tema claro" : "Tema escuro"}
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <button
-            onClick={() => setAgentsOpen(true)}
-            title="Equipe de agentes"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            <Users className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            title="Configurar provedores de LLM"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            <Settings className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+
 
       <button
         onClick={() => setAgentsOpen(true)}
@@ -1096,6 +1323,145 @@ function IconBtn({ children, onClick }: { children: React.ReactNode; onClick?: (
   );
 }
 
+function ActivityBarButton({
+  active,
+  onClick,
+  icon,
+  title,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`grid h-11 w-11 place-items-center rounded-xl transition-all cursor-pointer relative group ${
+        active
+          ? "bg-primary/10 text-primary border-l-2 border-primary rounded-l-none"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      {icon}
+      <span className="absolute left-full ml-2 px-2 py-1 bg-popover border border-border text-popover-foreground text-[10px] rounded shadow-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+        {title}
+      </span>
+    </button>
+  );
+}
+
+/* ---------------- DESKTOP DATABASE PANEL ---------------- */
+function DesktopDatabasePanel({ project }: { project: ImportedProject | null }) {
+  const databaseSchema = useMemo(() => {
+    if (!project) return null;
+    return project.files.filter(
+      (f) =>
+        /\.(prisma|sql)$/i.test(f.path) ||
+        f.path.includes("schema") ||
+        f.path.includes("migration"),
+    );
+  }, [project]);
+
+  return (
+    <div className="h-full flex flex-col min-w-0 bg-transparent overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/10 shrink-0 select-none">
+        <Database className="h-4 w-4 text-primary" />
+        <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground">
+          Database Schema
+        </span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {databaseSchema && databaseSchema.length > 0 ? (
+          databaseSchema.map((f) => (
+            <div
+              key={f.path}
+              className="rounded-xl border border-border bg-card/20 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-card/40 border-b border-border/50">
+                <Database className="h-3.5 w-3.5 text-teal-400 shrink-0" />
+                <span
+                  className="text-[10px] font-mono text-muted-foreground truncate"
+                  title={f.path}
+                >
+                  {f.path.split("/").pop()}
+                </span>
+              </div>
+              {f.content ? (
+                <pre className="text-[10px] p-3 font-mono whitespace-pre-wrap text-foreground/80 max-h-60 overflow-y-auto leading-relaxed select-text">
+                  {f.content}
+                </pre>
+              ) : (
+                <div className="px-3 py-4 text-center text-[10px] text-muted-foreground">
+                  Conteúdo não carregado
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground py-12">
+            <Database className="h-10 w-10 mb-2 opacity-20" />
+            <p className="text-xs font-medium">Nenhum schema</p>
+            <p className="text-[10px] opacity-70 mt-1">Importe arquivos .prisma ou .sql</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- DESKTOP LOGS PANEL ---------------- */
+function DesktopLogsPanel({ executionLogs }: { executionLogs?: string[] }) {
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [executionLogs]);
+
+  return (
+    <div className="h-full flex flex-col min-w-0 bg-[#0d1117]/60 font-mono overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0 select-none bg-[#0d1117]/80">
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[10px] uppercase font-semibold tracking-wider text-white/60">
+            Execution Logs
+          </span>
+        </div>
+        <span className="text-[9px] text-white/30">{executionLogs?.length ?? 0} linhas</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-1">
+        {!executionLogs || executionLogs.length === 0 ? (
+          <div className="text-center py-12 text-white/30 select-none">
+            <ScrollText className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-[10px]">Nenhum log disponível.</p>
+          </div>
+        ) : (
+          executionLogs.map((log, i) => (
+            <div key={i} className="flex gap-2 text-[10px] leading-relaxed">
+              <span className="text-white/20 select-none w-6 text-right shrink-0">{i + 1}</span>
+              <span
+                className={`flex-1 break-all select-text ${
+                  log.startsWith("[ERROR]")
+                    ? "text-red-400"
+                    : log.startsWith("[WARN]")
+                      ? "text-yellow-400"
+                      : log.startsWith("[")
+                        ? "text-cyan-400"
+                        : "text-white/70"
+                }`}
+              >
+                {log}
+              </span>
+            </div>
+          ))
+        )}
+        <div ref={logsEndRef} />
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- WORKSPACE PANEL ---------------- */
 function WorkspacePanel({
   project,
@@ -1108,6 +1474,15 @@ function WorkspacePanel({
   sidebarRightOpen,
   setSidebarRightOpen,
   executionLogs,
+  openTabs,
+  activeTab,
+  setOpenTabs,
+  setActiveTab,
+  dirHandle,
+  setProject,
+  pendingDiffs,
+  setPendingDiffs,
+  isDesktop,
 }: {
   project: ImportedProject | null;
   onOpenImport: (tab: "saved" | "local" | "github" | "new") => void;
@@ -1120,10 +1495,419 @@ function WorkspacePanel({
   setSidebarRightOpen: (open: boolean) => void;
   executionLogs?: string[];
   onAddLog?: (log: string) => void;
+  openTabs: string[];
+  activeTab: string | null;
+  setOpenTabs: React.Dispatch<React.SetStateAction<string[]>>;
+  setActiveTab: React.Dispatch<React.SetStateAction<string | null>>;
+  dirHandle: FileSystemDirectoryHandle | null;
+  setProject: React.Dispatch<React.SetStateAction<ImportedProject | null>>;
+  pendingDiffs: PendingDiff[];
+  setPendingDiffs: React.Dispatch<React.SetStateAction<PendingDiff[]>>;
+  isDesktop: boolean;
 }) {
   const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
   const [artifact, setArtifact] = useState<Artifact | null>(() => loadArtifact());
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
+
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const editorValueRef = useRef<string>("");
+  const currentActiveTabRef = useRef<string | null>(null);
+
+  // Carrega conteúdo sob demanda para arquivos não carregados
+  useEffect(() => {
+    if (!activeTab || !project || !dirHandle) return;
+
+    const file = project.files.find((f) => f.path === activeTab);
+    if (file && file.content === undefined) {
+      readFileContent(dirHandle, activeTab)
+        .then((content: string) => {
+          const updatedFiles = project.files.map((f) =>
+            f.path === activeTab ? { ...f, content, size: content.length } : f,
+          );
+          const nextProj = { ...project, files: updatedFiles };
+          setProject(nextProj);
+          saveProject(nextProj);
+        })
+        .catch((err: any) => {
+          console.error(`Erro ao carregar conteúdo do disco para ${activeTab}:`, err);
+        });
+    }
+  }, [activeTab, project?.id, dirHandle, setProject, project]);
+
+  // Função imediata para salvar o arquivo de fato
+  const saveFileImmediate = useCallback(
+    async (path: string, value: string) => {
+      if (!project) return;
+
+      // 1. Atualizar em memória
+      const updatedFiles = project.files.map((f) =>
+        f.path === path ? { ...f, content: value, size: value.length } : f,
+      );
+      const nextProj = { ...project, files: updatedFiles };
+      setProject(nextProj);
+      saveProject(nextProj);
+
+      // 2. Escrever no disco se dirHandle existir
+      if (dirHandle) {
+        try {
+          await writeLocalFile(dirHandle, path, value);
+          console.log(`[OmniForge] Salvo localmente: ${path}`);
+        } catch (err) {
+          console.error(`[OmniForge] Falha ao gravar no disco: ${path}`, err);
+        }
+      }
+
+      // 3. Atualizar o artefato para hot-reload
+      const ext = (path.split(".").pop() || "").toLowerCase();
+      const isHtml = /^(html|htm)$/.test(ext);
+      const isReact = /^(tsx|jsx)$/.test(ext);
+
+      saveArtifact({
+        id: path,
+        title: path.split("/").pop() || path,
+        lang: ext,
+        code: value,
+        blocks: [{ lang: ext, code: value }],
+        hasReact: isReact,
+        html: isHtml ? value : "",
+        updatedAt: Date.now(),
+      });
+    },
+    [project, dirHandle, setProject],
+  );
+
+  // Quando activeTab mudar, salva o arquivo anterior imediatamente se houver valor pendente na ref
+  useEffect(() => {
+    const previousTab = currentActiveTabRef.current;
+    const previousValue = editorValueRef.current;
+
+    currentActiveTabRef.current = activeTab;
+
+    // Apenas tenta salvar se a aba anterior era uma aba de arquivo normal (não diff)
+    if (previousTab && !previousTab.startsWith("diff:") && project) {
+      const originalFile = project.files.find((f) => f.path === previousTab);
+      if (originalFile && originalFile.content !== previousValue && previousValue !== "") {
+        saveFileImmediate(previousTab, previousValue);
+      }
+    }
+
+    if (activeTab && project) {
+      const cleaned = activeTab.startsWith("diff:") ? activeTab.slice(5) : activeTab;
+      const currentFile = project.files.find((f) => f.path === cleaned);
+      editorValueRef.current = currentFile?.content || "";
+    } else {
+      editorValueRef.current = "";
+    }
+  }, [activeTab, project, saveFileImmediate]);
+
+  // Limpa o timeout no desmonte do componente
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Handler de alteração do Monaco Editor com debounce
+  const handleEditorChange = (value: string | undefined) => {
+    if (value === undefined) return;
+    editorValueRef.current = value;
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    const tabToSave = activeTab;
+    if (!tabToSave || tabToSave.startsWith("diff:")) return;
+
+    debounceTimeoutRef.current = setTimeout(async () => {
+      await saveFileImmediate(tabToSave, value);
+    }, 500);
+  };
+
+  // Métodos utilitários de extensão e ícones
+  const getEditorLanguage = (filePath: string | null) => {
+    if (!filePath) return "javascript";
+    const cleaned = filePath.startsWith("diff:") ? filePath.slice(5) : filePath;
+    const ext = cleaned.split(".").pop()?.toLowerCase();
+    switch (ext) {
+      case "js":
+      case "jsx":
+        return "javascript";
+      case "ts":
+      case "tsx":
+        return "typescript";
+      case "html":
+      case "htm":
+        return "html";
+      case "css":
+        return "css";
+      case "json":
+        return "json";
+      case "md":
+      case "markdown":
+        return "markdown";
+      case "py":
+        return "python";
+      case "sql":
+        return "sql";
+      default:
+        return "plaintext";
+    }
+  };
+
+  const getFileIcon = (filePath: string) => {
+    const cleaned = filePath.startsWith("diff:") ? filePath.slice(5) : filePath;
+    const ext = cleaned.split(".").pop()?.toLowerCase();
+    switch (ext) {
+      case "html":
+      case "htm":
+      case "css":
+        return <Globe className="h-3.5 w-3.5 text-blue-400" />;
+      case "js":
+      case "jsx":
+      case "ts":
+      case "tsx":
+        return <Code2 className="h-3.5 w-3.5 text-amber-400" />;
+      case "json":
+      case "yml":
+      case "yaml":
+      case "toml":
+      case "env":
+        return <Settings className="h-3.5 w-3.5 text-rose-400" />;
+      case "sql":
+      case "prisma":
+        return <Database className="h-3.5 w-3.5 text-emerald-400" />;
+      case "md":
+      case "markdown":
+      case "txt":
+        return <FileText className="h-3.5 w-3.5 text-violet-400" />;
+      default:
+        return <FileText className="h-3.5 w-3.5 text-muted-foreground" />;
+    }
+  };
+
+  const handleCloseTab = (e: React.MouseEvent, tabPath: string) => {
+    e.stopPropagation();
+    const nextTabs = openTabs.filter((t) => t !== tabPath);
+    setOpenTabs(nextTabs);
+
+    if (activeTab === tabPath) {
+      if (nextTabs.length > 0) {
+        setActiveTab(nextTabs[nextTabs.length - 1]);
+      } else {
+        setActiveTab(null);
+      }
+    }
+  };
+
+  const handleAcceptDiff = async (filePath: string) => {
+    const diff = pendingDiffs.find((d) => d.path === filePath);
+    if (!diff || !project) return;
+
+    // 1. Grava no disco e memória
+    const updatedFiles = project.files.map((f) =>
+      f.path === filePath ? { ...f, content: diff.proposed, size: diff.proposed.length } : f,
+    );
+    const nextProj = { ...project, files: updatedFiles };
+    setProject(nextProj);
+    saveProject(nextProj);
+
+    if (dirHandle) {
+      try {
+        await writeLocalFile(dirHandle, filePath, diff.proposed);
+        toast.success(`Alterações aplicadas no disco: ${filePath}`);
+      } catch (err) {
+        toast.error(`Erro ao gravar no disco: ${filePath}`);
+        console.error(err);
+      }
+    } else {
+      toast.success(`Alterações aplicadas na memória: ${filePath}`);
+    }
+
+    // 2. Atualiza o Artifact para recarregar o Preview
+    const ext = filePath.split(".").pop()?.toLowerCase();
+    const isHtml = /^(html|htm)$/.test(ext || "");
+    const isReact = /^(tsx|jsx)$/.test(ext || "");
+    saveArtifact({
+      id: filePath,
+      title: filePath.split("/").pop() || filePath,
+      lang: ext || "tsx",
+      code: diff.proposed,
+      blocks: [{ lang: ext || "tsx", code: diff.proposed }],
+      hasReact: isReact,
+      html: isHtml ? diff.proposed : "",
+      updatedAt: Date.now(),
+    });
+
+    // 3. Remove o diff da fila
+    setPendingDiffs((prev) => prev.filter((d) => d.path !== filePath));
+
+    // 4. Fecha a aba de diff e abre o arquivo normal
+    const nextTabs = openTabs.filter((t) => t !== `diff:${filePath}`);
+    if (!nextTabs.includes(filePath)) {
+      nextTabs.push(filePath);
+    }
+    setOpenTabs(nextTabs);
+    setActiveTab(filePath);
+  };
+
+  const handleRejectDiff = (filePath: string) => {
+    // 1. Remove o diff da fila
+    setPendingDiffs((prev) => prev.filter((d) => d.path !== filePath));
+
+    // 2. Fecha a aba de diff
+    const nextTabs = openTabs.filter((t) => t !== `diff:${filePath}`);
+    setOpenTabs(nextTabs);
+    if (activeTab === `diff:${filePath}`) {
+      if (nextTabs.length > 0) {
+        setActiveTab(nextTabs[nextTabs.length - 1]);
+      } else {
+        setActiveTab(null);
+      }
+    }
+
+    // 3. Restaura o Preview para a versão atual salva do projeto
+    if (project) {
+      saveArtifact(projectToArtifact(project));
+    }
+    toast.info(`Alterações descartadas para: ${filePath}`);
+  };
+
+  const renderCodeArea = () => {
+    if (openTabs.length === 0 || !activeTab) {
+      return (
+        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground p-6">
+          <Code2 className="h-12 w-12 mb-3 opacity-20" />
+          <p className="text-sm font-medium">Nenhum arquivo aberto</p>
+          <p className="text-xs opacity-70 mt-1 leading-relaxed">
+            Selecione um arquivo no Explorer para editá-lo.
+          </p>
+        </div>
+      );
+    }
+
+    const isDiff = activeTab.startsWith("diff:");
+    const filePath = isDiff ? activeTab.slice(5) : activeTab;
+    const language = getEditorLanguage(activeTab);
+
+    const tabBar = (
+      <div className="flex items-center justify-between border-b border-border/40 bg-card/25 shrink-0 overflow-x-auto select-none no-scrollbar h-9">
+        <div className="flex items-center h-full">
+          {openTabs.map((tabPath) => {
+            const isActive = tabPath === activeTab;
+            const isTabDiff = tabPath.startsWith("diff:");
+            const tabFilePath = isTabDiff ? tabPath.slice(5) : tabPath;
+            const tabName = tabFilePath.split("/").pop() || tabFilePath;
+
+            return (
+              <div
+                key={tabPath}
+                onClick={() => setActiveTab(tabPath)}
+                className={`flex items-center gap-1.5 h-full px-3 border-r border-border/30 cursor-pointer transition-colors relative ${
+                  isActive
+                    ? "bg-background text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+                }`}
+              >
+                {isActive && <span className="absolute top-0 inset-x-0 h-[2px] bg-primary" />}
+
+                {isTabDiff ? (
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                ) : (
+                  getFileIcon(tabPath)
+                )}
+
+                <span className={isTabDiff ? "text-amber-500/90 font-medium" : ""}>
+                  {isTabDiff ? `Revisar: ${tabName}` : tabName}
+                </span>
+
+                <button
+                  onClick={(e) => handleCloseTab(e, tabPath)}
+                  className="p-0.5 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {isDiff && (
+          <div className="flex items-center gap-1.5 px-3">
+            <button
+              onClick={() => handleRejectDiff(filePath)}
+              className="flex items-center gap-1 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive text-[10px] px-2 py-0.5 font-semibold transition"
+            >
+              Descartar
+            </button>
+            <button
+              onClick={() => handleAcceptDiff(filePath)}
+              className="flex items-center gap-1 rounded bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] px-2 py-0.5 font-semibold shadow-sm transition"
+            >
+              Aceitar
+            </button>
+          </div>
+        )}
+      </div>
+    );
+
+    if (isDiff) {
+      const diffInfo = pendingDiffs.find((d) => d.path === filePath);
+      const originalContent = diffInfo?.original ?? "";
+      const proposedContent = diffInfo?.proposed ?? "";
+
+      return (
+        <div className="h-full flex flex-col min-w-0 overflow-hidden">
+          {tabBar}
+          <div className="flex-1 min-h-0 w-full relative">
+            <DiffEditor
+              original={originalContent}
+              modified={proposedContent}
+              language={language}
+              theme={theme === "dark" ? "vs-dark" : "light"}
+              options={{
+                readOnly: true,
+                renderSideBySide: true,
+                minimap: { enabled: false },
+                scrollbar: {
+                  vertical: "visible",
+                  horizontal: "visible",
+                },
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="h-full flex flex-col min-w-0 overflow-hidden">
+        {tabBar}
+        <div className="flex-1 min-h-0 w-full relative">
+          <Editor
+            value={editorValueRef.current}
+            onChange={handleEditorChange}
+            language={language}
+            theme={theme === "dark" ? "vs-dark" : "light"}
+            options={{
+              minimap: { enabled: true },
+              fontSize: 13,
+              fontFamily: "var(--font-mono, Menlo, Monaco, 'Courier New', monospace)",
+              automaticLayout: true,
+              wordWrap: "on",
+              scrollbar: {
+                vertical: "visible",
+                horizontal: "visible",
+              },
+            }}
+          />
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => subscribeArtifact(setArtifact), []);
   useEffect(() => {
@@ -1207,7 +1991,180 @@ function WorkspacePanel({
     window.open(url, "_blank");
   };
 
-  return (
+  return isDesktop ? (
+    <section className="flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl shrink-0">
+        <div className="flex items-center gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-accent transition-colors text-sm cursor-pointer">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="font-medium">
+                  {project ? project.name : artifact ? "Artefato gerado" : "Sem projeto"}
+                </span>
+                {project && (
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    · {project.files.length} arq.
+                  </span>
+                )}
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="bg-card border-border">
+              <DropdownMenuItem
+                onSelect={() => onOpenImport("saved")}
+                className="gap-2 text-xs cursor-pointer"
+              >
+                <FolderOpen className="h-3.5 w-3.5 text-primary" /> Abrir Projeto
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onOpenImport("new")}
+                className="gap-2 text-xs cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5 text-primary" /> Novo Projeto
+              </DropdownMenuItem>
+              {project && (
+                <>
+                  <DropdownMenuSeparator className="border-border/50" />
+                  <DropdownMenuItem
+                    onSelect={onClearProject}
+                    className="gap-2 text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" /> Fechar Projeto Ativo
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <TokenMeter />
+          <div className="flex items-center rounded-lg border border-border bg-card/50 p-0.5">
+            <ViewportBtn active={viewport === "desktop"} onClick={() => setViewport("desktop")}>
+              <Monitor className="h-4 w-4" />
+            </ViewportBtn>
+            <ViewportBtn active={viewport === "mobile"} onClick={() => setViewport("mobile")}>
+              <Smartphone className="h-4 w-4" />
+            </ViewportBtn>
+          </div>
+          <button
+            onClick={onOpenIntegrations}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-accent transition-colors cursor-pointer"
+          >
+            <Share2 className="h-3.5 w-3.5 text-muted-foreground" /> Integrações
+          </button>
+          <button
+            onClick={onOpenPublish}
+            className="rounded-lg bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] px-3 py-1.5 text-xs font-medium text-primary-foreground glow hover:opacity-95 transition cursor-pointer"
+          >
+            Publicar
+          </button>
+          <button
+            onClick={() => setSidebarRightOpen(!sidebarRightOpen)}
+            title={sidebarRightOpen ? "Esconder Explorer" : "Mostrar Explorer"}
+            className={`p-1.5 rounded-lg border border-border bg-card/60 transition hover:bg-accent/40 ${
+              sidebarRightOpen ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <PanelRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0">
+        <ResizablePanelGroup id="inner-workspace-group" direction="horizontal">
+          {/* Editor de Código (Esquerda) */}
+          <ResizablePanel
+            id="editor-code"
+            defaultSize="50"
+            minSize="25"
+            className="h-full overflow-hidden flex flex-col border-r border-border/30"
+          >
+            <div className="flex-1 min-h-0 w-full overflow-hidden">{renderCodeArea()}</div>
+          </ResizablePanel>
+
+          <ResizableHandle
+            withHandle
+            className="bg-border/20 hover:bg-primary/40 transition-colors"
+          />
+
+          {/* Live Preview (Direita) */}
+          <ResizablePanel
+            id="editor-preview"
+            defaultSize="50"
+            minSize="25"
+            className="h-full overflow-hidden bg-background/10 flex flex-col"
+          >
+            <div className="flex items-center gap-3 border-b border-border bg-background/40 px-4 py-2 shrink-0 select-none">
+              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+              <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-1 text-xs">
+                <span className="text-muted-foreground font-mono truncate">
+                  {artifact
+                    ? `Preview: ${artifact.title} (${artifact.lang})`
+                    : "Aguardando geração do projeto..."}
+                </span>
+              </div>
+              <button
+                onClick={handleOpenExternal}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground cursor-pointer"
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> Abrir
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto">
+              {artifact && hasPreview ? (
+                <div
+                  className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
+                    viewport === "mobile" ? "bg-neutral-900/60" : ""
+                  }`}
+                >
+                  <div
+                    className={`transition-all duration-300 border-border bg-white overflow-hidden ${
+                      viewport === "mobile"
+                        ? "w-[390px] h-[720px] rounded-[36px] border-[12px] border-neutral-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative before:content-[''] before:absolute before:top-2 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-4 before:bg-neutral-900 before:rounded-full before:z-50"
+                        : "w-full h-full border-0"
+                    }`}
+                  >
+                    {artifact.hasReact ? (
+                      <FastReactPreview artifact={artifact} />
+                    ) : (
+                      <iframe
+                        key={artifact.updatedAt}
+                        title="Artefato gerado"
+                        sandbox="allow-scripts"
+                        srcDoc={artifact.html}
+                        className="w-full h-full border-0 bg-white"
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center max-w-md px-6">
+                    <div className="relative mx-auto mb-6 w-fit">
+                      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
+                      <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
+                        <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
+                      </div>
+                    </div>
+                    <h2 className="font-display text-2xl font-semibold mb-2">
+                      Seu preview aparecerá aqui
+                    </h2>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Descreva o app no chat de IA para que ele seja gerado e renderizado nesta área
+                      em tempo real.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
+    </section>
+  ) : (
     <section className="flex flex-col h-full overflow-hidden pb-12 md:pb-0">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl">
         <div className="flex items-center gap-3">
@@ -1395,133 +2352,62 @@ function WorkspacePanel({
           ))}
 
         {/* ABA CÓDIGO */}
-        {tab === "code" &&
-          (artifact ? (
-            <div className="h-full overflow-auto">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/20 sticky top-0 z-10">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded">
-                    {artifact.lang}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">{artifact.title}</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {artifact.code.split("\n").length} linhas
-                </span>
-              </div>
-              <pre className="text-xs p-4 font-mono whitespace-pre-wrap leading-relaxed text-foreground/90 min-h-full">
-                <code>{artifact.code}</code>
-                {/* Cursor animado para indicar que o agente pode estar escrevendo */}
-              </pre>
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <Code2 className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p className="text-sm font-medium">Nenhum código gerado ainda</p>
-                <p className="text-xs opacity-70 mt-1">O agente irá escrever o código aqui</p>
-              </div>
-            </div>
-          ))}
+        {tab === "code" && renderCodeArea()}
 
         {/* ABA DATABASE */}
-        {tab === "database" && (
-          <div className="h-full overflow-auto">
-            {databaseSchema && databaseSchema.length > 0 ? (
-              <div className="p-4 space-y-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <Database className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Schema do Banco de Dados</span>
-                  <span className="text-[10px] text-muted-foreground bg-card/60 px-2 py-0.5 rounded">
-                    {databaseSchema.length} arquivo(s)
-                  </span>
-                </div>
-                {databaseSchema.map((f) => (
-                  <div
-                    key={f.path}
-                    className="rounded-xl border border-border bg-card/30 overflow-hidden"
-                  >
-                    <div className="flex items-center gap-2 px-4 py-2 bg-card/50 border-b border-border/50">
-                      <Database className="h-3.5 w-3.5 text-teal-400" />
-                      <span className="text-xs font-mono text-muted-foreground">{f.path}</span>
-                    </div>
-                    {f.content ? (
-                      <pre className="text-xs p-4 font-mono whitespace-pre-wrap text-foreground/80 max-h-80 overflow-auto leading-relaxed">
-                        {f.content}
-                      </pre>
-                    ) : (
-                      <div className="px-4 py-6 text-center text-xs text-muted-foreground">
-                        Conteúdo não carregado — abra o arquivo no Explorer
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center">
-                <div className="text-center text-muted-foreground max-w-sm px-6">
-                  <Database className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm font-medium">Nenhum schema encontrado</p>
-                  <p className="text-xs opacity-70 mt-1 leading-relaxed">
-                    Importe um projeto com arquivos <code className="font-mono">.prisma</code>,{" "}
-                    <code className="font-mono">.sql</code> ou com "schema" no nome para visualizar
-                    aqui.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {tab === "database" && <MobileDatabasePanel schema={databaseSchema} />}
 
         {/* ABA LOGS */}
-        {tab === "logs" && (
-          <div className="h-full overflow-auto bg-[#0d1117] font-mono">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 sticky top-0 bg-[#0d1117] z-10">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[11px] text-white/60">Execution Logs</span>
-              </div>
-              <span className="text-[10px] text-white/30">
-                {executionLogs?.length ?? 0} entradas
-              </span>
-            </div>
-            <div className="p-4 space-y-1">
-              {!executionLogs || executionLogs.length === 0 ? (
-                <div className="text-center py-12 text-white/30">
-                  <ScrollText className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                  <p className="text-xs">Nenhum log ainda.</p>
-                  <p className="text-[10px] mt-1 opacity-60">
-                    Envie uma mensagem para ver a execução aqui.
-                  </p>
-                </div>
-              ) : (
-                executionLogs.map((log, i) => (
-                  <div key={i} className="flex gap-3 text-[11px] leading-relaxed">
-                    <span className="text-white/25 select-none w-8 text-right flex-shrink-0">
-                      {String(i + 1).padStart(3, "0")}
-                    </span>
-                    <span
-                      className={`flex-1 ${
-                        log.startsWith("[ERROR]")
-                          ? "text-red-400"
-                          : log.startsWith("[WARN]")
-                            ? "text-yellow-400"
-                            : log.startsWith("[")
-                              ? "text-cyan-400"
-                              : "text-white/70"
-                      }`}
-                    >
-                      {log}
-                    </span>
-                  </div>
-                ))
-              )}
-              <div ref={logsEndRef} />
-            </div>
-          </div>
-        )}
+        {tab === "logs" && <MobileLogsPanel logs={executionLogs} logsEndRef={logsEndRef} />}
       </div>
     </section>
+  );
+}
+
+function MobileDatabasePanel({ schema }: { schema: any[] | null }) {
+  return (
+    <div className="h-full overflow-auto p-4 space-y-4">
+      {schema && schema.length > 0 ? (
+        <>
+          <div className="flex items-center gap-2 mb-4">
+            <Database className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Schema do Banco de Dados</span>
+          </div>
+          {schema.map((f) => (
+            <div
+              key={f.path}
+              className="rounded-xl border border-border bg-card/30 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-4 py-2 bg-card/50 border-b border-border/50">
+                <Database className="h-3.5 w-3.5 text-teal-400" />
+                <span className="text-xs font-mono text-muted-foreground">{f.path}</span>
+              </div>
+              <pre className="text-xs p-4 font-mono whitespace-pre-wrap text-foreground/80 max-h-80 overflow-auto">
+                {f.content}
+              </pre>
+            </div>
+          ))}
+        </>
+      ) : (
+        <div className="h-full flex flex-center text-center text-muted-foreground text-xs">
+          Nenhum esquema encontrado.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileLogsPanel({ logs, logsEndRef }: { logs: string[] | undefined; logsEndRef?: any }) {
+  return (
+    <div className="h-full overflow-auto bg-[#0d1117] font-mono p-4 space-y-1">
+      {logs?.map((log, i) => (
+        <div key={i} className="flex gap-3 text-[11px] text-white/70">
+          <span className="text-white/25 w-8 text-right">{String(i + 1).padStart(3, "0")}</span>
+          <span>{log}</span>
+        </div>
+      ))}
+      <div ref={logsEndRef} />
+    </div>
   );
 }
 

@@ -1,7 +1,6 @@
-// Histórico de conversas persistido em localStorage com sincronização do Firestore no backend.
 import { collection, doc, setDoc, getDocs, deleteDoc, query, where } from "firebase/firestore";
 import { db } from "./firebase-config";
-
+import { initProviderSync } from "./llm-providers";
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -237,6 +236,9 @@ export async function initSync(): Promise<void> {
 
       if (isFirestoreActive) {
         const userId = getUserId();
+
+        // Sincroniza também os provedores LLM (em background, sem bloquear o chat)
+        initProviderSync(userId).catch(() => {});
 
         // 1. Carrega dados remotos do Firestore
         const q = query(collection(db!, "conversations"), where("userId", "==", userId));

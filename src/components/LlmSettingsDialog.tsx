@@ -215,13 +215,13 @@ function ProviderForm({
 
   useEffect(() => {
     const s = state[providerId];
-    setApiKey(s?.apiKey === "ollama" ? "" : (s?.apiKey ?? ""));
+    setApiKey(s?.apiKey ?? "");
     setBaseUrl(s?.baseUrl ?? provider.defaultBaseUrl);
     setModels(s?.models ?? []);
   }, [providerId, state, provider.defaultBaseUrl]);
 
   async function handleTest() {
-    if (!apiKey.trim() && providerId !== "ollama") {
+    if (!apiKey.trim()) {
       toast.error("Informe a chave de API");
       return;
     }
@@ -230,7 +230,7 @@ function ProviderForm({
       return;
     }
     setLoading(true);
-    const effectiveKey = apiKey.trim() || (providerId === "ollama" ? "ollama" : "");
+    const effectiveKey = apiKey.trim();
     try {
       const list = await fetchModels(providerId, effectiveKey, baseUrl.trim());
       setModels(list);
@@ -288,9 +288,7 @@ function ProviderForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={`${providerId}-key`}>
-          {providerId === "ollama" ? "Chave de API (Opcional)" : "Chave de API"}
-        </Label>
+        <Label htmlFor={`${providerId}-key`}>Chave de API</Label>
         <div className="relative">
           <Input
             id={`${providerId}-key`}
@@ -300,15 +298,13 @@ function ProviderForm({
             placeholder={provider.keyPlaceholder}
             className="pr-10 font-mono text-xs"
           />
-          {providerId !== "ollama" && (
-            <button
-              type="button"
-              onClick={() => setShowKey((s) => !s)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowKey((s) => !s)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
         </div>
       </div>
 
@@ -347,11 +343,11 @@ function ProviderForm({
         <Button
           variant="outline"
           onClick={() => {
-            if (!apiKey.trim() && providerId !== "ollama") {
+            if (!apiKey.trim()) {
               toast.error("Informe a chave de API");
               return;
             }
-            const effectiveKey = apiKey.trim() || (providerId === "ollama" ? "ollama" : "");
+            const effectiveKey = apiKey.trim();
             const base = saved ?? { models: [], enabled: [] };
             const defaults = DEFAULT_MODELS[providerId] ?? [];
             const finalModels = base.models?.length ? base.models : defaults;
@@ -395,7 +391,7 @@ function ProviderForm({
               <button
                 className="text-[11px] text-primary hover:underline"
                 onClick={() => {
-                  const effectiveKey = apiKey.trim() || (providerId === "ollama" ? "ollama" : "");
+                  const effectiveKey = apiKey.trim();
                   const next: ProvidersState = {
                     ...state,
                     [providerId]: {
@@ -436,7 +432,7 @@ function ProviderForm({
                   key={m}
                   type="button"
                   onClick={() => {
-                    const effectiveKey = apiKey.trim() || (providerId === "ollama" ? "ollama" : "");
+                    const effectiveKey = apiKey.trim();
                     const base = saved ?? {
                       apiKey: effectiveKey,
                       baseUrl,
