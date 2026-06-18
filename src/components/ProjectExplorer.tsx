@@ -189,6 +189,21 @@ export function ProjectExplorer({
           return;
         }
 
+        if (project?.id === "workspace-local") {
+          try {
+            const res = await fetch("/api/workspace");
+            if (!res.ok) throw new Error("Status: " + res.status);
+            const data = await res.json();
+            const nodes = data.tree || [];
+            setTree(nodes);
+            setSourceLabel("Workspace Local (servidor)");
+            setLoading(false);
+            return;
+          } catch (e) {
+            console.warn("[ProjectExplorer] Failed to fetch server workspace:", e);
+          }
+        }
+
         // Fallback: projeto virtual (GitHub/upload)
         if (project) {
           setTree(buildTreeFromFiles(project.files));
@@ -241,6 +256,22 @@ export function ProjectExplorer({
       } catch {
         /* fallback abaixo */
       }
+    }
+
+    if (project?.id === "workspace-local") {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/workspace?path=${encodeURIComponent(node.path)}`);
+        if (!res.ok) throw new Error("Status: " + res.status);
+        const data = await res.json();
+        onSelectFile(node.path, data.content || "");
+      } catch (err) {
+        toast.error(`Erro ao carregar arquivo: ${node.name}`);
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+      return;
     }
 
     const virtualFile = project?.files.find((f) => f.path === node.path);

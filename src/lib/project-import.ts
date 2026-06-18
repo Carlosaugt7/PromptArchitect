@@ -490,6 +490,17 @@ export async function writeArtifactToProject(
       } catch (err) {
         console.error(`[OmniForge] Falha ao gravar no disco: ${filePath}`, err);
       }
+    } else if (project.id === "workspace-local") {
+      try {
+        await fetch("/api/workspace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: filePath, content: block.code }),
+        });
+        console.log(`[OmniForge] Salvo via API no workspace local: ${filePath}`);
+      } catch (err) {
+        console.error(`[OmniForge] Falha ao gravar via API: ${filePath}`, err);
+      }
     }
 
     // Atualiza na lista em memória

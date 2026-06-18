@@ -215,8 +215,53 @@ function OmniForge() {
 
   useEffect(() => {
     const p = loadProject();
-    setProject(p);
-    if (p) saveArtifact(projectToArtifact(p));
+    if (p) {
+      setProject(p);
+      saveArtifact(projectToArtifact(p));
+    } else {
+      // Tenta carregar o workspace local do servidor como projeto default
+      fetch("/api/workspace")
+        .then((res) => {
+          if (!res.ok) throw new Error("Não foi possível conectar ao workspace do servidor");
+          return res.json();
+        })
+        .then((data) => {
+          interface WorkspaceFileNode {
+            name: string;
+            path: string;
+            type: "file" | "directory";
+            size?: number;
+            children?: WorkspaceFileNode[];
+          }
+          const flattenWorkspaceTree = (
+            nodes: WorkspaceFileNode[],
+            result: Array<{ path: string; size: number }> = [],
+          ): Array<{ path: string; size: number }> => {
+            for (const node of nodes) {
+              if (node.type === "file") {
+                result.push({ path: node.path, size: node.size ?? 0 });
+              } else if (node.children) {
+                flattenWorkspaceTree(node.children, result);
+              }
+            }
+            return result;
+          };
+          const files = flattenWorkspaceTree(data.tree || []);
+          const localProj: ImportedProject = {
+            id: "workspace-local",
+            name: "Workspace Local",
+            source: "local",
+            files,
+            importedAt: Date.now(),
+          };
+          setProject(localProj);
+          saveProject(localProj);
+          saveArtifact(projectToArtifact(localProj));
+        })
+        .catch((err) => {
+          console.warn("Falha ao inicializar o workspace local:", err);
+        });
+    }
   }, []);
 
   // Callback quando uma pasta é aberta diretamente pelo Explorer
@@ -1671,22 +1716,42 @@ function WorkspacePanel({
 
   // Carrega conteúdo sob demanda para arquivos não carregados
   useEffect(() => {
-    if (!activeTab || !project || !dirHandle) return;
+    if (!activeTab || !project || (!dirHandle && project.id !== "workspace-local")) return;
 
     const file = project.files.find((f) => f.path === activeTab);
     if (file && file.content === undefined) {
-      readFileContent(dirHandle, activeTab)
-        .then((content: string) => {
-          const updatedFiles = project.files.map((f) =>
-            f.path === activeTab ? { ...f, content, size: content.length } : f,
-          );
-          const nextProj = { ...project, files: updatedFiles };
-          setProject(nextProj);
-          saveProject(nextProj);
-        })
-        .catch((err: any) => {
-          console.error(`Erro ao carregar conteúdo do disco para ${activeTab}:`, err);
-        });
+      if (dirHandle) {
+        readFileContent(dirHandle, activeTab)
+          .then((content: string) => {
+            const updatedFiles = project.files.map((f) =>
+              f.path === activeTab ? { ...f, content, size: content.length } : f,
+            );
+            const nextProj = { ...project, files: updatedFiles };
+            setProject(nextProj);
+            saveProject(nextProj);
+          })
+          .catch((err: any) => {
+            console.error(`Erro ao carregar conteúdo do disco para ${activeTab}:`, err);
+          });
+      } else if (project.id === "workspace-local") {
+        fetch(`/api/workspace?path=${encodeURIComponent(activeTab)}`)
+          .then((res) => {
+            if (!res.ok) throw new Error("Erro ao carregar via API");
+            return res.json();
+          })
+          .then((data) => {
+            const content = data.content || "";
+            const updatedFiles = project.files.map((f) =>
+              f.path === activeTab ? { ...f, content, size: content.length } : f,
+            );
+            const nextProj = { ...project, files: updatedFiles };
+            setProject(nextProj);
+            saveProject(nextProj);
+          })
+          .catch((err: any) => {
+            console.error(`Erro ao carregar conteúdo via API para ${activeTab}:`, err);
+          });
+      }
     }
   }, [activeTab, project?.id, dirHandle, setProject, project]);
 
@@ -1703,13 +1768,24 @@ function WorkspacePanel({
       setProject(nextProj);
       saveProject(nextProj);
 
-      // 2. Escrever no disco se dirHandle existir
+      // 2. Escrever no disco se dirHandle existir ou se for o workspace local do servidor
       if (dirHandle) {
         try {
           await writeLocalFile(dirHandle, path, value);
           console.log(`[OmniForge] Salvo localmente: ${path}`);
         } catch (err) {
           console.error(`[OmniForge] Falha ao gravar no disco: ${path}`, err);
+        }
+      } else if (project.id === "workspace-local") {
+        try {
+          await fetch("/api/workspace", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path, content: value }),
+          });
+          console.log(`[OmniForge] Salvo via API no workspace local: ${path}`);
+        } catch (err) {
+          console.error(`[OmniForge] Falha ao gravar via API: ${path}`, err);
         }
       }
 
