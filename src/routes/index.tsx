@@ -1616,7 +1616,7 @@ function WorkspacePanel({
   setTerminalOpen?: (open: boolean) => void;
   onOpenSettings?: () => void;
 }) {
-  const [tab, setTab] = useState<"preview" | "code" | "database" | "logs" | "terminal">("preview");
+  const [tab, setTab] = useState<"code" | "database" | "logs" | "terminal">("code");
   const [artifact, setArtifact] = useState<Artifact | null>(() => loadArtifact());
   const logsEndRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
@@ -2073,7 +2073,7 @@ function WorkspacePanel({
 
   useEffect(() => subscribeArtifact(setArtifact), []);
   useEffect(() => {
-    if (artifact) setTab(artifact.html || artifact.hasReact ? "preview" : "code");
+    if (artifact) setTab("code");
   }, [artifact?.updatedAt, artifact]);
 
   // Auto-scroll logs ao final quando novos logs chegam
@@ -2153,99 +2153,6 @@ function WorkspacePanel({
     window.open(url, "_blank");
   };
 
-  const renderPreviewContent = () => {
-    if (activeArtifact && hasPreview) {
-      return (
-        <div
-          className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
-            viewport === "mobile" ? "bg-neutral-900/60" : ""
-          }`}
-        >
-          <div
-            className={`transition-all duration-300 border-border bg-white overflow-hidden ${
-              viewport === "mobile"
-                ? "w-[390px] h-[720px] rounded-[36px] border-[12px] border-neutral-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative before:content-[''] before:absolute before:top-2 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-4 before:bg-neutral-900 before:rounded-full before:z-50"
-                : "w-full h-full border-0"
-            }`}
-          >
-            {activeArtifact.hasReact ? (
-              <FastReactPreview artifact={activeArtifact} />
-            ) : (
-              <iframe
-                key={activeArtifact.updatedAt}
-                title="Artefato gerado"
-                sandbox="allow-scripts"
-                srcDoc={activeArtifact.html}
-                className="w-full h-full border-0 bg-white"
-              />
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    // Fallback: se há um arquivo ativo no explorer, renderiza Monaco somente leitura (Smart Fallback)
-    const cleanedActiveTab = activeTab?.startsWith("diff:") ? activeTab.slice(5) : activeTab;
-    const activeFile = project?.files.find((f) => f.path === cleanedActiveTab);
-
-    if (activeFile) {
-      const language = getEditorLanguage(cleanedActiveTab);
-      return (
-        <div className="h-full flex flex-col min-w-0 overflow-hidden bg-background">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-card/25 shrink-0 text-xs text-muted-foreground select-none">
-            <span className="flex items-center gap-1.5 font-medium">
-              <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>Visualização estática (Sem Preview HTML/React): {activeFile.path}</span>
-            </span>
-            <span className="rounded bg-accent/85 px-2 py-0.5 font-semibold text-[10px] text-muted-foreground">
-              Somente leitura
-            </span>
-          </div>
-          <div className="flex-1 min-h-0 w-full relative">
-            <Editor
-              key={`preview-fallback:${cleanedActiveTab}`}
-              value={activeFile.content || ""}
-              language={language}
-              theme={theme === "dark" ? "vs-dark" : "light"}
-              options={{
-                readOnly: true,
-                minimap: { enabled: false },
-                fontSize: 12,
-                fontFamily: "var(--font-mono, Menlo, Monaco, 'Courier New', monospace)",
-                automaticLayout: true,
-                wordWrap: "on",
-                lineNumbers: "on",
-                scrollbar: {
-                  vertical: "visible",
-                  horizontal: "visible",
-                },
-              }}
-            />
-          </div>
-        </div>
-      );
-    }
-
-    // Caso padrão: tela de boas-vindas / vazio
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center max-w-md px-6">
-          <div className="relative mx-auto mb-6 w-fit">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
-            <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
-              <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
-            </div>
-          </div>
-          <h2 className="font-display text-2xl font-semibold mb-2">Seu preview aparecerá aqui</h2>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Descreva o app no chat de IA para que ele seja gerado e renderizado nesta área em tempo
-            real.
-          </p>
-        </div>
-      </div>
-    );
-  };
-
   return isDesktop ? (
     <section className="flex flex-col h-full overflow-hidden">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl shrink-0">
@@ -2268,18 +2175,21 @@ function WorkspacePanel({
             <DropdownMenuContent align="start" className="bg-card border-border">
               <DropdownMenuItem
                 onSelect={() => onOpenImport("saved")}
+                onClick={() => onOpenImport("saved")}
                 className="gap-2 text-xs cursor-pointer"
               >
                 <FolderOpen className="h-3.5 w-3.5 text-primary" /> Abrir Projeto
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => onOpenImport("new")}
+                onClick={() => onOpenImport("new")}
                 className="gap-2 text-xs cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5 text-primary" /> Novo Projeto
               </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={onClearProject}
+                onSelect={() => onClearProject()}
+                onClick={() => onClearProject()}
                 disabled={!project}
                 className="gap-2 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
               >
@@ -2291,14 +2201,15 @@ function WorkspacePanel({
 
         <div className="flex items-center gap-2">
           <TokenMeter />
-          <div className="flex items-center rounded-lg border border-border bg-card/50 p-0.5">
-            <ViewportBtn active={viewport === "desktop"} onClick={() => setViewport("desktop")}>
-              <Monitor className="h-4 w-4" />
-            </ViewportBtn>
-            <ViewportBtn active={viewport === "mobile"} onClick={() => setViewport("mobile")}>
-              <Smartphone className="h-4 w-4" />
-            </ViewportBtn>
-          </div>
+          {activeArtifact && (
+            <button
+              onClick={handleOpenExternal}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground cursor-pointer"
+              title="Abrir resultado do código em nova aba"
+            >
+              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" /> Abrir Preview
+            </button>
+          )}
           <button
             onClick={onOpenIntegrations}
             className="flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-accent transition-colors cursor-pointer"
@@ -2323,87 +2234,43 @@ function WorkspacePanel({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0">
-        <ResizablePanelGroup id="inner-workspace-group" direction="horizontal">
-          {/* Editor de Código (Esquerda) */}
-          <ResizablePanel
-            id="editor-code"
-            defaultSize="50"
-            minSize="25"
-            className="h-full overflow-hidden flex flex-col border-r border-border/30"
-          >
-            {terminalOpen ? (
-              <ResizablePanelGroup id="editor-terminal-vertical-group" direction="vertical">
-                <ResizablePanel id="editor-code-subpanel" defaultSize={70} minSize={30}>
-                  <div className="h-full w-full overflow-hidden flex flex-col">
-                    {renderCodeArea()}
+      <div className="flex-1 min-h-0 w-full overflow-hidden">
+        {terminalOpen ? (
+          <ResizablePanelGroup id="editor-terminal-vertical-group" direction="vertical">
+            <ResizablePanel id="editor-code-subpanel" defaultSize={70} minSize={30}>
+              <div className="h-full w-full overflow-hidden flex flex-col">{renderCodeArea()}</div>
+            </ResizablePanel>
+            <ResizableHandle
+              withHandle
+              className="bg-border/20 hover:bg-primary/40 transition-colors"
+            />
+            <ResizablePanel id="editor-terminal-subpanel" defaultSize={30} minSize={15}>
+              <div className="h-full w-full overflow-hidden border-t border-border bg-card/30 flex flex-col relative">
+                {/* Top Bar for Desktop Terminal Panel */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50 shrink-0 select-none">
+                  <div className="flex items-center gap-2">
+                    <Terminal className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Terminal CLI
+                    </span>
                   </div>
-                </ResizablePanel>
-                <ResizableHandle
-                  withHandle
-                  className="bg-border/20 hover:bg-primary/40 transition-colors"
-                />
-                <ResizablePanel id="editor-terminal-subpanel" defaultSize={30} minSize={15}>
-                  <div className="h-full w-full overflow-hidden border-t border-border bg-card/30 flex flex-col relative">
-                    {/* Top Bar for Desktop Terminal Panel */}
-                    <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50 shrink-0 select-none">
-                      <div className="flex items-center gap-2">
-                        <Terminal className="h-3.5 w-3.5 text-primary" />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Terminal CLI
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => setTerminalOpen?.(false)}
-                        className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent transition cursor-pointer"
-                        title="Fechar Terminal"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div className="flex-1 min-h-0">
-                      <TerminalView project={project} onOpenSettings={onOpenSettings} />
-                    </div>
-                  </div>
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            ) : (
-              <div className="flex-1 min-h-0 w-full overflow-hidden">{renderCodeArea()}</div>
-            )}
-          </ResizablePanel>
-
-          <ResizableHandle
-            withHandle
-            className="bg-border/20 hover:bg-primary/40 transition-colors"
-          />
-
-          {/* Live Preview (Direita) */}
-          <ResizablePanel
-            id="editor-preview"
-            defaultSize="50"
-            minSize="25"
-            className="h-full overflow-hidden bg-background/10 flex flex-col"
-          >
-            <div className="flex items-center gap-3 border-b border-border bg-background/40 px-4 py-2 shrink-0 select-none">
-              <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-              <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-1 text-xs">
-                <span className="text-muted-foreground font-mono truncate">
-                  {activeArtifact
-                    ? `Preview: ${activeArtifact.title || (activeArtifact.lang === "tree" ? "Árvore de Arquivos" : "Código Gerado")} (${activeArtifact.lang})`
-                    : "Aguardando geração do projeto..."}
-                </span>
+                  <button
+                    onClick={() => setTerminalOpen?.(false)}
+                    className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent transition cursor-pointer"
+                    title="Fechar Terminal"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <TerminalView project={project} onOpenSettings={onOpenSettings} />
+                </div>
               </div>
-              <button
-                onClick={handleOpenExternal}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground cursor-pointer"
-              >
-                <ExternalLink className="h-3.5 w-3.5" /> Abrir
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-auto">{renderPreviewContent()}</div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          <div className="flex-1 min-h-0 w-full h-full overflow-hidden">{renderCodeArea()}</div>
+        )}
       </div>
     </section>
   ) : (
@@ -2428,18 +2295,21 @@ function WorkspacePanel({
             <DropdownMenuContent align="start" className="bg-card border-border">
               <DropdownMenuItem
                 onSelect={() => onOpenImport("saved")}
+                onClick={() => onOpenImport("saved")}
                 className="gap-2 text-xs cursor-pointer"
               >
                 <FolderOpen className="h-3.5 w-3.5 text-primary" /> Abrir Projeto
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => onOpenImport("new")}
+                onClick={() => onOpenImport("new")}
                 className="gap-2 text-xs cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5 text-primary" /> Novo Projeto
               </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={onClearProject}
+                onSelect={() => onClearProject()}
+                onClick={() => onClearProject()}
                 disabled={!project}
                 className="gap-2 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
               >
@@ -2451,19 +2321,19 @@ function WorkspacePanel({
 
         <div className="flex items-center gap-2">
           <TokenMeter />
-          <div className="flex items-center rounded-lg border border-border bg-card/50 p-0.5">
-            <ViewportBtn active={viewport === "desktop"} onClick={() => setViewport("desktop")}>
-              <Monitor className="h-4 w-4" />
-            </ViewportBtn>
-            <ViewportBtn active={viewport === "mobile"} onClick={() => setViewport("mobile")}>
-              <Smartphone className="h-4 w-4" />
-            </ViewportBtn>
-          </div>
+          {activeArtifact && (
+            <button
+              onClick={handleOpenExternal}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> Abrir
+            </button>
+          )}
           <button
             onClick={onOpenIntegrations}
             className="flex items-center gap-1.5 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-accent transition-colors"
           >
-            <Share2 className="h-3.5 w-3.5 text-muted-foreground" /> Integrações com
+            <Share2 className="h-3.5 w-3.5 text-muted-foreground" /> Integrações
           </button>
           <button
             onClick={onOpenPublish}
@@ -2485,13 +2355,6 @@ function WorkspacePanel({
 
       <div className="flex items-center justify-between border-b border-border bg-card/30 px-3">
         <div className="flex items-center">
-          <WorkTab
-            active={tab === "preview"}
-            onClick={() => setTab("preview")}
-            icon={<Eye className="h-3.5 w-3.5" />}
-          >
-            Preview
-          </WorkTab>
           <WorkTab
             active={tab === "code"}
             onClick={() => setTab("code")}
@@ -2532,31 +2395,7 @@ function WorkspacePanel({
         )}
       </div>
 
-      <div className="flex items-center gap-3 border-b border-border bg-background/40 px-4 py-2">
-        <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
-        <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-1.5 text-xs">
-          <Globe className="h-3 w-3 text-muted-foreground" />
-          <span className="text-muted-foreground font-mono">
-            {artifact
-              ? `${artifact.blocks.length} bloco${artifact.blocks.length > 1 ? "s" : ""} · ${artifact.lang}`
-              : "aguardando projeto…"}
-          </span>
-        </div>
-        <IconBtn onClick={() => setArtifact(loadArtifact())}>
-          <RefreshCw className="h-3.5 w-3.5" />
-        </IconBtn>
-        <button
-          onClick={handleOpenExternal}
-          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent transition-colors text-muted-foreground"
-        >
-          <ExternalLink className="h-3.5 w-3.5" /> Abrir
-        </button>
-      </div>
-
       <div className="flex-1 overflow-auto bg-background/20">
-        {/* ABA PREVIEW */}
-        {tab === "preview" && renderPreviewContent()}
-
         {/* ABA CÓDIGO */}
         {tab === "code" && renderCodeArea()}
 
