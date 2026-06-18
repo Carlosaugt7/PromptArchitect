@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
 import { Route as ApiLlmModelsRouteImport } from './routes/api/llm-models'
 import { Route as ApiLlmChatRouteImport } from './routes/api/llm-chat'
+import { Route as ApiCliRouteImport } from './routes/api/cli'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,15 +35,22 @@ const ApiLlmChatRoute = ApiLlmChatRouteImport.update({
   path: '/api/llm-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCliRoute = ApiCliRouteImport.update({
+  id: '/api/cli',
+  path: '/api/cli',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/cli': typeof ApiCliRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/cli': typeof ApiCliRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
@@ -50,20 +58,33 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/cli': typeof ApiCliRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/llm-chat' | '/api/llm-models' | '/api/workspace'
+  fullPaths:
+    | '/'
+    | '/api/cli'
+    | '/api/llm-chat'
+    | '/api/llm-models'
+    | '/api/workspace'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/llm-chat' | '/api/llm-models' | '/api/workspace'
-  id: '__root__' | '/' | '/api/llm-chat' | '/api/llm-models' | '/api/workspace'
+  to: '/' | '/api/cli' | '/api/llm-chat' | '/api/llm-models' | '/api/workspace'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/cli'
+    | '/api/llm-chat'
+    | '/api/llm-models'
+    | '/api/workspace'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiCliRoute: typeof ApiCliRoute
   ApiLlmChatRoute: typeof ApiLlmChatRoute
   ApiLlmModelsRoute: typeof ApiLlmModelsRoute
   ApiWorkspaceRoute: typeof ApiWorkspaceRoute
@@ -99,11 +120,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLlmChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cli': {
+      id: '/api/cli'
+      path: '/api/cli'
+      fullPath: '/api/cli'
+      preLoaderRoute: typeof ApiCliRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiCliRoute: ApiCliRoute,
   ApiLlmChatRoute: ApiLlmChatRoute,
   ApiLlmModelsRoute: ApiLlmModelsRoute,
   ApiWorkspaceRoute: ApiWorkspaceRoute,

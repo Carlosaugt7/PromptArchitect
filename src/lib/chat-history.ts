@@ -1,6 +1,7 @@
 import { collection, doc, setDoc, getDocs, deleteDoc, query, where } from "firebase/firestore";
 import { db } from "./firebase-config";
 import { initProviderSync } from "./llm-providers";
+import { safeUUID } from "./utils";
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -26,6 +27,10 @@ export interface Conversation {
 const EVENT = "omniforge:chat-changed";
 let isFirestoreActive = false;
 let syncPromise: Promise<void> | null = null;
+
+function sanitizeForFirestore<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj));
+}
 
 /** Obtém o userId atual do localStorage ou gera um novo */
 export function getUserId(): string {
@@ -94,11 +99,14 @@ export function saveConversation(c: Conversation) {
   persist(next);
 
   if (isFirestoreActive && db) {
-    setDoc(doc(db, "conversations", updatedConvo.id), {
-      ...updatedConvo,
-      userId: getUserId(),
-      updatedAt: Date.now(),
-    }).catch((e) => console.error("Erro ao salvar no Firestore (background):", e));
+    setDoc(
+      doc(db, "conversations", updatedConvo.id),
+      sanitizeForFirestore({
+        ...updatedConvo,
+        userId: getUserId(),
+        updatedAt: Date.now(),
+      }),
+    ).catch((e) => console.error("Erro ao salvar no Firestore (background):", e));
   }
 }
 
@@ -120,11 +128,14 @@ export function renameConversation(id: string, title: string) {
   persist(list);
 
   if (updated && isFirestoreActive && db) {
-    setDoc(doc(db, "conversations", updated.id), {
-      ...updated,
-      userId: getUserId(),
-      updatedAt: Date.now(),
-    }).catch(() => {});
+    setDoc(
+      doc(db, "conversations", updated.id),
+      sanitizeForFirestore({
+        ...updated,
+        userId: getUserId(),
+        updatedAt: Date.now(),
+      }),
+    ).catch(() => {});
   }
 }
 
@@ -136,11 +147,14 @@ export function togglePinned(id: string) {
   persist(sortConversations(list));
 
   if (updated && isFirestoreActive && db) {
-    setDoc(doc(db, "conversations", updated.id), {
-      ...updated,
-      userId: getUserId(),
-      updatedAt: Date.now(),
-    }).catch(() => {});
+    setDoc(
+      doc(db, "conversations", updated.id),
+      sanitizeForFirestore({
+        ...updated,
+        userId: getUserId(),
+        updatedAt: Date.now(),
+      }),
+    ).catch(() => {});
   }
 }
 
@@ -149,16 +163,19 @@ export function importConversation(c: Conversation) {
   persist(sortConversations(list).slice(0, 100));
 
   if (isFirestoreActive && db) {
-    setDoc(doc(db, "conversations", c.id), {
-      ...c,
-      userId: getUserId(),
-      updatedAt: Date.now(),
-    }).catch(() => {});
+    setDoc(
+      doc(db, "conversations", c.id),
+      sanitizeForFirestore({
+        ...c,
+        userId: getUserId(),
+        updatedAt: Date.now(),
+      }),
+    ).catch(() => {});
   }
 }
 
 export function newConversation(): Conversation {
-  return { id: crypto.randomUUID(), title: "Nova conversa", messages: [], updatedAt: Date.now() };
+  return { id: safeUUID(), title: "Nova conversa", messages: [], updatedAt: Date.now() };
 }
 
 export function titleFrom(text: string): string {
@@ -183,7 +200,7 @@ export function parseImportedConversation(raw: string, filename: string): Conver
     const data = JSON.parse(trimmed) as Partial<Conversation>;
     if (!Array.isArray(data.messages)) throw new Error("JSON inválido: faltando 'messages'");
     return {
-      id: data.id || crypto.randomUUID(),
+      id: data.id || safeUUID(),
       title: data.title || filename.replace(/\.\w+$/, ""),
       messages: data.messages as ChatMessage[],
       pinned: data.pinned,
@@ -203,7 +220,7 @@ export function parseImportedConversation(raw: string, filename: string): Conver
   const flush = () => {
     if (role && buf.length) {
       const content = buf.join("\n").trim();
-      if (content) messages.push({ id: crypto.randomUUID(), role, content, createdAt: Date.now() });
+      if (content) messages.push({ id: safeUUID(), role, content, createdAt: Date.now() });
     }
     buf = [];
   };
@@ -218,7 +235,7 @@ export function parseImportedConversation(raw: string, filename: string): Conver
   }
   flush();
   if (messages.length === 0) throw new Error("Markdown sem mensagens reconhecidas");
-  return { id: crypto.randomUUID(), title, messages, updatedAt: Date.now() };
+  return { id: safeUUID(), title, messages, updatedAt: Date.now() };
 }
 
 /**
@@ -271,11 +288,14 @@ export async function initSync(): Promise<void> {
           if (!remoteItem || (c.updatedAt ?? 0) > (remoteItem.updatedAt ?? 0)) {
             mergedMap.set(c.id, c);
             // Sincroniza alteração mais nova local para o servidor
-            setDoc(doc(db!, "conversations", c.id), {
-              ...c,
-              userId,
-              updatedAt: Date.now(),
-            }).catch(() => {});
+            setDoc(
+              doc(db!, "conversations", c.id),
+              sanitizeForFirestore({
+                ...c,
+                userId,
+                updatedAt: Date.now(),
+              }),
+            ).catch(() => {});
           }
         }
 

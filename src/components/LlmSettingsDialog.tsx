@@ -10,6 +10,7 @@ import {
   Trash2,
   UserCog,
   ShieldCheck,
+  Terminal,
 } from "lucide-react";
 import {
   Dialog,
@@ -66,7 +67,7 @@ export function LlmSettingsDialog({ open, onOpenChange, onSaved }: Props) {
         </DialogHeader>
 
         <Tabs defaultValue="providers" className="mt-2">
-          <TabsList className="grid grid-cols-4 bg-muted/40">
+          <TabsList className="grid grid-cols-5 bg-muted/40">
             <TabsTrigger value="providers">
               <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Provedores
             </TabsTrigger>
@@ -75,6 +76,9 @@ export function LlmSettingsDialog({ open, onOpenChange, onSaved }: Props) {
             </TabsTrigger>
             <TabsTrigger value="rules">
               <ShieldCheck className="h-3.5 w-3.5 mr-1.5" /> Rules
+            </TabsTrigger>
+            <TabsTrigger value="cli">
+              <Terminal className="h-3.5 w-3.5 mr-1.5" /> CLIs
             </TabsTrigger>
             <TabsTrigger value="user">
               <UserCog className="h-3.5 w-3.5 mr-1.5" /> Sessão
@@ -115,6 +119,9 @@ export function LlmSettingsDialog({ open, onOpenChange, onSaved }: Props) {
           </TabsContent>
           <TabsContent value="rules" className="mt-4">
             <DirectivesForm field="rules" open={open} />
+          </TabsContent>
+          <TabsContent value="cli" className="mt-4">
+            <CliForm />
           </TabsContent>
           <TabsContent value="user" className="mt-4">
             <UserForm />
@@ -511,6 +518,249 @@ function UserForm() {
           className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow"
         >
           <Save className="h-4 w-4 mr-1.5" /> Atualizar Sessão
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CliForm() {
+  const [aiderCmd, setAiderCmd] = useState(
+    () => localStorage.getItem("omniforge.cli.aider.command") ?? "aider",
+  );
+  const [aiderKey, setAiderKey] = useState(
+    () => localStorage.getItem("omniforge.cli.aider.key") ?? "",
+  );
+
+  const [geminiCmd, setGeminiCmd] = useState(
+    () => localStorage.getItem("omniforge.cli.gemini.command") ?? "gemini-cli",
+  );
+  const [geminiKey, setGeminiKey] = useState(
+    () => localStorage.getItem("omniforge.cli.gemini.key") ?? "",
+  );
+
+  const [codexCmd, setCodexCmd] = useState(
+    () => localStorage.getItem("omniforge.cli.codex.command") ?? "codex-cli",
+  );
+  const [codexKey, setCodexKey] = useState(
+    () => localStorage.getItem("omniforge.cli.codex.key") ?? "",
+  );
+
+  const [opencodeCmd, setOpencodeCmd] = useState(
+    () => localStorage.getItem("omniforge.cli.opencode.command") ?? "opencode",
+  );
+  const [opencodeKey, setOpencodeKey] = useState(
+    () => localStorage.getItem("omniforge.cli.opencode.key") ?? "",
+  );
+
+  const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
+
+  function handleSave() {
+    localStorage.setItem("omniforge.cli.aider.command", aiderCmd.trim());
+    localStorage.setItem("omniforge.cli.aider.key", aiderKey.trim());
+
+    localStorage.setItem("omniforge.cli.gemini.command", geminiCmd.trim());
+    localStorage.setItem("omniforge.cli.gemini.key", geminiKey.trim());
+
+    localStorage.setItem("omniforge.cli.codex.command", codexCmd.trim());
+    localStorage.setItem("omniforge.cli.codex.key", codexKey.trim());
+
+    localStorage.setItem("omniforge.cli.opencode.command", opencodeCmd.trim());
+    localStorage.setItem("omniforge.cli.opencode.key", opencodeKey.trim());
+
+    toast.success("Configurações das CLIs salvas!");
+  }
+
+  const toggleShowKey = (tool: string) => {
+    setShowKeys((prev) => ({ ...prev, [tool]: !prev[tool] }));
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="font-semibold text-sm font-display">Integração com CLIs de Código</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Configure os caminhos dos comandos e as variáveis de ambiente (como chaves de API)
+          dedicadas para cada ferramenta executada no terminal.
+        </p>
+      </div>
+
+      <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1 -mr-1">
+        {/* AIDER */}
+        <div className="border border-border bg-background/30 p-3 rounded-xl space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-primary" />
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Aider AI
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Comando de Execução</Label>
+              <Input
+                value={aiderCmd}
+                onChange={(e) => setAiderCmd(e.target.value)}
+                placeholder="aider"
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">OPENAI_API_KEY / ANTHROPIC_API_KEY dedicada</Label>
+              <div className="relative">
+                <Input
+                  type={showKeys["aider"] ? "text" : "password"}
+                  value={aiderKey}
+                  onChange={(e) => setAiderKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="font-mono text-xs pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleShowKey("aider")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showKeys["aider"] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* GEMINI CLI */}
+        <div className="border border-border bg-background/30 p-3 rounded-xl space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-blue-500" />
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Gemini CLI
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Comando de Execução</Label>
+              <Input
+                value={geminiCmd}
+                onChange={(e) => setGeminiCmd(e.target.value)}
+                placeholder="gemini-cli"
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">GEMINI_API_KEY dedicada</Label>
+              <div className="relative">
+                <Input
+                  type={showKeys["gemini"] ? "text" : "password"}
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="font-mono text-xs pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleShowKey("gemini")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showKeys["gemini"] ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CODEX CLI */}
+        <div className="border border-border bg-background/30 p-3 rounded-xl space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-500" />
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Codex CLI
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Comando de Execução</Label>
+              <Input
+                value={codexCmd}
+                onChange={(e) => setCodexCmd(e.target.value)}
+                placeholder="codex-cli"
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">OPENAI_API_KEY dedicada</Label>
+              <div className="relative">
+                <Input
+                  type={showKeys["codex"] ? "text" : "password"}
+                  value={codexKey}
+                  onChange={(e) => setCodexKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="font-mono text-xs pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleShowKey("codex")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showKeys["codex"] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* OPEN CODE */}
+        <div className="border border-border bg-background/30 p-3 rounded-xl space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-amber-500" />
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Open Code
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Comando de Execução</Label>
+              <Input
+                value={opencodeCmd}
+                onChange={(e) => setOpencodeCmd(e.target.value)}
+                placeholder="opencode"
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">API_KEY dedicada (se houver)</Label>
+              <div className="relative">
+                <Input
+                  type={showKeys["opencode"] ? "text" : "password"}
+                  value={opencodeKey}
+                  onChange={(e) => setOpencodeKey(e.target.value)}
+                  placeholder="Chave/token..."
+                  className="font-mono text-xs pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleShowKey("opencode")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showKeys["opencode"] ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-2 border-t border-border">
+        <Button
+          onClick={handleSave}
+          className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground glow"
+        >
+          <Save className="h-4 w-4 mr-1.5" /> Salvar Configurações
         </Button>
       </div>
     </div>

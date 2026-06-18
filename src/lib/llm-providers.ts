@@ -122,10 +122,15 @@ export function saveProviders(state: ProvidersState) {
     if (db) {
       const userId = localStorage.getItem("omniforge.userId");
       if (userId) {
-        setDoc(doc(db, "users", userId, "settings", "llm-providers"), {
-          providers: state,
-          updatedAt: Date.now(),
-        }).catch((e) => console.error("Erro ao sincronizar provedores:", e));
+        setDoc(
+          doc(db, "users", userId, "settings", "llm-providers"),
+          JSON.parse(
+            JSON.stringify({
+              providers: state,
+              updatedAt: Date.now(),
+            }),
+          ),
+        ).catch((e) => console.error("Erro ao sincronizar provedores:", e));
       }
     }
   }
@@ -164,19 +169,29 @@ export async function initProviderSync(userId: string): Promise<void> {
         window.dispatchEvent(new Event("omniforge.llm.providers-changed"));
       } else if (hasLocalData && localMostRecent > remoteMostRecent) {
         // Se local for mais recente, faz push pro servidor
-        setDoc(doc(db, "users", userId, "settings", "llm-providers"), {
-          providers: localProviders,
-          updatedAt: localMostRecent,
-        }).catch(() => {});
+        setDoc(
+          doc(db, "users", userId, "settings", "llm-providers"),
+          JSON.parse(
+            JSON.stringify({
+              providers: localProviders,
+              updatedAt: localMostRecent,
+            }),
+          ),
+        ).catch(() => {});
       }
     } else {
       // Se não existe remoto, mas existe local, faz o push inicial
       const localProviders = loadProviders();
       if (Object.keys(localProviders).length > 0) {
-        setDoc(doc(db, "users", userId, "settings", "llm-providers"), {
-          providers: localProviders,
-          updatedAt: Date.now(),
-        }).catch(() => {});
+        setDoc(
+          doc(db, "users", userId, "settings", "llm-providers"),
+          JSON.parse(
+            JSON.stringify({
+              providers: localProviders,
+              updatedAt: Date.now(),
+            }),
+          ),
+        ).catch(() => {});
       }
     }
   } catch (e) {

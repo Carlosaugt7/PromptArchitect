@@ -1,5 +1,6 @@
 // Gerenciamento de projetos locais via File System Access API.
 // Usa showDirectoryPicker() para abrir pastas reais e IndexedDB para persistir handles.
+import { safeUUID } from "./utils";
 
 export interface ImportedFile {
   path: string;
@@ -213,7 +214,7 @@ export async function openLocalDirectory(): Promise<{
   const files = flattenTree(tree);
 
   const project: ImportedProject = {
-    id: crypto.randomUUID(),
+    id: safeUUID(),
     name: handle.name,
     source: "local",
     files,
@@ -259,7 +260,7 @@ export async function createLocalProjectOnDisk(name: string): Promise<{
   }
 
   const project: ImportedProject = {
-    id: crypto.randomUUID(),
+    id: safeUUID(),
     name: handle.name, // Usar o nome da pasta escolhida pelo usuário
     source: "local",
     files,
@@ -297,7 +298,7 @@ export async function importLocalFolder(fileList: FileList): Promise<ImportedPro
   }
   const rootName = files[0]?.path.split("/")[0] ?? "projeto-local";
   const project: ImportedProject = {
-    id: crypto.randomUUID(),
+    id: safeUUID(),
     name: rootName,
     source: "local",
     files,
@@ -387,7 +388,7 @@ export async function importFromGithub(
   }
 
   const project: ImportedProject = {
-    id: crypto.randomUUID(),
+    id: safeUUID(),
     name: `${owner}/${repo}`,
     source: "github",
     url,

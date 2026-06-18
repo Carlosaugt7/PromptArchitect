@@ -2,8 +2,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Sparkles } from "lucide-react";
 import "highlight.js/styles/github-dark.css";
+import { parseFilePathFromBlock } from "@/lib/project-import";
 
 export function Markdown({ children }: { children: string }) {
   return (
@@ -46,22 +47,74 @@ export function Markdown({ children }: { children: string }) {
 
 function CodeBlock({ children }: { children: React.ReactNode }) {
   const [copied, setCopied] = useState(false);
+  const [applied, setApplied] = useState(false);
+
+  // Extract language from code component
+  let lang = "";
+  const fileContent = extractText(children);
+
+  if (children && typeof children === "object" && "props" in children) {
+    const childProps = (children as any).props || {};
+    const className = childProps.className || "";
+    const m = className.match(/language-(\w+)/);
+    if (m) {
+      lang = m[1];
+    }
+  }
+
+  const parsedPath = parseFilePathFromBlock(lang, fileContent);
+
   function copy() {
-    const text = extractText(children);
-    navigator.clipboard.writeText(text).then(() => {
+    navigator.clipboard.writeText(fileContent).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
   }
+
+  function applyCode() {
+    if (!parsedPath) return;
+    window.dispatchEvent(
+      new CustomEvent("omniforge:fast-apply", {
+        detail: {
+          path: parsedPath,
+          code: fileContent,
+        },
+      }),
+    );
+    setApplied(true);
+    setTimeout(() => setApplied(false), 2000);
+  }
+
   return (
     <div className="relative my-2 group">
-      <button
-        onClick={copy}
-        className="absolute top-2 right-2 z-10 grid h-7 w-7 place-items-center rounded-md bg-zinc-800/80 text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-zinc-700"
-        title="Copiar"
-      >
-        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-      </button>
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        {parsedPath && (
+          <button
+            onClick={applyCode}
+            className="flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 text-[10px] font-semibold transition cursor-pointer"
+            title={`Aplicar alterações em ${parsedPath}`}
+          >
+            {applied ? (
+              <>
+                <Check className="h-3 w-3" />
+                <span>Aplicado!</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3 w-3 animate-pulse" />
+                <span>Aplicar em {parsedPath.split("/").pop()}</span>
+              </>
+            )}
+          </button>
+        )}
+        <button
+          onClick={copy}
+          className="grid h-7 w-7 place-items-center rounded-md bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 transition cursor-pointer"
+          title="Copiar Código"
+        >
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+        </button>
+      </div>
       <pre className="overflow-x-auto p-3 text-xs">{children}</pre>
     </div>
   );

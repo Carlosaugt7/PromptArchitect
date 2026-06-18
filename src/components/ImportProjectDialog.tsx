@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { safeUUID } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -198,7 +199,7 @@ export function ImportProjectDialog({
       }
     } else {
       const project: ImportedProject = {
-        id: crypto.randomUUID(),
+        id: safeUUID(),
         name,
         source: "local",
         files: [

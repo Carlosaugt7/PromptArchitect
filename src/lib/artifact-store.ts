@@ -76,7 +76,19 @@ export function extractArtifact(markdown: string): Artifact | null {
 
   const hasReact = blocks.some((b) => /^(tsx|jsx|ts|react)$/i.test(b.lang));
 
+  // Extrai o título baseado em possíveis comentários de arquivo no código
+  let title = "Código Gerado";
+  const lines = htmlBlock.code.split("\n");
+  const firstLine = (lines[0] || "").trim();
+  const match = firstLine.match(
+    /^(?:\/\/\/|\/\/|\/\*|<!--|#)\s*([a-zA-Z0-9_./-]+\.[a-zA-Z0-9]+)\s*(?:\*\/|-->)?/,
+  );
+  if (match) {
+    title = match[1].replace(/^\//, "").split("/").pop() || match[1];
+  }
+
   return {
+    title,
     lang: htmlBlock.lang || "text",
     code: htmlBlock.code,
     html,
@@ -97,6 +109,7 @@ export function projectToArtifact(p: {
     p.files.find((f) => /\.html?$/i.test(f.path) && f.content);
   if (idx?.content) {
     return {
+      title: idx.path.split("/").pop() || idx.path,
       lang: "html",
       code: idx.content,
       html: idx.content,
@@ -114,6 +127,7 @@ export function projectToArtifact(p: {
     .join("");
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${p.name}</title><style>body{margin:0;font-family:system-ui;background:#0a0a0f;color:#eee;padding:24px}h1{font-size:18px}code{color:#9ad}ul{line-height:1.6;padding-left:18px}.note{opacity:.6;font-size:13px;margin:8px 0 18px}</style></head><body><h1>📦 ${p.name}</h1><p class="note">Projeto importado — ${p.files.length} arquivo(s). Sem index.html renderizável; exibindo árvore.</p><ul>${tree}</ul></body></html>`;
   return {
+    title: p.name,
     lang: "tree",
     code: p.files.map((f) => f.path).join("\n"),
     html,

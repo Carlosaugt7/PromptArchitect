@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Editor, { DiffEditor } from "@monaco-editor/react";
 import {
   Sparkles,
+  AlertTriangle,
   Plus,
   Globe,
   GripVertical,
@@ -23,6 +24,7 @@ import {
   Database,
   ScrollText,
   Eye,
+  EyeOff,
   X,
   Crown,
   Paperclip,
@@ -47,6 +49,8 @@ import {
   PanelRight,
   FolderOpen,
   LogOut,
+  Terminal,
+  Play,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -112,6 +116,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { safeUUID } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -157,6 +162,42 @@ function OmniForge() {
     "chat" | "explorer" | "database" | "logs" | null
   >("chat");
   const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+  const [terminalOpen, setTerminalOpen] = useState(false);
+  // Chave incremental que força remontagem do WorkspacePanel ao trocar/fechar projeto
+  const [projectKey, setProjectKey] = useState(0);
+
+  const handleClearProject = useCallback(() => {
+    clearProject();
+    setProject(null);
+    setDirHandle(null);
+    setOpenTabs([]);
+    setActiveTab(null);
+    setPendingDiffs([]);
+    setExecutionLogs([]);
+    saveArtifact(null);
+    // Limpa a chave de projeto do projectKey para forçar remontagem do WorkspacePanel
+    setProjectKey((k) => k + 1);
+    toast.success("Projeto fechado com sucesso.");
+  }, []);
+
+  const handleImportedProject = useCallback((p: ImportedProject | null) => {
+    setProject(p);
+    setProjectKey((k) => k + 1);
+    if (!p) {
+      setDirHandle(null);
+      setOpenTabs([]);
+      setActiveTab(null);
+      setPendingDiffs([]);
+      setExecutionLogs([]);
+      saveArtifact(null);
+    } else {
+      setDirHandle(null);
+      setOpenTabs([]);
+      setActiveTab(null);
+      setPendingDiffs([]);
+      saveArtifact(projectToArtifact(p));
+    }
+  }, []);
 
   useEffect(() => {
     setOpenTabs([]);
@@ -185,6 +226,9 @@ function OmniForge() {
   ) => {
     setProject(newProject);
     setDirHandle(handle);
+    setOpenTabs([]);
+    setActiveTab(null);
+    setPendingDiffs([]);
     saveArtifact(projectToArtifact(newProject));
   };
 
@@ -257,6 +301,12 @@ function OmniForge() {
                 onClick={() => setActiveSidebar(activeSidebar === "logs" ? null : "logs")}
                 icon={<ScrollText className="h-5 w-5" />}
                 title="Execution Logs"
+              />
+              <ActivityBarButton
+                active={terminalOpen}
+                onClick={() => setTerminalOpen(!terminalOpen)}
+                icon={<Terminal className="h-5 w-5" />}
+                title="Terminal"
               />
             </div>
 
@@ -347,18 +397,24 @@ function OmniForge() {
                 />
 
                 {/* Área de Trabalho Principal (Workspace) */}
-                <ResizablePanel id="workspace-main" defaultSize="78" minSize="55" className="h-full overflow-hidden">
+                <ResizablePanel
+                  id="workspace-main"
+                  defaultSize="78"
+                  minSize="55"
+                  className="h-full overflow-hidden"
+                >
                   <WorkspacePanel
+                    key={projectKey}
                     project={project}
                     onOpenImport={handleOpenImport}
-                    onClearProject={() => {
-                      clearProject();
-                      setProject(null);
-                    }}
+                    onClearProject={handleClearProject}
                     viewport={viewport}
                     setViewport={setViewport}
+                    terminalOpen={terminalOpen}
+                    setTerminalOpen={setTerminalOpen}
                     onOpenIntegrations={() => setIntegrationsOpen(true)}
                     onOpenPublish={() => setPublishOpen(true)}
+                    onOpenSettings={() => setSettingsOpen(true)}
                     sidebarRightOpen={activeSidebar === "explorer"}
                     setSidebarRightOpen={(open) =>
                       setActiveSidebar(
@@ -381,16 +437,17 @@ function OmniForge() {
               </ResizablePanelGroup>
             ) : (
               <WorkspacePanel
+                key={projectKey}
                 project={project}
                 onOpenImport={handleOpenImport}
-                onClearProject={() => {
-                  clearProject();
-                  setProject(null);
-                }}
+                onClearProject={handleClearProject}
                 viewport={viewport}
                 setViewport={setViewport}
+                terminalOpen={terminalOpen}
+                setTerminalOpen={setTerminalOpen}
                 onOpenIntegrations={() => setIntegrationsOpen(true)}
                 onOpenPublish={() => setPublishOpen(true)}
+                onOpenSettings={() => setSettingsOpen(true)}
                 sidebarRightOpen={false}
                 setSidebarRightOpen={(open) => {
                   if (open) setActiveSidebar("explorer");
@@ -431,16 +488,17 @@ function OmniForge() {
             className={`${mobileView === "work" ? "flex flex-col" : "hidden"} w-full min-w-0 h-full overflow-hidden`}
           >
             <WorkspacePanel
+              key={projectKey}
               project={project}
               onOpenImport={handleOpenImport}
-              onClearProject={() => {
-                clearProject();
-                setProject(null);
-              }}
+              onClearProject={handleClearProject}
               viewport={viewport}
               setViewport={setViewport}
+              terminalOpen={terminalOpen}
+              setTerminalOpen={setTerminalOpen}
               onOpenIntegrations={() => setIntegrationsOpen(true)}
               onOpenPublish={() => setPublishOpen(true)}
+              onOpenSettings={() => setSettingsOpen(true)}
               sidebarRightOpen={activeSidebar === "explorer"}
               setSidebarRightOpen={(open) =>
                 setActiveSidebar(
@@ -484,7 +542,7 @@ function OmniForge() {
       <ImportProjectDialog
         open={importOpen}
         onOpenChange={setImportOpen}
-        onImported={setProject}
+        onImported={handleImportedProject}
         onDirectoryHandle={setDirHandle}
         defaultTab={importTab}
       />
@@ -577,6 +635,7 @@ function ChatPanel({
   const [history, setHistory] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
   const [streaming, setStreaming] = useState("");
+  const [currentPhase, setCurrentPhase] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -595,6 +654,33 @@ function ChatPanel({
   useEffect(() => {
     setAgents(loadAgentsState());
   }, []);
+  useEffect(() => {
+    const handleFastApply = (e: Event) => {
+      const { path, code } = (e as CustomEvent).detail;
+      if (!project) {
+        toast.error("Nenhum projeto ativo para aplicar as alterações.");
+        return;
+      }
+      const originalFile = project.files.find((f) => f.path === path);
+      const originalContent = originalFile?.content ?? "";
+      if (originalContent === code) {
+        toast.info(`O arquivo ${path} já está atualizado.`);
+        return;
+      }
+      setPendingDiffs((prev) => {
+        const filtered = prev.filter((d) => d.path !== path);
+        return [...filtered, { path, original: originalContent, proposed: code }];
+      });
+      setOpenTabs((prev) => {
+        const tabPath = `diff:${path}`;
+        return prev.includes(tabPath) ? prev : [...prev, tabPath];
+      });
+      setActiveTab(`diff:${path}`);
+      toast.info(`Alterações para ${path} prontas para revisão.`);
+    };
+    window.addEventListener("omniforge:fast-apply", handleFastApply);
+    return () => window.removeEventListener("omniforge:fast-apply", handleFastApply);
+  }, [project, setPendingDiffs, setOpenTabs, setActiveTab]);
   useEffect(() => {
     initSync().catch(() => {});
     setHistory(loadConversations());
@@ -671,7 +757,7 @@ function ChatPanel({
       }
       const isText = kind === "md";
       const content = isText ? await file.text() : await fileToDataUrl(file);
-      next.push({ id: crypto.randomUUID(), name: file.name, size: file.size, kind, content });
+      next.push({ id: safeUUID(), name: file.name, size: file.size, kind, content });
     }
     setAttachments((prev) => [...prev, ...next]);
   }
@@ -707,15 +793,15 @@ function ChatPanel({
     abortRef.current = ctrl;
     setSending(true);
     setStreaming("");
+    setCurrentPhase("Iniciando...");
     try {
       // Histórico sem a última mensagem do usuário (vai como userContent separado)
       const baseWire: WireMessage[] = convo.messages
         .filter((m) => m.id !== userMsgId)
         .map((m) => ({ role: m.role, content: m.content }));
       let acc = "";
-      let phase = "";
       let lastArtifactAt = 0;
-      const render = () => setStreaming(phase ? `${phase}\n\n${acc}` : acc);
+      const render = () => setStreaming(acc);
       const { usage } = await runOrchestration(
         sel,
         baseWire,
@@ -723,8 +809,7 @@ function ChatPanel({
         agents.activeIds,
         agents.leadId ?? "orchestrator",
         (label) => {
-          phase = label;
-          render();
+          setCurrentPhase(label);
           onAddLog?.(`[AGENT] ${label}`);
         },
         (chunk) => {
@@ -752,7 +837,7 @@ function ChatPanel({
         onAddLog?.(`[STOP] Interrompido pelo usuário após ${usage.total} tokens`);
       }
       const assistantMsg: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: safeUUID(),
         role: "assistant",
         content: acc + (stopped ? "\n\n_⏹ Interrompido pelo usuário._" : ""),
         tokens: usage.total,
@@ -844,6 +929,7 @@ function ChatPanel({
     } finally {
       setSending(false);
       abortRef.current = null;
+      setCurrentPhase("");
     }
   }
 
@@ -856,7 +942,7 @@ function ChatPanel({
     const images = atts.filter((a) => a.kind === "image").map((a) => a.content);
     const files = atts.filter((a) => a.kind !== "image").map((a) => a.name);
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: safeUUID(),
       role: "user",
       content: text || "(anexos)",
       images: images.length ? images : undefined,
@@ -985,8 +1071,6 @@ function ChatPanel({
 
   return (
     <aside className="flex w-full h-full min-w-0 flex-col bg-sidebar/80 backdrop-blur-xl pb-12 md:pb-0">
-
-
       <button
         onClick={() => setAgentsOpen(true)}
         className="mx-3 mt-3 flex items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-2 text-left hover:bg-card/70 transition-colors"
@@ -1140,14 +1224,35 @@ function ChatPanel({
                 streaming
               />
             )}
-            {sending && !streaming && (
-              <div className="text-xs text-muted-foreground italic">Pensando…</div>
+            {sending && (
+              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-card border border-border text-xs text-muted-foreground w-fit max-w-[85%] self-start animate-pulse">
+                <div className="flex space-x-1 items-center shrink-0">
+                  <span className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                  <span className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                  <span className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce"></span>
+                </div>
+                <span className="font-medium truncate">{currentPhase || "Processando..."}</span>
+              </div>
             )}
           </div>
         )}
       </div>
 
       <div className="border-t border-border p-3 relative">
+        {!project && (
+          <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-2 text-[11px] text-amber-500">
+            <span className="flex items-center gap-1.5 font-medium">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Nenhum projeto aberto. Abra ou crie um projeto para gravar os códigos gerados.
+            </span>
+            <button
+              onClick={onOpenImport}
+              className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 font-bold px-2 py-0.5 rounded transition shrink-0"
+            >
+              Criar / Abrir
+            </button>
+          </div>
+        )}
         {showSlash && (
           <div className="absolute left-3 right-3 bottom-full mb-2 rounded-lg border border-border bg-popover shadow-lg overflow-hidden z-10">
             {slashMatches.map((t) => (
@@ -1483,6 +1588,9 @@ function WorkspacePanel({
   pendingDiffs,
   setPendingDiffs,
   isDesktop,
+  terminalOpen,
+  setTerminalOpen,
+  onOpenSettings,
 }: {
   project: ImportedProject | null;
   onOpenImport: (tab: "saved" | "local" | "github" | "new") => void;
@@ -1504,8 +1612,11 @@ function WorkspacePanel({
   pendingDiffs: PendingDiff[];
   setPendingDiffs: React.Dispatch<React.SetStateAction<PendingDiff[]>>;
   isDesktop: boolean;
+  terminalOpen?: boolean;
+  setTerminalOpen?: (open: boolean) => void;
+  onOpenSettings?: () => void;
 }) {
-  const [tab, setTab] = useState<"preview" | "code" | "database" | "logs">("preview");
+  const [tab, setTab] = useState<"preview" | "code" | "database" | "logs" | "terminal">("preview");
   const [artifact, setArtifact] = useState<Artifact | null>(() => loadArtifact());
   const logsEndRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
@@ -1991,6 +2102,98 @@ function WorkspacePanel({
     window.open(url, "_blank");
   };
 
+  const renderPreviewContent = () => {
+    if (artifact && hasPreview) {
+      return (
+        <div
+          className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
+            viewport === "mobile" ? "bg-neutral-900/60" : ""
+          }`}
+        >
+          <div
+            className={`transition-all duration-300 border-border bg-white overflow-hidden ${
+              viewport === "mobile"
+                ? "w-[390px] h-[720px] rounded-[36px] border-[12px] border-neutral-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative before:content-[''] before:absolute before:top-2 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-4 before:bg-neutral-900 before:rounded-full before:z-50"
+                : "w-full h-full border-0"
+            }`}
+          >
+            {artifact.hasReact ? (
+              <FastReactPreview artifact={artifact} />
+            ) : (
+              <iframe
+                key={artifact.updatedAt}
+                title="Artefato gerado"
+                sandbox="allow-scripts"
+                srcDoc={artifact.html}
+                className="w-full h-full border-0 bg-white"
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback: se há um arquivo ativo no explorer, renderiza Monaco somente leitura (Smart Fallback)
+    const cleanedActiveTab = activeTab?.startsWith("diff:") ? activeTab.slice(5) : activeTab;
+    const activeFile = project?.files.find((f) => f.path === cleanedActiveTab);
+
+    if (activeFile) {
+      const language = getEditorLanguage(cleanedActiveTab);
+      return (
+        <div className="h-full flex flex-col min-w-0 overflow-hidden bg-background">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 bg-card/25 shrink-0 text-xs text-muted-foreground select-none">
+            <span className="flex items-center gap-1.5 font-medium">
+              <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Visualização estática (Sem Preview HTML/React): {activeFile.path}</span>
+            </span>
+            <span className="rounded bg-accent/85 px-2 py-0.5 font-semibold text-[10px] text-muted-foreground">
+              Somente leitura
+            </span>
+          </div>
+          <div className="flex-1 min-h-0 w-full relative">
+            <Editor
+              value={activeFile.content || ""}
+              language={language}
+              theme={theme === "dark" ? "vs-dark" : "light"}
+              options={{
+                readOnly: true,
+                minimap: { enabled: false },
+                fontSize: 12,
+                fontFamily: "var(--font-mono, Menlo, Monaco, 'Courier New', monospace)",
+                automaticLayout: true,
+                wordWrap: "on",
+                lineNumbers: "on",
+                scrollbar: {
+                  vertical: "visible",
+                  horizontal: "visible",
+                },
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Caso padrão: tela de boas-vindas / vazio
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <div className="relative mx-auto mb-6 w-fit">
+            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
+            <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
+              <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
+            </div>
+          </div>
+          <h2 className="font-display text-2xl font-semibold mb-2">Seu preview aparecerá aqui</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Descreva o app no chat de IA para que ele seja gerado e renderizado nesta área em tempo
+            real.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   return isDesktop ? (
     <section className="flex flex-col h-full overflow-hidden">
       <div className="flex items-center justify-between px-5 h-14 border-b border-border bg-background/40 backdrop-blur-xl shrink-0">
@@ -2023,17 +2226,13 @@ function WorkspacePanel({
               >
                 <Plus className="h-3.5 w-3.5 text-primary" /> Novo Projeto
               </DropdownMenuItem>
-              {project && (
-                <>
-                  <DropdownMenuSeparator className="border-border/50" />
-                  <DropdownMenuItem
-                    onSelect={onClearProject}
-                    className="gap-2 text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
-                  >
-                    <X className="h-3.5 w-3.5" /> Fechar Projeto Ativo
-                  </DropdownMenuItem>
-                </>
-              )}
+              <DropdownMenuItem
+                onSelect={onClearProject}
+                disabled={!project}
+                className="gap-2 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5 text-destructive" /> Fechar Projeto
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -2081,7 +2280,44 @@ function WorkspacePanel({
             minSize="25"
             className="h-full overflow-hidden flex flex-col border-r border-border/30"
           >
-            <div className="flex-1 min-h-0 w-full overflow-hidden">{renderCodeArea()}</div>
+            {terminalOpen ? (
+              <ResizablePanelGroup id="editor-terminal-vertical-group" direction="vertical">
+                <ResizablePanel id="editor-code-subpanel" defaultSize={70} minSize={30}>
+                  <div className="h-full w-full overflow-hidden flex flex-col">
+                    {renderCodeArea()}
+                  </div>
+                </ResizablePanel>
+                <ResizableHandle
+                  withHandle
+                  className="bg-border/20 hover:bg-primary/40 transition-colors"
+                />
+                <ResizablePanel id="editor-terminal-subpanel" defaultSize={30} minSize={15}>
+                  <div className="h-full w-full overflow-hidden border-t border-border bg-card/30 flex flex-col relative">
+                    {/* Top Bar for Desktop Terminal Panel */}
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card/50 shrink-0 select-none">
+                      <div className="flex items-center gap-2">
+                        <Terminal className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Terminal CLI
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setTerminalOpen?.(false)}
+                        className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent transition cursor-pointer"
+                        title="Fechar Terminal"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 min-h-0">
+                      <TerminalView project={project} onOpenSettings={onOpenSettings} />
+                    </div>
+                  </div>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            ) : (
+              <div className="flex-1 min-h-0 w-full overflow-hidden">{renderCodeArea()}</div>
+            )}
           </ResizablePanel>
 
           <ResizableHandle
@@ -2101,7 +2337,7 @@ function WorkspacePanel({
               <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-1 text-xs">
                 <span className="text-muted-foreground font-mono truncate">
                   {artifact
-                    ? `Preview: ${artifact.title} (${artifact.lang})`
+                    ? `Preview: ${artifact.title || (artifact.lang === "tree" ? "Árvore de Arquivos" : "Código Gerado")} (${artifact.lang})`
                     : "Aguardando geração do projeto..."}
                 </span>
               </div>
@@ -2113,53 +2349,7 @@ function WorkspacePanel({
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto">
-              {artifact && hasPreview ? (
-                <div
-                  className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
-                    viewport === "mobile" ? "bg-neutral-900/60" : ""
-                  }`}
-                >
-                  <div
-                    className={`transition-all duration-300 border-border bg-white overflow-hidden ${
-                      viewport === "mobile"
-                        ? "w-[390px] h-[720px] rounded-[36px] border-[12px] border-neutral-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative before:content-[''] before:absolute before:top-2 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-4 before:bg-neutral-900 before:rounded-full before:z-50"
-                        : "w-full h-full border-0"
-                    }`}
-                  >
-                    {artifact.hasReact ? (
-                      <FastReactPreview artifact={artifact} />
-                    ) : (
-                      <iframe
-                        key={artifact.updatedAt}
-                        title="Artefato gerado"
-                        sandbox="allow-scripts"
-                        srcDoc={artifact.html}
-                        className="w-full h-full border-0 bg-white"
-                      />
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center max-w-md px-6">
-                    <div className="relative mx-auto mb-6 w-fit">
-                      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
-                      <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
-                        <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
-                      </div>
-                    </div>
-                    <h2 className="font-display text-2xl font-semibold mb-2">
-                      Seu preview aparecerá aqui
-                    </h2>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Descreva o app no chat de IA para que ele seja gerado e renderizado nesta área
-                      em tempo real.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+            <div className="flex-1 overflow-auto">{renderPreviewContent()}</div>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
@@ -2184,23 +2374,25 @@ function WorkspacePanel({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="bg-card border-border">
-              <DropdownMenuItem onSelect={() => onOpenImport("saved")} className="gap-2 text-xs">
+              <DropdownMenuItem
+                onSelect={() => onOpenImport("saved")}
+                className="gap-2 text-xs cursor-pointer"
+              >
                 <FolderOpen className="h-3.5 w-3.5 text-primary" /> Abrir Projeto
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onOpenImport("new")} className="gap-2 text-xs">
+              <DropdownMenuItem
+                onSelect={() => onOpenImport("new")}
+                className="gap-2 text-xs cursor-pointer"
+              >
                 <Plus className="h-3.5 w-3.5 text-primary" /> Novo Projeto
               </DropdownMenuItem>
-              {project && (
-                <>
-                  <DropdownMenuSeparator className="border-border/50" />
-                  <DropdownMenuItem
-                    onSelect={onClearProject}
-                    className="gap-2 text-xs text-destructive hover:bg-destructive/10"
-                  >
-                    <X className="h-3.5 w-3.5" /> Fechar Projeto Ativo
-                  </DropdownMenuItem>
-                </>
-              )}
+              <DropdownMenuItem
+                onSelect={onClearProject}
+                disabled={!project}
+                className="gap-2 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5 text-destructive" /> Fechar Projeto
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -2269,6 +2461,13 @@ function WorkspacePanel({
           >
             Logs
           </WorkTab>
+          <WorkTab
+            active={tab === "terminal"}
+            onClick={() => setTab("terminal")}
+            icon={<Terminal className="h-3.5 w-3.5" />}
+          >
+            Terminal
+          </WorkTab>
         </div>
         {artifact && (
           <button
@@ -2304,52 +2503,7 @@ function WorkspacePanel({
 
       <div className="flex-1 overflow-auto bg-background/20">
         {/* ABA PREVIEW */}
-        {tab === "preview" &&
-          (artifact && hasPreview ? (
-            <div
-              className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
-                viewport === "mobile" ? "bg-neutral-900/60" : ""
-              }`}
-            >
-              <div
-                className={`transition-all duration-300 border-border bg-white overflow-hidden ${
-                  viewport === "mobile"
-                    ? "w-[390px] h-[720px] rounded-[36px] border-[12px] border-neutral-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] relative before:content-[''] before:absolute before:top-2 before:left-1/2 before:-translate-x-1/2 before:w-32 before:h-4 before:bg-neutral-900 before:rounded-full before:z-50"
-                    : "w-full h-full border-0"
-                }`}
-              >
-                {artifact.hasReact ? (
-                  <FastReactPreview artifact={artifact} />
-                ) : (
-                  <iframe
-                    key={artifact.updatedAt}
-                    title="Artefato gerado"
-                    sandbox="allow-scripts"
-                    srcDoc={artifact.html}
-                    className="w-full h-full border-0 bg-white"
-                  />
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center max-w-md px-6">
-                <div className="relative mx-auto mb-6 w-fit">
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] blur-3xl opacity-30" />
-                  <div className="relative grid h-20 w-20 place-items-center rounded-3xl border border-border bg-card/60 backdrop-blur">
-                    <Sparkles className="h-9 w-9 text-primary" strokeWidth={1.8} />
-                  </div>
-                </div>
-                <h2 className="font-display text-2xl font-semibold mb-2">
-                  Seu artefato aparecerá aqui
-                </h2>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Peça à IA para gerar um dashboard, página HTML ou componente — o resultado
-                  renderiza automaticamente neste painel.
-                </p>
-              </div>
-            </div>
-          ))}
+        {tab === "preview" && renderPreviewContent()}
 
         {/* ABA CÓDIGO */}
         {tab === "code" && renderCodeArea()}
@@ -2359,6 +2513,9 @@ function WorkspacePanel({
 
         {/* ABA LOGS */}
         {tab === "logs" && <MobileLogsPanel logs={executionLogs} logsEndRef={logsEndRef} />}
+
+        {/* ABA TERMINAL */}
+        {tab === "terminal" && <TerminalView project={project} onOpenSettings={onOpenSettings} />}
       </div>
     </section>
   );
@@ -2704,6 +2861,360 @@ function HistoryList({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function TerminalView({
+  project,
+  onOpenSettings,
+}: {
+  project: ImportedProject | null;
+  onOpenSettings?: () => void;
+}) {
+  const [tool, setTool] = useState<"aider" | "gemini" | "codex" | "opencode">("aider");
+  const [customArgs, setCustomArgs] = useState("");
+  const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [cwd, setCwd] = useState(() => {
+    if (project) {
+      return localStorage.getItem(`omniforge.project.${project.id}.path`) || "";
+    }
+    return localStorage.getItem("omniforge.cli.cwd") || "";
+  });
+
+  // Auto-focus input when terminal mounts
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Auto-scroll para o final do console
+  useEffect(() => {
+    consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [consoleOutput]);
+
+  // Sincroniza o CWD quando o projeto muda
+  useEffect(() => {
+    if (project) {
+      setCwd(localStorage.getItem(`omniforge.project.${project.id}.path`) || "");
+    } else {
+      setCwd(localStorage.getItem("omniforge.cli.cwd") || "");
+    }
+  }, [project]);
+
+  const handleCwdChange = (val: string) => {
+    setCwd(val);
+    if (project) {
+      localStorage.setItem(`omniforge.project.${project.id}.path`, val.trim());
+    } else {
+      localStorage.setItem("omniforge.cli.cwd", val.trim());
+    }
+  };
+
+  const toolConfig = useMemo(() => {
+    return {
+      aider: {
+        name: "Aider AI",
+        defaultCmd: "aider",
+        keyName: "OPENAI_API_KEY",
+        quickActions: [
+          {
+            label: "Refatorar Código",
+            cmd: '--message "Refatorar o código deste diretório aplicando boas práticas e SOLID"',
+          },
+          {
+            label: "Gerar Testes",
+            cmd: '--message "Escrever testes de unidade completos para os componentes do projeto"',
+          },
+          {
+            label: "Revisar Bugs",
+            cmd: '--message "Analisar o projeto, encontrar possíveis bugs ou erros de lógica e corrigi-los"',
+          },
+        ],
+      },
+      gemini: {
+        name: "Gemini CLI",
+        defaultCmd: "gemini-cli",
+        keyName: "GEMINI_API_KEY",
+        quickActions: [
+          {
+            label: "Explicar Projeto",
+            cmd: 'ask "Explique a arquitetura geral deste projeto de forma técnica"',
+          },
+          {
+            label: "Auditar Segurança",
+            cmd: 'ask "Faça uma auditoria de segurança buscando falhas comuns OWASP"',
+          },
+        ],
+      },
+      codex: {
+        name: "Codex CLI",
+        defaultCmd: "codex-cli",
+        keyName: "OPENAI_API_KEY",
+        quickActions: [
+          {
+            label: "Refatorar funções",
+            cmd: 'refactor "Simplificar funções complexas no diretório"',
+          },
+        ],
+      },
+      opencode: {
+        name: "Open Code",
+        defaultCmd: "opencode",
+        keyName: "API_KEY",
+        quickActions: [{ label: "Análise Estática", cmd: "analyze" }],
+      },
+    };
+  }, []);
+
+  const currentTool = toolConfig[tool];
+
+  async function handleExecute(fullCommandString?: string) {
+    if (isRunning) return;
+
+    const baseCmd = localStorage.getItem(`omniforge.cli.${tool}.command`) || currentTool.defaultCmd;
+    const apiKey = localStorage.getItem(`omniforge.cli.${tool}.key`) || "";
+
+    // Comando final a ser executado
+    let finalCmd = "";
+    if (fullCommandString) {
+      finalCmd = `${baseCmd} ${fullCommandString}`;
+    } else {
+      if (!customArgs.trim()) {
+        toast.error("Por favor, digite os parâmetros do comando ou escolha uma ação rápida.");
+        return;
+      }
+      finalCmd = `${baseCmd} ${customArgs.trim()}`;
+    }
+
+    setIsRunning(true);
+    setConsoleOutput([
+      `[SISTEMA] Iniciando comando: ${finalCmd}`,
+      `[SISTEMA] Aguardando resposta do backend...`,
+    ]);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      const response = await fetch("/api/cli", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tool,
+          command: finalCmd,
+          env: apiKey ? { [currentTool.keyName]: apiKey } : undefined,
+          projectPath: cwd ? cwd.trim() : undefined,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Erro na requisição");
+      }
+
+      if (!response.body) {
+        throw new Error("Resposta sem stream de dados");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        // O último elemento pode ser incompleto, mantém no buffer
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const data = JSON.parse(line);
+            if (data.type === "stdout") {
+              setConsoleOutput((prev) => [...prev, data.text]);
+            } else if (data.type === "stderr") {
+              setConsoleOutput((prev) => [...prev, `[ERRO] ${data.text}`]);
+            } else if (data.type === "exit") {
+              setConsoleOutput((prev) => [
+                ...prev,
+                `[SISTEMA] Processo encerrado com código de saída ${data.code}`,
+              ]);
+              setIsRunning(false);
+            } else if (data.type === "error") {
+              setConsoleOutput((prev) => [...prev, `[ERRO DO SISTEMA] ${data.message}`]);
+              setIsRunning(false);
+            }
+          } catch {
+            // Se falhar o parse JSON, imprime o chunk bruto
+            setConsoleOutput((prev) => [...prev, line]);
+          }
+        }
+      }
+    } catch (e: any) {
+      if (e.name === "AbortError") {
+        setConsoleOutput((prev) => [...prev, `[SISTEMA] Execução cancelada pelo usuário.`]);
+      } else {
+        setConsoleOutput((prev) => [...prev, `[ERRO] Falha na execução: ${e.message}`]);
+      }
+      setIsRunning(false);
+    } finally {
+      abortControllerRef.current = null;
+    }
+  }
+
+  function handleStop() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setIsRunning(false);
+    }
+  }
+
+  function handleClear() {
+    setConsoleOutput([]);
+  }
+
+  return (
+    <div className="h-full flex flex-col bg-zinc-950 font-mono text-xs text-zinc-200">
+      {/* Barra de Controles */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 bg-zinc-900/60 p-3 sticky top-0 z-10">
+        <div className="flex items-center gap-1.5 mr-2">
+          <span className="text-[10px] text-zinc-400 uppercase tracking-wider">Ferramenta:</span>
+          <select
+            value={tool}
+            onChange={(e) => setTool(e.target.value as any)}
+            disabled={isRunning}
+            className="bg-zinc-800 border border-white/15 rounded-md px-2.5 py-1 text-zinc-100 focus:outline-none focus:border-primary/50"
+          >
+            <option value="aider">Aider AI</option>
+            <option value="gemini">Gemini CLI</option>
+            <option value="codex">Codex CLI</option>
+            <option value="opencode">Open Code</option>
+          </select>
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              title="Configurar CLIs"
+              className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white border border-white/10 hover:border-white/15 transition cursor-pointer"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Ações Rápidas */}
+        <div className="flex items-center gap-1.5 mr-auto">
+          <span className="text-[10px] text-zinc-400 uppercase tracking-wider">Ações Rápidas:</span>
+          <div className="flex flex-wrap gap-1">
+            {currentTool.quickActions.map((act) => (
+              <button
+                key={act.label}
+                disabled={isRunning}
+                onClick={() => handleExecute(act.cmd)}
+                className="bg-zinc-800/80 hover:bg-zinc-800 border border-white/10 hover:border-white/20 text-zinc-300 hover:text-white rounded px-2.5 py-1 transition-all disabled:opacity-50"
+              >
+                {act.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Limpar Console */}
+        <button
+          onClick={handleClear}
+          disabled={consoleOutput.length === 0}
+          className="text-zinc-500 hover:text-zinc-300 text-[10px] uppercase font-bold px-2 py-1 transition-colors disabled:opacity-30"
+        >
+          Limpar Console
+        </button>
+      </div>
+
+      {/* Barra de Diretório de Trabalho (CWD) */}
+      <div className="border-b border-white/10 bg-zinc-900/20 p-2.5 flex items-center gap-2 px-3">
+        <span className="text-[10px] text-zinc-400 uppercase tracking-wider select-none shrink-0">
+          Diretório (CWD):
+        </span>
+        <input
+          value={cwd}
+          onChange={(e) => handleCwdChange(e.target.value)}
+          placeholder="Caminho absoluto da pasta do projeto (ex: D:\Projetos\meu-app)"
+          className="flex-1 bg-zinc-900/50 border border-white/10 rounded-md px-2.5 py-1 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-primary/40 text-[11px]"
+        />
+        {cwd && (
+          <span className="text-[9px] text-emerald-500 font-semibold shrink-0 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+            CWD ativo
+          </span>
+        )}
+      </div>
+
+      {/* Input de Prompt CLI */}
+      <div className="border-b border-white/10 bg-zinc-900/40 p-3 flex gap-2">
+        <div className="flex-1 flex items-center bg-zinc-900 border border-white/15 rounded-lg px-3 focus-within:border-primary/50 transition">
+          <span className="text-zinc-500 font-bold select-none pr-2">$ {tool}</span>
+          <input
+            ref={inputRef}
+            value={customArgs}
+            onChange={(e) => setCustomArgs(e.target.value)}
+            disabled={isRunning}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleExecute();
+            }}
+            placeholder="Digite os argumentos adicionais (ex: --message 'criar login')"
+            className="flex-1 bg-transparent py-1.5 text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+          />
+        </div>
+
+        {isRunning ? (
+          <button
+            onClick={handleStop}
+            className="bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg px-4 py-1.5 flex items-center gap-1.5 transition duration-150 glow-red"
+          >
+            <Square className="h-3.5 w-3.5 fill-white" />
+            Parar
+          </button>
+        ) : (
+          <button
+            onClick={() => handleExecute()}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg px-4 py-1.5 flex items-center gap-1.5 transition duration-150 glow"
+          >
+            <Play className="h-3.5 w-3.5 fill-primary-foreground" />
+            Rodar
+          </button>
+        )}
+      </div>
+
+      {/* Log Screen do Terminal */}
+      <div
+        onClick={() => inputRef.current?.focus()}
+        className="flex-1 overflow-auto p-4 space-y-1 bg-black/40 min-h-[300px] cursor-text"
+      >
+        {consoleOutput.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-zinc-600 py-16">
+            <Terminal className="h-10 w-10 mb-3 opacity-20" />
+            <p className="text-xs">Terminal pronto.</p>
+            <p className="text-[10px] opacity-60 mt-1">
+              Escolha uma ação rápida acima ou digite argumentos adicionais para começar.
+            </p>
+          </div>
+        ) : (
+          consoleOutput.map((line, i) => (
+            <div
+              key={i}
+              className="whitespace-pre-wrap break-all leading-relaxed font-mono text-[11px] text-zinc-300"
+            >
+              {line}
+            </div>
+          ))
+        )}
+        <div ref={consoleEndRef} />
+      </div>
     </div>
   );
 }
