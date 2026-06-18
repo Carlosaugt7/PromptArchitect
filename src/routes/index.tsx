@@ -1621,6 +1621,50 @@ function WorkspacePanel({
   const logsEndRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
 
+  const activeArtifact = useMemo(() => {
+    if (!activeTab || !project) return artifact;
+
+    const isDiff = activeTab.startsWith("diff:");
+    const filePath = isDiff ? activeTab.slice(5) : activeTab;
+
+    if (isDiff) {
+      const diffInfo = pendingDiffs.find((d) => d.path === filePath);
+      if (diffInfo) {
+        const ext = (filePath.split(".").pop() || "").toLowerCase();
+        const isHtml = /^(html|htm)$/.test(ext);
+        const isReact = /^(tsx|jsx)$/.test(ext);
+        return {
+          id: filePath,
+          title: filePath.split("/").pop() || filePath,
+          lang: ext,
+          code: diffInfo.proposed,
+          blocks: [{ lang: ext, code: diffInfo.proposed }],
+          hasReact: isReact,
+          html: isHtml ? diffInfo.proposed : "",
+          updatedAt: Date.now(),
+        };
+      }
+    } else {
+      const file = project.files.find((f) => f.path === filePath);
+      if (file) {
+        const ext = (filePath.split(".").pop() || "").toLowerCase();
+        const isHtml = /^(html|htm)$/.test(ext);
+        const isReact = /^(tsx|jsx)$/.test(ext);
+        return {
+          id: filePath,
+          title: filePath.split("/").pop() || filePath,
+          lang: ext,
+          code: file.content || "",
+          blocks: [{ lang: ext, code: file.content || "" }],
+          hasReact: isReact,
+          html: isHtml ? file.content || "" : "",
+          updatedAt: Date.now(),
+        };
+      }
+    }
+    return artifact;
+  }, [activeTab, project, artifact, pendingDiffs]);
+
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const editorValueRef = useRef<string>("");
   const currentActiveTabRef = useRef<string | null>(null);
@@ -1906,7 +1950,7 @@ function WorkspacePanel({
 
     const tabBar = (
       <div className="flex items-center justify-between border-b border-border/40 bg-card/25 shrink-0 overflow-x-auto select-none no-scrollbar h-9">
-        <div className="flex items-center h-full">
+        <div className="flex items-center h-full flex-nowrap whitespace-nowrap">
           {openTabs.map((tabPath) => {
             const isActive = tabPath === activeTab;
             const isTabDiff = tabPath.startsWith("diff:");
@@ -1917,7 +1961,7 @@ function WorkspacePanel({
               <div
                 key={tabPath}
                 onClick={() => setActiveTab(tabPath)}
-                className={`flex items-center gap-1.5 h-full px-3 border-r border-border/30 cursor-pointer transition-colors relative ${
+                className={`flex items-center gap-2 h-full px-3 border-r border-border/30 cursor-pointer transition-colors relative whitespace-nowrap shrink-0 ${
                   isActive
                     ? "bg-background text-foreground font-medium"
                     : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
@@ -1935,6 +1979,28 @@ function WorkspacePanel({
                   {isTabDiff ? `Revisar: ${tabName}` : tabName}
                 </span>
 
+                {isTabDiff && (
+                  <div
+                    className="flex items-center gap-1 ml-1.5 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => handleAcceptDiff(tabFilePath)}
+                      title="Aceitar alterações"
+                      className="flex items-center justify-center rounded bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white text-[9px] px-1.5 py-0.5 font-bold transition duration-150 cursor-pointer"
+                    >
+                      <Check className="h-2.5 w-2.5 mr-0.5" /> Aceitar
+                    </button>
+                    <button
+                      onClick={() => handleRejectDiff(tabFilePath)}
+                      title="Descartar alterações"
+                      className="flex items-center justify-center rounded bg-destructive/20 hover:bg-destructive text-destructive-foreground text-[9px] px-1.5 py-0.5 font-bold transition duration-150 cursor-pointer"
+                    >
+                      <X className="h-2.5 w-2.5 mr-0.5" /> Descartar
+                    </button>
+                  </div>
+                )}
+
                 <button
                   onClick={(e) => handleCloseTab(e, tabPath)}
                   className="p-0.5 rounded-full hover:bg-accent text-muted-foreground hover:text-foreground shrink-0"
@@ -1945,23 +2011,6 @@ function WorkspacePanel({
             );
           })}
         </div>
-
-        {isDiff && (
-          <div className="flex items-center gap-1.5 px-3">
-            <button
-              onClick={() => handleRejectDiff(filePath)}
-              className="flex items-center gap-1 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive text-[10px] px-2 py-0.5 font-semibold transition"
-            >
-              Descartar
-            </button>
-            <button
-              onClick={() => handleAcceptDiff(filePath)}
-              className="flex items-center gap-1 rounded bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] px-2 py-0.5 font-semibold shadow-sm transition"
-            >
-              Aceitar
-            </button>
-          </div>
-        )}
       </div>
     );
 
@@ -1975,6 +2024,7 @@ function WorkspacePanel({
           {tabBar}
           <div className="flex-1 min-h-0 w-full relative">
             <DiffEditor
+              key={`diff:${activeTab}`}
               original={originalContent}
               modified={proposedContent}
               language={language}
@@ -1999,6 +2049,7 @@ function WorkspacePanel({
         {tabBar}
         <div className="flex-1 min-h-0 w-full relative">
           <Editor
+            key={`edit:${activeTab}`}
             value={editorValueRef.current}
             onChange={handleEditorChange}
             language={language}
@@ -2032,7 +2083,7 @@ function WorkspacePanel({
     }
   }, [executionLogs, tab]);
 
-  const hasPreview = !!artifact?.html || !!artifact?.hasReact;
+  const hasPreview = !!activeArtifact?.html || !!activeArtifact?.hasReact;
 
   // Extrai schema de banco do projeto
   const databaseSchema = useMemo(() => {
@@ -2047,14 +2098,14 @@ function WorkspacePanel({
   }, [project]);
 
   const handleOpenExternal = () => {
-    if (!artifact) return;
+    if (!activeArtifact) return;
     let htmlContent = "";
-    if (artifact.hasReact) {
+    if (activeArtifact.hasReact) {
       htmlContent = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>\${artifact.title || "OmniForge Preview"}</title>
+  <title>\${activeArtifact.title || "OmniForge Preview"}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script type="importmap">
   {
@@ -2075,7 +2126,7 @@ function WorkspacePanel({
   <script type="module">
     import React from 'react';
     import { createRoot } from 'react-dom/client';
-    const code = \${JSON.stringify(artifact.code)};
+    const code = \${JSON.stringify(activeArtifact.code)};
     const root = createRoot(document.getElementById('root'));
     try {
       const transformed = Babel.transform(code, { presets: ['react'] }).code;
@@ -2093,8 +2144,8 @@ function WorkspacePanel({
 </html>`;
     } else {
       htmlContent =
-        artifact.html ||
-        `<!DOCTYPE html><html><head><style>body { margin: 0; font-family: system-ui; }</style></head><body>\${artifact.code}</body></html>`;
+        activeArtifact.html ||
+        `<!DOCTYPE html><html><head><style>body { margin: 0; font-family: system-ui; }</style></head><body>\${activeArtifact.code}</body></html>`;
     }
 
     const blob = new Blob([htmlContent], { type: "text/html" });
@@ -2103,7 +2154,7 @@ function WorkspacePanel({
   };
 
   const renderPreviewContent = () => {
-    if (artifact && hasPreview) {
+    if (activeArtifact && hasPreview) {
       return (
         <div
           className={`h-full w-full flex items-center justify-center p-4 transition-all duration-300 ${
@@ -2117,14 +2168,14 @@ function WorkspacePanel({
                 : "w-full h-full border-0"
             }`}
           >
-            {artifact.hasReact ? (
-              <FastReactPreview artifact={artifact} />
+            {activeArtifact.hasReact ? (
+              <FastReactPreview artifact={activeArtifact} />
             ) : (
               <iframe
-                key={artifact.updatedAt}
+                key={activeArtifact.updatedAt}
                 title="Artefato gerado"
                 sandbox="allow-scripts"
-                srcDoc={artifact.html}
+                srcDoc={activeArtifact.html}
                 className="w-full h-full border-0 bg-white"
               />
             )}
@@ -2152,6 +2203,7 @@ function WorkspacePanel({
           </div>
           <div className="flex-1 min-h-0 w-full relative">
             <Editor
+              key={`preview-fallback:${cleanedActiveTab}`}
               value={activeFile.content || ""}
               language={language}
               theme={theme === "dark" ? "vs-dark" : "light"}
@@ -2336,8 +2388,8 @@ function WorkspacePanel({
               <Globe className="h-3.5 w-3.5 text-muted-foreground" />
               <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-card/40 px-3 py-1 text-xs">
                 <span className="text-muted-foreground font-mono truncate">
-                  {artifact
-                    ? `Preview: ${artifact.title || (artifact.lang === "tree" ? "Árvore de Arquivos" : "Código Gerado")} (${artifact.lang})`
+                  {activeArtifact
+                    ? `Preview: ${activeArtifact.title || (activeArtifact.lang === "tree" ? "Árvore de Arquivos" : "Código Gerado")} (${activeArtifact.lang})`
                     : "Aguardando geração do projeto..."}
                 </span>
               </div>

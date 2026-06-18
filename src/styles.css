@@ -194,4 +194,11 @@
   backdrop-filter: blur(12px);
 }
 
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* label placeholder aria-label */
