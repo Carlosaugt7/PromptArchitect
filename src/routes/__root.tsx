@@ -79,22 +79,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#0b0b14" },
+      { name: "theme-color", content: "#160f2a" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "OmniForge" },
-      { title: "OmniForge — Forje aplicações com IA" },
+      { name: "apple-mobile-web-app-title", content: "PromptArchitect" },
+      { title: "PromptArchitect — Crie prompts com IA" },
       {
         name: "description",
         content:
-          "OmniForge é um ambiente de desenvolvimento conversacional com IA. Descreva e veja seu app ganhar vida em tempo real.",
+          "PromptArchitect é um chat para criação, refinamento e otimização de prompts com agentes de IA especializados.",
       },
-      { property: "og:title", content: "OmniForge — Forje aplicações com IA" },
+      { property: "og:title", content: "PromptArchitect — Crie prompts com IA" },
       {
         property: "og:description",
         content:
-          "Construa apps web conversando com IA. Preview ao vivo, código, banco e logs em um só lugar.",
+          "Crie prompts profissionais, PRDs e system prompts com agentes especializados em prompt engineering.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -102,8 +102,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "icon", href: "/icons/icon-512.png", type: "image/png" },
-      { rel: "apple-touch-icon", href: "/icons/icon-512.png" },
+      { rel: "icon", href: "/icon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/icons/icon-32.png", type: "image/png", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

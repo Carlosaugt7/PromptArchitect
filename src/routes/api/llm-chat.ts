@@ -130,7 +130,7 @@ async function nonStream(body: Body): Promise<Response> {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
-        "User-Agent": "OmniForge/1.0",
+        "User-Agent": "PromptArchitect/1.0",
         Accept: "application/json",
       },
       body: JSON.stringify({
@@ -157,7 +157,7 @@ async function nonStream(body: Body): Promise<Response> {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "User-Agent": "OmniForge/1.0",
+        "User-Agent": "PromptArchitect/1.0",
         Accept: "application/json",
       },
       body: JSON.stringify({
@@ -180,9 +180,9 @@ async function nonStream(body: Body): Promise<Response> {
   const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
   const headers: Record<string, string> = {
     "content-type": "application/json",
-    "User-Agent": "OmniForge/1.0",
+    "User-Agent": "PromptArchitect/1.0",
     "HTTP-Referer": "http://localhost:8080",
-    "X-Title": "OmniForge",
+    "X-Title": "PromptArchitect",
   };
   if (apiKey && apiKey !== "undefined" && apiKey !== "ollama") {
     headers["Authorization"] = `Bearer ${apiKey}`;
@@ -285,7 +285,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
             signal,
             headers: {
               "content-type": "application/json",
-              "User-Agent": "OmniForge/1.0",
+              "User-Agent": "PromptArchitect/1.0",
               Accept: "application/json",
             },
             body: JSON.stringify({
@@ -319,9 +319,9 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
         const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
         const headers: Record<string, string> = {
           "content-type": "application/json",
-          "User-Agent": "OmniForge/1.0",
+          "User-Agent": "PromptArchitect/1.0",
           "HTTP-Referer": "http://localhost:8080",
-          "X-Title": "OmniForge",
+          "X-Title": "PromptArchitect",
         };
         if (apiKey && apiKey !== "undefined" && apiKey !== "ollama") {
           headers["Authorization"] = `Bearer ${apiKey}`;

@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       (error) => {
         // Erro de autenticação (ex: API key revogada) — modo offline
-        console.warn("[OmniForge] Firebase auth error — running in offline mode.", error);
+      console.warn("[PromptArchitect] Firebase auth error — running in offline mode.", error);
         if (!unsubscribed) setLoading(false);
       },
     );

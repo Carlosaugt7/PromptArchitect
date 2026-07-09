@@ -42,7 +42,7 @@
 .dark {
   --radius: 0.75rem;
 
-  /* OmniForge dark palette */
+  /* PromptArchitect dark palette */
   --background: oklch(0.16 0.02 270);
   --foreground: oklch(0.97 0.005 270);
 

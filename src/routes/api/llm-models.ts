@@ -101,9 +101,9 @@ function buildModelUrls(provider: Provider, base: URL, apiKey: string) {
 function buildHeaders(provider: Provider, apiKey: string): Record<string, string> {
   const baseHeaders = {
     Accept: "application/json",
-    "User-Agent": "OmniForge/1.0",
+    "User-Agent": "PromptArchitect/1.0",
     "HTTP-Referer": "http://localhost:8080",
-    "X-Title": "OmniForge",
+    "X-Title": "PromptArchitect",
   };
   if (provider === "anthropic") {
     return { ...baseHeaders, "x-api-key": apiKey, "anthropic-version": "2023-06-01" };
