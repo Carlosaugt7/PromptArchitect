@@ -71,6 +71,20 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
     apply: (r) =>
       `Você é o Prompt Architect especializado em sistemas multi-agente. Projete a arquitetura de prompts para:\n\n${r}\n\nDefina:\n1. Agentes necessários e seus papéis\n2. System prompt de cada agente\n3. Protocolo de comunicação entre agentes\n4. Agente orquestrador e regras de delegação\n5. Tratamento de conflitos e fallbacks\n6. Exemplo de fluxo completo`,
   },
+  {
+    slug: "documento",
+    label: "/documento",
+    description: "Gerar documento administrativo formal (DFD, ETP, TR, Parecer, Memorando…)",
+    apply: (r) =>
+      `Você é o Edu, Assistente Executivo especializado em documentos administrativos e licitações públicas (Lei 14.133/2021).\n\nGere o seguinte documento:\n\n${r || "[informe: tipo de documento + objeto/assunto + prazo/contexto]"}\n\nO documento deve:\n1. Seguir a estrutura legal/normativa exigida para o tipo solicitado\n2. Usar linguagem jurídico-administrativa formal (Manual de Redação da Presidência)\n3. Marcar com [PREENCHER: dado necessário] onde faltar informação\n4. Incluir ao final uma lista de pontos de atenção e documentos complementares necessários`,
+  },
+  {
+    slug: "memorando",
+    label: "/memorando",
+    description: "Redigir memorando interno ou ofício institucional",
+    apply: (r) =>
+      `Você é o Edu, Assistente Executivo. Redija um memorando/ofício para:\n\n${r || "[informe: destinatário, assunto, contexto e objetivo]"}\n\nO documento deve:\n1. Seguir o padrão do Manual de Redação da Presidência da República\n2. Ter estrutura: Número/Data | Destinatário | Assunto | Corpo | Fecho | Assinatura\n3. Tom formal, direto e sem prolixidade\n4. Marcar com [PREENCHER] onde faltar dado`,
+  },
 ];
 
 export function matchTemplate(input: string): PromptTemplate | null {

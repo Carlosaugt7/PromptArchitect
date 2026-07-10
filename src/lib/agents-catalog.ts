@@ -16,7 +16,8 @@ export type AgentCategory =
   | "game"
   | "seo"
   | "docs"
-  | "research";
+  | "research"
+  | "administrative";
 
 export interface AgentDefinition {
   id: string;
@@ -44,6 +45,7 @@ export const AGENT_CATEGORIES: Record<AgentCategory, { label: string; color: str
   seo: { label: "SEO/GEO", color: "from-teal-500 to-cyan-500" },
   docs: { label: "Documentação", color: "from-slate-500 to-zinc-500" },
   research: { label: "Pesquisa", color: "from-indigo-500 to-blue-500" },
+  administrative: { label: "Administrativo", color: "from-blue-500 to-sky-600" },
 };
 
 export const AGENTS: AgentDefinition[] = [
@@ -356,6 +358,21 @@ export const AGENTS: AgentDefinition[] = [
     description: "Código legado, refatoração e engenharia reversa de sistemas não documentados.",
     skills: ["simplify-code", "code-review-checklist"],
     triggers: ["legado", "legacy", "engenharia reversa", "undocumented"],
+  },
+
+  // ── Administrative ────────────────────────────────────────────────────────
+  {
+    id: "edu-executive-assistant",
+    name: "Edu — Assistente Executivo",
+    category: "administrative",
+    description:
+      "Assistente Executivo especializado em documentos administrativos e licitações públicas (Lei 14.133/2021). Redige DFD, ETP, Termo de Referência, Mapa de Risco, Pareceres Técnicos, Memorandos, Atas e gestão de contratos com linguagem jurídico-administrativa precisa.",
+    skills: ["documentation-templates", "plan-writing", "brainstorming"],
+    triggers: [
+      "dfd", "etp", "termo de referência", "mapa de risco", "parecer", "memorando",
+      "licitação", "contrato", "administrativo", "documento", "ata", "edital",
+      "compras públicas", "pc", "demanda", "formalização",
+    ],
   },
 ];
 

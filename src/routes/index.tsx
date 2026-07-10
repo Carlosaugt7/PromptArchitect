@@ -748,6 +748,8 @@ const SUGGESTIONS = [
   { icon: <ScrollText className="h-5 w-5" />, label: "PRD completo", text: "/prd Preciso de um PRD para um sistema de chat com suporte a múltiplos modelos de IA, histórico de conversas e exportação." },
   { icon: <Zap className="h-5 w-5" />, label: "Chain of Thought", text: "Crie um prompt que instrua o modelo a raciocinar passo a passo antes de dar a resposta final, usando a técnica Chain of Thought para problemas matemáticos." },
   { icon: <Bot className="h-5 w-5" />, label: "Persona de agente", text: "Defina a persona e as regras de comportamento para um agente especializado em análise de dados que comunica insights de forma clara para não-técnicos." },
+  { icon: <FileText className="h-5 w-5" />, label: "Termo de Referência", text: "/documento Termo de Referência para contratação de serviço de desenvolvimento de software sob medida, modalidade pregão eletrônico, valor estimado R$ 180.000,00, prazo 12 meses." },
+  { icon: <ScrollText className="h-5 w-5" />, label: "Memorando executivo", text: "/memorando Para: Diretoria de TI | Assunto: Solicitação de aprovação de orçamento para renovação de licenças de software | Contexto: licenças vencem em 30 dias, impacto operacional crítico." },
 ];
 
 function WelcomeScreen({ lead, onSuggest }: { lead?: typeof AGENTS[0]; onSuggest: (s: string) => void; }) {
