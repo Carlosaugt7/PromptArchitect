@@ -76,8 +76,14 @@ export function AuthPage() {
       toast.success("Conectado com Google!");
     } catch (err: unknown) {
       const code = (err as { code?: string }).code;
-      if (code !== "auth/popup-closed-by-user") {
-        toast.error("Erro ao conectar com Google");
+      if (code === "auth/unauthorized-domain") {
+        toast.error(
+          "Domínio não autorizado no Firebase. Acesse o Firebase Console → Authentication → Settings → Authorized domains e adicione: " +
+            window.location.hostname,
+          { duration: 8000 },
+        );
+      } else if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
+        toast.error("Erro ao conectar com Google: " + (code ?? "desconhecido"));
       }
     } finally {
       setBusy(false);
@@ -101,7 +107,7 @@ export function AuthPage() {
               <Sparkles className="h-7 w-7 text-primary-foreground" strokeWidth={2.5} />
             </div>
           </div>
-          <h1 className="font-display text-2xl font-bold tracking-tight">OmniForge</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight gradient-text">PromptArchitect</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "login" ? "Acesse sua conta" : "Crie sua conta"}
           </p>
@@ -241,7 +247,7 @@ export function AuthPage() {
         </div>
 
         <p className="text-center text-[10px] text-muted-foreground/50 mt-6">
-          OmniForge © {new Date().getFullYear()} — Forje aplicações com IA
+          PromptArchitect © {new Date().getFullYear()} — Crie prompts com IA
         </p>
       </div>
     </div>
