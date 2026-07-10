@@ -5,7 +5,7 @@ import {
   FileText, FileType2, Trash2, MessageCirclePlus, Square, RotateCw,
   Download, Search, Pin, PinOff, Pencil, Check, Sun, Moon,
   LogOut, Bot, Wand2, Copy, Columns3, Zap, BookOpen,
-  Code2, ScrollText, Users,
+  Code2, ScrollText, Users, Globe,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
 import { AgentsDialog } from "@/components/AgentsDialog";
@@ -23,6 +23,7 @@ import { addTokens } from "@/lib/token-usage";
 import { estimateCostUsd, formatUsd } from "@/lib/llm-pricing";
 import { estimateTokens, estimatePromptCostUsd } from "@/lib/cost-estimate";
 import { PROMPT_TEMPLATES, applyTemplate } from "@/lib/prompt-templates";
+import { enrichWithWebContext, prependWebContext } from "@/lib/web-tools";
 import {
   initSync, loadConversations, saveConversation, deleteConversation,
   newConversation, subscribeConversations, titleFrom, renameConversation,
@@ -81,6 +82,7 @@ function PromptArchitect() {
   const [sending, setSending] = useState(false);
   const [streaming, setStreaming] = useState("");
   const [currentPhase, setCurrentPhase] = useState("");
+  const [webFetching, setWebFetching] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [currentModel, setCurrentModel] = useState(() => loadSelection());
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
@@ -218,9 +220,31 @@ function PromptArchitect() {
     if ((!rawText && attachments.length === 0) || sending) return;
     const text = applyTemplate(rawText);
     const atts = attachments;
-    const userContent = buildUserContent(text, atts);
+
+    // ── Enriquecimento web (fetch de URLs / busca) ──────────────────
+    let finalText = text;
+    if (text) {
+      setWebFetching(true);
+      try {
+        const webCtx = await enrichWithWebContext(text);
+        if (webCtx) {
+          finalText = prependWebContext(text, webCtx);
+          if (webCtx.fetchedUrls.length > 0)
+            toast.info(`🌐 Conteúdo carregado de ${webCtx.fetchedUrls.length} site(s)`);
+          if (webCtx.searchedQueries.length > 0)
+            toast.info(`🔍 Busca realizada: "${webCtx.searchedQueries[0]}"`);
+        }
+      } catch {
+        // falha silenciosa — envia sem contexto web
+      } finally {
+        setWebFetching(false);
+      }
+    }
+
+    const userContent = buildUserContent(finalText, atts);
     const images = atts.filter((a) => a.kind === "image").map((a) => a.content);
     const files = atts.filter((a) => a.kind !== "image").map((a) => a.name);
+    // Mensagem exibida ao usuário usa o texto original (sem o bloco de contexto)
     const userMsg: ChatMessage = {
       id: safeUUID(), role: "user", content: text || "(anexos)",
       images: images.length ? images : undefined, files: files.length ? files : undefined,
@@ -546,6 +570,10 @@ function PromptArchitect() {
                     className="grid h-9 w-9 place-items-center rounded-xl bg-destructive text-destructive-foreground hover:opacity-90 transition shrink-0">
                     <Square className="h-4 w-4" fill="currentColor" />
                   </button>
+                ) : webFetching ? (
+                  <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/20 border border-primary/30 shrink-0" title="Buscando na web…">
+                    <Globe className="h-4 w-4 text-primary animate-spin" style={{ animationDuration: "1.5s" }} />
+                  </div>
                 ) : (
                   <button onClick={handleSend} disabled={!input.trim() && attachments.length === 0} title="Enviar (Ctrl+Enter)"
                     className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] to-[var(--brand-glow)] text-primary-foreground hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0">

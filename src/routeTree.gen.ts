@@ -14,6 +14,8 @@ import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
 import { Route as ApiLlmModelsRouteImport } from './routes/api/llm-models'
 import { Route as ApiLlmChatRouteImport } from './routes/api/llm-chat'
 import { Route as ApiCliRouteImport } from './routes/api/cli'
+import { Route as ApiWebFetchRouteImport } from './routes/api/web-fetch'
+import { Route as ApiWebSearchRouteImport } from './routes/api/web-search'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +42,16 @@ const ApiCliRoute = ApiCliRouteImport.update({
   path: '/api/cli',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebFetchRoute = ApiWebFetchRouteImport.update({
+  id: '/api/web-fetch',
+  path: '/api/web-fetch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebSearchRoute = ApiWebSearchRouteImport.update({
+  id: '/api/web-search',
+  path: '/api/web-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +59,8 @@ export interface FileRoutesByFullPath {
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/api/web-fetch': typeof ApiWebFetchRoute
+  '/api/web-search': typeof ApiWebSearchRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +68,8 @@ export interface FileRoutesByTo {
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/api/web-fetch': typeof ApiWebFetchRoute
+  '/api/web-search': typeof ApiWebSearchRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +78,8 @@ export interface FileRoutesById {
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
   '/api/workspace': typeof ApiWorkspaceRoute
+  '/api/web-fetch': typeof ApiWebFetchRoute
+  '/api/web-search': typeof ApiWebSearchRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,8 +89,17 @@ export interface FileRouteTypes {
     | '/api/llm-chat'
     | '/api/llm-models'
     | '/api/workspace'
+    | '/api/web-fetch'
+    | '/api/web-search'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/cli' | '/api/llm-chat' | '/api/llm-models' | '/api/workspace'
+  to:
+    | '/'
+    | '/api/cli'
+    | '/api/llm-chat'
+    | '/api/llm-models'
+    | '/api/workspace'
+    | '/api/web-fetch'
+    | '/api/web-search'
   id:
     | '__root__'
     | '/'
@@ -80,6 +107,8 @@ export interface FileRouteTypes {
     | '/api/llm-chat'
     | '/api/llm-models'
     | '/api/workspace'
+    | '/api/web-fetch'
+    | '/api/web-search'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +117,8 @@ export interface RootRouteChildren {
   ApiLlmChatRoute: typeof ApiLlmChatRoute
   ApiLlmModelsRoute: typeof ApiLlmModelsRoute
   ApiWorkspaceRoute: typeof ApiWorkspaceRoute
+  ApiWebFetchRoute: typeof ApiWebFetchRoute
+  ApiWebSearchRoute: typeof ApiWebSearchRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -127,6 +158,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCliRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/web-fetch': {
+      id: '/api/web-fetch'
+      path: '/api/web-fetch'
+      fullPath: '/api/web-fetch'
+      preLoaderRoute: typeof ApiWebFetchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/web-search': {
+      id: '/api/web-search'
+      path: '/api/web-search'
+      fullPath: '/api/web-search'
+      preLoaderRoute: typeof ApiWebSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -136,6 +181,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLlmChatRoute: ApiLlmChatRoute,
   ApiLlmModelsRoute: ApiLlmModelsRoute,
   ApiWorkspaceRoute: ApiWorkspaceRoute,
+  ApiWebFetchRoute: ApiWebFetchRoute,
+  ApiWebSearchRoute: ApiWebSearchRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
