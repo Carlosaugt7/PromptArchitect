@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   updateProfile,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase-config";
@@ -65,6 +67,21 @@ export function AuthPage() {
     }
   };
 
+  // Captura resultado do redirect (quando voltou de signInWithRedirect)
+  useEffect(() => {
+    if (!auth) return;
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) toast.success("Conectado com Google!");
+      })
+      .catch((err: unknown) => {
+        const code = (err as { code?: string }).code;
+        if (code && code !== "auth/null-user") {
+          toast.error("Erro ao conectar com Google: " + code);
+        }
+      });
+  }, []);
+
   const handleGoogle = async () => {
     if (!auth) {
       toast.error("Firebase não configurado");
@@ -72,17 +89,27 @@ export function AuthPage() {
     }
     setBusy(true);
     try {
+      // Tenta popup primeiro; se COOP bloquear, cai para redirect
       await signInWithPopup(auth, googleProvider);
       toast.success("Conectado com Google!");
     } catch (err: unknown) {
       const code = (err as { code?: string }).code;
-      if (code === "auth/unauthorized-domain") {
+      if (
+        code === "auth/unauthorized-domain"
+      ) {
         toast.error(
-          "Domínio não autorizado no Firebase. Acesse o Firebase Console → Authentication → Settings → Authorized domains e adicione: " +
-            window.location.hostname,
+          "Domínio não autorizado. Adicione " + window.location.hostname + " no Firebase Console → Authentication → Authorized domains",
           { duration: 8000 },
         );
-      } else if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
+      } else if (
+        code === "auth/popup-blocked" ||
+        code === "auth/cancelled-popup-request" ||
+        code === "auth/internal-error"
+      ) {
+        // COOP ou popup bloqueado — usa redirect como fallback
+        toast.info("Redirecionando para autenticação Google…");
+        await signInWithRedirect(auth, googleProvider);
+      } else if (code !== "auth/popup-closed-by-user") {
         toast.error("Erro ao conectar com Google: " + (code ?? "desconhecido"));
       }
     } finally {
