@@ -417,6 +417,14 @@ function PromptArchitect() {
             <p className="text-sm font-medium truncate">{conversation.title || "Nova conversa"}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {/* Dark / Light toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
             <button onClick={() => setCompareOpen(true)} title="Comparar modelos" className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
               <Columns3 className="h-4 w-4" />
             </button>
