@@ -14,6 +14,7 @@ import { TokenMeter } from "@/components/TokenMeter";
 import { Markdown } from "@/components/Markdown";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
+import { PromptArtifactCard, PromptArtifactPanel, looksLikePrompt } from "@/components/PromptArtifact";
 import { AGENTS, loadAgentsState, type AgentsState } from "@/lib/agents-catalog";
 import { useAuth } from "@/lib/auth-context";
 import { loadSelection, type WireMessage, type ContentPart } from "@/lib/llm-providers";
@@ -646,11 +647,15 @@ function MsgBubble({
 }) {
   const isUser = m.role === "user";
   const [copied, setCopied] = useState(false);
+  const [artifactOpen, setArtifactOpen] = useState(false);
 
   function copyContent() {
     const text = typeof m.content === "string" ? m.content : "";
     navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
   }
+
+  const msgText = typeof m.content === "string" ? m.content : "";
+  const showArtifact = !isUser && !streaming && looksLikePrompt(msgText);
 
   if (isUser) {
     return (
@@ -698,9 +703,15 @@ function MsgBubble({
       <AgentAvatar name="IA" />
       <div className="flex-1 min-w-0">
         <div className="prose prose-sm max-w-none dark:prose-invert">
-          <Markdown>{typeof m.content === "string" ? m.content : ""}</Markdown>
+          <Markdown>{msgText}</Markdown>
         </div>
         {streaming && <span className="inline-block h-4 w-0.5 bg-primary animate-pulse ml-0.5 align-middle" />}
+
+        {/* Card de artefato — aparece ao final quando a resposta é um prompt */}
+        {showArtifact && (
+          <PromptArtifactCard content={msgText} onOpen={() => setArtifactOpen(true)} />
+        )}
+
         {!streaming && (
           <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button onClick={copyContent} title="Copiar resposta"
@@ -715,6 +726,15 @@ function MsgBubble({
           </div>
         )}
       </div>
+
+      {/* Painel lateral de artefato */}
+      {showArtifact && (
+        <PromptArtifactPanel
+          content={msgText}
+          open={artifactOpen}
+          onClose={() => setArtifactOpen(false)}
+        />
+      )}
     </div>
   );
 }
