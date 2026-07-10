@@ -201,4 +201,52 @@
   }
 }
 
+/* ── Highlight.js: tema claro por padrão, escuro no dark mode ── */
+.hljs {
+  background: transparent !important;
+}
+
+/* Tema escuro dentro de .dark */
+.dark .hljs-keyword,
+.dark .hljs-selector-tag,
+.dark .hljs-title,
+.dark .hljs-section,
+.dark .hljs-doctag,
+.dark .hljs-name,
+.dark .hljs-strong { color: #c792ea; }
+
+.dark .hljs-string,
+.dark .hljs-attr,
+.dark .hljs-bullet,
+.dark .hljs-addition { color: #c3e88d; }
+
+.dark .hljs-comment,
+.dark .hljs-quote,
+.dark .hljs-deletion,
+.dark .hljs-meta { color: #546e7a; }
+
+.dark .hljs-number,
+.dark .hljs-literal,
+.dark .hljs-variable,
+.dark .hljs-template-variable { color: #f78c6c; }
+
+.dark .hljs-type,
+.dark .hljs-built_in,
+.dark .hljs-builtin-name,
+.dark .hljs-symbol { color: #ffcb6b; }
+
+.dark pre code.hljs { color: #eeffff; }
+
+/* Fundo dos blocos de código: escuro no dark, claro no light */
+.dark .prose pre {
+  background: oklch(0.14 0.02 270) !important;
+  border-color: oklch(0.28 0.025 270 / 60%) !important;
+}
+
+.light .prose pre,
+:root:not(.dark) .prose pre {
+  background: oklch(0.96 0.005 270) !important;
+  border-color: oklch(0.85 0.02 270 / 80%) !important;
+}
+
 /* label placeholder aria-label */

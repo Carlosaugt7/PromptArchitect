@@ -3,13 +3,13 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { useState } from "react";
 import { Copy, Check, Sparkles } from "lucide-react";
-import "highlight.js/styles/github-dark.css";
+import "highlight.js/styles/github.css";
 import { parseFilePathFromBlock } from "@/lib/project-import";
 
 export function Markdown({ children }: { children: string }) {
   return (
     <div
-      className="prose prose-sm prose-invert max-w-none break-words
+      className="prose prose-sm max-w-none break-words dark:prose-invert
       prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border prose-pre:rounded-lg prose-pre:p-0
       prose-code:before:hidden prose-code:after:hidden
       prose-p:my-2 prose-headings:mt-3 prose-headings:mb-1.5

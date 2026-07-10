@@ -697,8 +697,8 @@ function MsgBubble({
     <div className="flex gap-3 py-2 group">
       <AgentAvatar name="IA" />
       <div className="flex-1 min-w-0">
-        <div className="prose prose-sm prose-invert max-w-none">
-          <Markdown content={typeof m.content === "string" ? m.content : ""} />
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          <Markdown>{typeof m.content === "string" ? m.content : ""}</Markdown>
         </div>
         {streaming && <span className="inline-block h-4 w-0.5 bg-primary animate-pulse ml-0.5 align-middle" />}
         {!streaming && (
