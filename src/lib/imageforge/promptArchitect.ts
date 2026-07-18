@@ -1,4 +1,4 @@
-import { ImageSize, ImageStyle, BrandTheme, DesignState, ProfessionalSettings } from "./types";
+import { ImageSize, ImageStyle, BrandTheme, DesignState, ProfessionalSettings, ImageGenerationRequest } from "./types";
 
 // Biblioteca de Nichos Especializados
 export const NICHES = [
@@ -161,7 +161,7 @@ Esse é o estado do design antes deste pedido. Mantenha consistente e altere ape
 
   if (history && history.length > 0) {
     message += `\n\n### HISTÓRICO DE ITERAÇÕES DE DESIGN (Memória):`;
-    history.forEach((h, idx) => {
+    history.forEach((h: { role: string; content: string }, idx: number) => {
       message += `\n${idx + 1}. [${h.role === "user" ? "Usuário" : "Diretor de Artes"}]: ${h.content}`;
     });
   }

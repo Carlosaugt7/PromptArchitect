@@ -11,11 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
+import { Route as ApiWebSearchRouteImport } from './routes/api/web-search'
+import { Route as ApiWebFetchRouteImport } from './routes/api/web-fetch'
 import { Route as ApiLlmModelsRouteImport } from './routes/api/llm-models'
 import { Route as ApiLlmChatRouteImport } from './routes/api/llm-chat'
+import { Route as ApiImageforgeRouteImport } from './routes/api/imageforge'
 import { Route as ApiCliRouteImport } from './routes/api/cli'
-import { Route as ApiWebFetchRouteImport } from './routes/api/web-fetch'
-import { Route as ApiWebSearchRouteImport } from './routes/api/web-search'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -25,6 +26,16 @@ const IndexRoute = IndexRouteImport.update({
 const ApiWorkspaceRoute = ApiWorkspaceRouteImport.update({
   id: '/api/workspace',
   path: '/api/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebSearchRoute = ApiWebSearchRouteImport.update({
+  id: '/api/web-search',
+  path: '/api/web-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebFetchRoute = ApiWebFetchRouteImport.update({
+  id: '/api/web-fetch',
+  path: '/api/web-fetch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLlmModelsRoute = ApiLlmModelsRouteImport.update({
@@ -37,88 +48,90 @@ const ApiLlmChatRoute = ApiLlmChatRouteImport.update({
   path: '/api/llm-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiImageforgeRoute = ApiImageforgeRouteImport.update({
+  id: '/api/imageforge',
+  path: '/api/imageforge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCliRoute = ApiCliRouteImport.update({
   id: '/api/cli',
   path: '/api/cli',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiWebFetchRoute = ApiWebFetchRouteImport.update({
-  id: '/api/web-fetch',
-  path: '/api/web-fetch',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiWebSearchRoute = ApiWebSearchRouteImport.update({
-  id: '/api/web-search',
-  path: '/api/web-search',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/cli': typeof ApiCliRoute
+  '/api/imageforge': typeof ApiImageforgeRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
-  '/api/workspace': typeof ApiWorkspaceRoute
   '/api/web-fetch': typeof ApiWebFetchRoute
   '/api/web-search': typeof ApiWebSearchRoute
+  '/api/workspace': typeof ApiWorkspaceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/cli': typeof ApiCliRoute
+  '/api/imageforge': typeof ApiImageforgeRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
-  '/api/workspace': typeof ApiWorkspaceRoute
   '/api/web-fetch': typeof ApiWebFetchRoute
   '/api/web-search': typeof ApiWebSearchRoute
+  '/api/workspace': typeof ApiWorkspaceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/cli': typeof ApiCliRoute
+  '/api/imageforge': typeof ApiImageforgeRoute
   '/api/llm-chat': typeof ApiLlmChatRoute
   '/api/llm-models': typeof ApiLlmModelsRoute
-  '/api/workspace': typeof ApiWorkspaceRoute
   '/api/web-fetch': typeof ApiWebFetchRoute
   '/api/web-search': typeof ApiWebSearchRoute
+  '/api/workspace': typeof ApiWorkspaceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/api/cli'
+    | '/api/imageforge'
     | '/api/llm-chat'
     | '/api/llm-models'
-    | '/api/workspace'
     | '/api/web-fetch'
     | '/api/web-search'
+    | '/api/workspace'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/api/cli'
+    | '/api/imageforge'
     | '/api/llm-chat'
     | '/api/llm-models'
-    | '/api/workspace'
     | '/api/web-fetch'
     | '/api/web-search'
+    | '/api/workspace'
   id:
     | '__root__'
     | '/'
     | '/api/cli'
+    | '/api/imageforge'
     | '/api/llm-chat'
     | '/api/llm-models'
-    | '/api/workspace'
     | '/api/web-fetch'
     | '/api/web-search'
+    | '/api/workspace'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiCliRoute: typeof ApiCliRoute
+  ApiImageforgeRoute: typeof ApiImageforgeRoute
   ApiLlmChatRoute: typeof ApiLlmChatRoute
   ApiLlmModelsRoute: typeof ApiLlmModelsRoute
-  ApiWorkspaceRoute: typeof ApiWorkspaceRoute
   ApiWebFetchRoute: typeof ApiWebFetchRoute
   ApiWebSearchRoute: typeof ApiWebSearchRoute
+  ApiWorkspaceRoute: typeof ApiWorkspaceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -137,6 +150,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/web-search': {
+      id: '/api/web-search'
+      path: '/api/web-search'
+      fullPath: '/api/web-search'
+      preLoaderRoute: typeof ApiWebSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/web-fetch': {
+      id: '/api/web-fetch'
+      path: '/api/web-fetch'
+      fullPath: '/api/web-fetch'
+      preLoaderRoute: typeof ApiWebFetchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/llm-models': {
       id: '/api/llm-models'
       path: '/api/llm-models'
@@ -151,25 +178,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLlmChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/imageforge': {
+      id: '/api/imageforge'
+      path: '/api/imageforge'
+      fullPath: '/api/imageforge'
+      preLoaderRoute: typeof ApiImageforgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cli': {
       id: '/api/cli'
       path: '/api/cli'
       fullPath: '/api/cli'
       preLoaderRoute: typeof ApiCliRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/web-fetch': {
-      id: '/api/web-fetch'
-      path: '/api/web-fetch'
-      fullPath: '/api/web-fetch'
-      preLoaderRoute: typeof ApiWebFetchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/web-search': {
-      id: '/api/web-search'
-      path: '/api/web-search'
-      fullPath: '/api/web-search'
-      preLoaderRoute: typeof ApiWebSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -178,11 +198,12 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiCliRoute: ApiCliRoute,
+  ApiImageforgeRoute: ApiImageforgeRoute,
   ApiLlmChatRoute: ApiLlmChatRoute,
   ApiLlmModelsRoute: ApiLlmModelsRoute,
-  ApiWorkspaceRoute: ApiWorkspaceRoute,
   ApiWebFetchRoute: ApiWebFetchRoute,
   ApiWebSearchRoute: ApiWebSearchRoute,
+  ApiWorkspaceRoute: ApiWorkspaceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
