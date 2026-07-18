@@ -27,7 +27,8 @@ export const Route = createFileRoute("/api/llm-models")({
           }
 
           const base = normalizeBaseUrl(baseUrl);
-          if (provider !== "ollama" && isBlockedHost(base.hostname)) {
+          const isDev = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
+          if (provider !== "ollama" && !isDev && isBlockedHost(base.hostname)) {
             return json({ error: "Use uma URL pública HTTPS do provedor de LLM" }, 400);
           }
 

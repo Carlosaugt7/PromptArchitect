@@ -95,9 +95,10 @@ export function ImageForgePanel() {
     const providers = loadProviders();
     const hasOpenAI = !!providers.openai?.apiKey;
     const hasGemini = !!providers.google?.apiKey;
+    const hasOpenRouter = !!providers.openrouter?.apiKey;
 
-    if (!hasOpenAI && !hasGemini) {
-      toast.error("Configure sua chave de API da OpenAI ou Google Gemini nas Configurações de IA primeiro.");
+    if (!hasOpenAI && !hasGemini && !hasOpenRouter) {
+      toast.error("Configure sua chave de API da OpenAI, Google Gemini ou OpenRouter nas Configurações de IA primeiro.");
       return;
     }
 

@@ -45,10 +45,14 @@ export default {
       const normalized = await normalizeCatastrophicSsrResponse(response);
 
       // Firebase signInWithPopup requer COOP: same-origin-allow-popups.
-      // O padrão "same-origin" bloqueia a comunicação popup → janela principal.
-      const patched = new Response(normalized.body, normalized);
-      patched.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-      return patched;
+      // Aplicamos apenas a respostas HTML para evitar efeitos colaterais em APIs e assets.
+      const contentType = normalized.headers.get("content-type") ?? "";
+      if (contentType.includes("text/html")) {
+        const patched = new Response(normalized.body, normalized);
+        patched.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+        return patched;
+      }
+      return normalized;
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
