@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="glyph" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#e9d5ff" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Subtle inner glow overlay -->
+  <rect width="512" height="512" rx="112" fill="white" fill-opacity="0.06"/>
+
+  <!-- Stylized "PA" / prompt cursor mark -->
+  <!-- Left bracket < -->
+  <path d="M148 200 L108 256 L148 312" stroke="url(#glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/>
+
+  <!-- Right bracket > -->
+  <path d="M200 200 L240 256 L200 312" stroke="url(#glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/>
+
+  <!-- Underscore cursor (blinking prompt cursor symbol) -->
+  <rect x="264" y="304" width="80" height="24" rx="12" fill="url(#glyph)" opacity="0.9"/>
+
+  <!-- Sparkle top-right -->
+  <g fill="url(#glyph)" opacity="0.85" filter="url(#glow)">
+    <!-- Center star -->
+    <path d="M340 132 L347 152 L368 159 L347 166 L340 186 L333 166 L312 159 L333 152 Z"/>
+    <!-- Small star -->
+    <path d="M390 100 L394 112 L406 116 L394 120 L390 132 L386 120 L374 116 L386 112 Z" opacity="0.7"/>
+  </g>
+
+  <!-- Main letter P body -->
+  <g filter="url(#glow)">
+    <!-- Vertical stem of P -->
+    <rect x="264" y="168" width="30" height="152" rx="15" fill="url(#glyph)"/>
+    <!-- Bowl of P -->
+    <path d="M264 168 L264 252 C264 252 264 252 280 252 C340 252 372 232 372 210 C372 188 340 168 280 168 Z" fill="url(#glyph)"/>
+    <!-- Inner cutout of P bowl -->
+    <path d="M294 190 L294 230 C294 230 294 230 302 230 C330 230 346 220 346 210 C346 200 330 190 302 190 Z" fill="url(#bg)"/>
+  </g>
+</svg>

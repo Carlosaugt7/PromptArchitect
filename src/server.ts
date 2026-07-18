@@ -42,7 +42,13 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+
+      // Firebase signInWithPopup requer COOP: same-origin-allow-popups.
+      // O padrão "same-origin" bloqueia a comunicação popup → janela principal.
+      const patched = new Response(normalized.body, normalized);
+      patched.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+      return patched;
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {

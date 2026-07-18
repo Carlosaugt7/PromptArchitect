@@ -1,48 +1,89 @@
-// Templates de prompt acessíveis por slash commands.
+// Templates de prompt para criação e otimização de prompts via slash commands.
 
 export interface PromptTemplate {
-  slug: string; // sem a barra
+  slug: string;
   label: string;
   description: string;
-  /** Função que recebe o resto do input após o comando e devolve o prompt final. */
   apply: (rest: string) => string;
 }
 
 export const PROMPT_TEMPLATES: PromptTemplate[] = [
   {
-    slug: "refatorar",
-    label: "/refatorar",
-    description: "Refatorar código mantendo o comportamento",
+    slug: "criar",
+    label: "/criar",
+    description: "Criar um prompt do zero para um caso de uso específico",
     apply: (r) =>
-      `Refatore o código a seguir mantendo o mesmo comportamento, melhorando legibilidade, nomes e separação de responsabilidades. Explique brevemente as mudanças.\n\n${r}`,
+      `Você é o Prompt Architect. Crie um prompt completo e otimizado para o seguinte caso de uso:\n\n${r}\n\nO prompt deve incluir:\n1. Persona e contexto do assistente\n2. Instruções claras e específicas\n3. Formato de saída esperado\n4. Exemplos de input/output (few-shot se aplicável)\n5. Limitações e restrições\n6. Tratamento de casos extremos`,
   },
   {
-    slug: "explicar",
-    label: "/explicar",
-    description: "Explicar trecho passo a passo",
+    slug: "otimizar",
+    label: "/otimizar",
+    description: "Melhorar um prompt existente com técnicas avançadas",
     apply: (r) =>
-      `Explique o que o seguinte trecho faz, passo a passo, em português, destacando pontos sutis e possíveis bugs.\n\n${r}`,
+      `Você é o Prompt Architect. Analise e otimize o seguinte prompt:\n\n${r || "[cole seu prompt aqui]"}\n\nFaça uma análise crítica identificando:\n- Ambiguidades e pontos vagos\n- Instruções conflitantes\n- Oportunidades de few-shot ou chain-of-thought\n- Melhorias de clareza e especificidade\n\nEntregue a versão otimizada com justificativa das mudanças.`,
   },
   {
-    slug: "testes",
-    label: "/testes",
-    description: "Gerar testes unitários",
+    slug: "codigo",
+    label: "/codigo",
+    description: "Criar prompt especializado para tarefas de código",
     apply: (r) =>
-      `Gere testes unitários cobrindo casos felizes e de borda para o código abaixo. Use o framework idiomático da linguagem detectada.\n\n${r}`,
+      `Você é o Prompt Architect especializado em engenharia de prompts para código. Crie um prompt para o seguinte cenário:\n\n${r}\n\nO prompt deve:\n1. Especificar linguagem, framework e versão\n2. Definir padrões de código (naming, estrutura, comentários)\n3. Incluir requisitos de segurança e performance\n4. Instruir sobre tratamento de erros e edge cases\n5. Solicitar testes quando apropriado`,
   },
   {
-    slug: "traduzir",
-    label: "/traduzir",
-    description: "Traduzir para inglês",
+    slug: "prd",
+    label: "/prd",
+    description: "Gerar PRD completo com requisitos e arquitetura",
     apply: (r) =>
-      `Traduza o conteúdo abaixo para inglês natural e idiomático, preservando termos técnicos.\n\n${r}`,
+      `Você é o Prompt Architect. Gere um PRD (Product Requirements Document) completo para:\n\n${r}\n\nEstrutura obrigatória:\n1. Visão Geral e Objetivos\n2. Personas e Jobs-to-be-Done\n3. Requisitos Funcionais (RF-001...)\n4. Requisitos Não-Funcionais (RNF-001...)\n5. Critérios de Aceitação (Given-When-Then)\n6. Mapeamento de Dados e LGPD/GDPR\n7. Arquitetura Proposta\n8. Roadmap (M1, M2, M3)`,
+  },
+  {
+    slug: "refinar",
+    label: "/refinar",
+    description: "Refinar prompt com técnica Chain-of-Thought ou ReAct",
+    apply: (r) =>
+      `Você é o Prompt Architect. Reescreva o prompt abaixo aplicando a técnica Chain-of-Thought (CoT) e/ou ReAct para melhorar o raciocínio do modelo:\n\n${r || "[cole seu prompt aqui]"}\n\nIncorpore:\n- Instrução explícita para raciocinar passo a passo\n- Separação entre raciocínio e resposta final\n- Exemplos de like de thought para calibrar o modelo`,
+  },
+  {
+    slug: "persona",
+    label: "/persona",
+    description: "Criar persona completa para um agente de IA",
+    apply: (r) =>
+      `Você é o Prompt Architect. Defina uma persona detalhada para um agente de IA:\n\n${r}\n\nA persona deve cobrir:\n1. Nome, papel e especialidade\n2. Tom de voz e estilo de comunicação\n3. Conhecimentos e capacidades\n4. Limitações e o que não deve fazer\n5. Como tratar ambiguidades\n6. Formato padrão de respostas\n7. Exemplos de interações ideais`,
   },
   {
     slug: "revisar",
     label: "/revisar",
-    description: "Revisar código (code review)",
+    description: "Revisar prompt para segurança e eficácia",
     apply: (r) =>
-      `Faça um code review do trecho abaixo: aponte bugs, riscos de segurança, problemas de performance e melhorias de estilo.\n\n${r}`,
+      `Você é o Prompt Architect atuando como revisor crítico. Analise o seguinte prompt em busca de problemas:\n\n${r || "[cole seu prompt aqui]"}\n\nVerifique:\n- Vulnerabilidades a prompt injection\n- Inconsistências e contradições\n- Instruções que podem ser mal interpretadas\n- Ausência de restrições importantes\n- Conformidade ética e de segurança\n\nApresente problemas encontrados e sugestões de correção.`,
+  },
+  {
+    slug: "traduzir",
+    label: "/traduzir",
+    description: "Traduzir prompt para inglês com qualidade técnica",
+    apply: (r) =>
+      `Você é um especialista em engenharia de prompts bilíngue. Traduza o seguinte prompt para inglês técnico e idiomático, preservando a intenção, nuances e terminologia especializada:\n\n${r}`,
+  },
+  {
+    slug: "multiagente",
+    label: "/multiagente",
+    description: "Projetar arquitetura de prompts para sistemas multi-agente",
+    apply: (r) =>
+      `Você é o Prompt Architect especializado em sistemas multi-agente. Projete a arquitetura de prompts para:\n\n${r}\n\nDefina:\n1. Agentes necessários e seus papéis\n2. System prompt de cada agente\n3. Protocolo de comunicação entre agentes\n4. Agente orquestrador e regras de delegação\n5. Tratamento de conflitos e fallbacks\n6. Exemplo de fluxo completo`,
+  },
+  {
+    slug: "documento",
+    label: "/documento",
+    description: "Gerar documento administrativo formal (DFD, ETP, TR, Parecer, Memorando…)",
+    apply: (r) =>
+      `Você é o Edu, Assistente Executivo especializado em documentos administrativos e licitações públicas (Lei 14.133/2021).\n\nGere o seguinte documento:\n\n${r || "[informe: tipo de documento + objeto/assunto + prazo/contexto]"}\n\nO documento deve:\n1. Seguir a estrutura legal/normativa exigida para o tipo solicitado\n2. Usar linguagem jurídico-administrativa formal (Manual de Redação da Presidência)\n3. Marcar com [PREENCHER: dado necessário] onde faltar informação\n4. Incluir ao final uma lista de pontos de atenção e documentos complementares necessários`,
+  },
+  {
+    slug: "memorando",
+    label: "/memorando",
+    description: "Redigir memorando interno ou ofício institucional",
+    apply: (r) =>
+      `Você é o Edu, Assistente Executivo. Redija um memorando/ofício para:\n\n${r || "[informe: destinatário, assunto, contexto e objetivo]"}\n\nO documento deve:\n1. Seguir o padrão do Manual de Redação da Presidência da República\n2. Ter estrutura: Número/Data | Destinatário | Assunto | Corpo | Fecho | Assinatura\n3. Tom formal, direto e sem prolixidade\n4. Marcar com [PREENCHER] onde faltar dado`,
   },
 ];
 

@@ -35,7 +35,7 @@ if (typeof window !== "undefined" && isFirebaseConfigured) {
     db = getFirestore(app);
     auth = getAuth(app);
   } catch (e) {
-    console.warn("[OmniForge] Firebase initialization failed — running in offline mode.", e);
+    console.warn("[PromptArchitect] Firebase initialization failed — running in offline mode.", e);
   }
 }
 
