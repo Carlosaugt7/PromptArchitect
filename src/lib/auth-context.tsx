@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { onAuthStateChanged, signOut as firebaseSignOut, type User } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "./firebase-config";
+import { setUserId } from "./chat-history";
 
 interface AuthState {
   user: User | null;
@@ -33,6 +34,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (u) => {
         if (!unsubscribed) {
           setUser(u);
+          if (u) {
+            // Sincroniza o ID da sessão de chats/modelos com o UID do usuário logado
+            setUserId(u.uid);
+          } else {
+            // Se o usuário deslogou e o ID atual era o UID dele, gera um novo ID anônimo temporário
+            const currentId = localStorage.getItem("omniforge.userId");
+            if (currentId && !currentId.startsWith("user-")) {
+              const anonymousId = "user-" + Math.random().toString(36).substring(2, 9);
+              setUserId(anonymousId);
+            }
+          }
           setLoading(false);
         }
       },

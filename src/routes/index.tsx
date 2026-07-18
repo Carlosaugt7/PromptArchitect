@@ -51,8 +51,10 @@ import {
   LogOut,
   Terminal,
   Play,
+  Image as ImageIcon,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
+import { ImageForgePanel } from "@/components/ImageForgePanel";
 import { AgentsDialog } from "@/components/AgentsDialog";
 import { ChatComposerSelectors } from "@/components/ChatComposerSelectors";
 import { FastReactPreview } from "@/components/FastReactPreview";
@@ -328,6 +330,17 @@ function OmniForge() {
                 onClick={() => setActiveSidebar(activeSidebar === "chat" ? null : "chat")}
                 icon={<MessageSquare className="h-5 w-5" />}
                 title="Chat com IA"
+              />
+              <ActivityBarButton
+                active={activeTab === "design:imageforge"}
+                onClick={() => {
+                  if (!openTabs.includes("design:imageforge")) {
+                    setOpenTabs((prev) => [...prev, "design:imageforge"]);
+                  }
+                  setActiveTab("design:imageforge");
+                }}
+                icon={<ImageIcon className="h-5 w-5" />}
+                title="Diretor de Artes (ImageForge)"
               />
               <ActivityBarButton
                 active={activeSidebar === "explorer"}
@@ -1890,6 +1903,7 @@ function WorkspacePanel({
   };
 
   const getFileIcon = (filePath: string) => {
+    if (filePath === "design:imageforge") return <Sparkles className="h-3.5 w-3.5 text-primary" />;
     const cleaned = filePath.startsWith("diff:") ? filePath.slice(5) : filePath;
     const ext = cleaned.split(".").pop()?.toLowerCase();
     switch (ext) {
@@ -2021,6 +2035,7 @@ function WorkspacePanel({
     }
 
     const isDiff = activeTab.startsWith("diff:");
+    const isDesign = activeTab === "design:imageforge";
     const filePath = isDiff ? activeTab.slice(5) : activeTab;
     const language = getEditorLanguage(activeTab);
 
@@ -2030,8 +2045,9 @@ function WorkspacePanel({
           {openTabs.map((tabPath) => {
             const isActive = tabPath === activeTab;
             const isTabDiff = tabPath.startsWith("diff:");
+            const isDesignTab = tabPath === "design:imageforge";
             const tabFilePath = isTabDiff ? tabPath.slice(5) : tabPath;
-            const tabName = tabFilePath.split("/").pop() || tabFilePath;
+            const tabName = isDesignTab ? "Diretor de Artes" : tabFilePath.split("/").pop() || tabFilePath;
 
             return (
               <div
@@ -2047,12 +2063,14 @@ function WorkspacePanel({
 
                 {isTabDiff ? (
                   <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                ) : isDesignTab ? (
+                  <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
                 ) : (
                   getFileIcon(tabPath)
                 )}
 
-                <span className={isTabDiff ? "text-amber-500/90 font-medium" : ""}>
-                  {isTabDiff ? `Revisar: ${tabName}` : tabName}
+                <span className={isTabDiff ? "text-amber-500/90 font-medium" : isDesignTab ? "text-primary font-medium" : ""}>
+                  {isDesignTab ? "Diretor de Artes" : isTabDiff ? `Revisar: ${tabName}` : tabName}
                 </span>
 
                 {isTabDiff && (
@@ -2089,6 +2107,17 @@ function WorkspacePanel({
         </div>
       </div>
     );
+
+    if (isDesign) {
+      return (
+        <div className="h-full flex flex-col min-w-0 overflow-hidden">
+          {tabBar}
+          <div className="flex-1 min-h-0 w-full overflow-y-auto bg-background">
+            <ImageForgePanel />
+          </div>
+        </div>
+      );
+    }
 
     if (isDiff) {
       const diffInfo = pendingDiffs.find((d) => d.path === filePath);
