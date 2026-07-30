@@ -288,7 +288,16 @@ export async function generateImageWithDirector(
   let ocrValid = true;
 
   // Resolve qual LLM usaremos para o Diretor de Artes (texto)
-  const textLlm = getActiveTextModel(providers);
+  let textLlm = getActiveTextModel(providers);
+  if (request.provider && request.model && providers[request.provider as ProviderId]?.apiKey) {
+    const pObj = providers[request.provider as ProviderId]!;
+    textLlm = {
+      provider: request.provider as ProviderId,
+      apiKey: pObj.apiKey,
+      baseUrl: pObj.baseUrl || "",
+      model: request.model,
+    };
+  }
   logs.push(`Diretor de Artes ativo via LLM: ${textLlm.provider} (${textLlm.model})`);
 
   while (attempts < maxAttempts) {
@@ -335,18 +344,11 @@ export async function generateImageWithDirector(
     let selectedProvider = request.provider;
 
     // Se o provedor especificado não tiver chave configurada, faz fallback para outro ativo
-    if (selectedProvider === "openai" && !providers.openai?.apiKey) {
-      selectedProvider = undefined;
-    } else if (selectedProvider === "google" && !providers.google?.apiKey) {
-      selectedProvider = undefined;
-    } else if (selectedProvider === "openrouter" && !providers.openrouter?.apiKey) {
-      selectedProvider = undefined;
-    } else if (selectedProvider === "custom" && !providers.custom?.apiKey) {
+    if (selectedProvider && !providers[selectedProvider as ProviderId]?.apiKey) {
       selectedProvider = undefined;
     }
 
     if (!selectedProvider) {
-      // Regra inteligente: se tem texto na imagem e temos Gemini Imagen 3, preferimos Gemini.
       if (finalDesignState.text && providers.google?.apiKey) {
         selectedProvider = "google";
       } else if (providers.openai?.apiKey) {
@@ -358,7 +360,7 @@ export async function generateImageWithDirector(
       } else if (providers.custom?.apiKey) {
         selectedProvider = "custom";
       } else {
-        throw new Error("Nenhum provedor de imagem (OpenAI DALL-E, Google Imagen 3, OpenRouter ou Custom) possui chave de API configurada nas Configurações de IA.");
+        throw new Error("Nenhum provedor com chave de API configurada foi encontrado nas Configurações de IA.");
       }
     }
 
@@ -382,20 +384,45 @@ export async function generateImageWithDirector(
         imageUrl = await generateOpenAIImage({
           apiKey: providers.openai.apiKey,
           baseUrl: providers.openai.baseUrl,
+          model: request.model,
           prompt: refinedPrompt,
           size: request.size,
         });
       } else if (selectedProvider === "openrouter" || selectedProvider === "custom") {
-        const activeProv = providers[selectedProvider] || providers.openai || providers.custom;
+        const activeProv = providers[selectedProvider as ProviderId] || providers.openai || providers.custom;
         if (!activeProv?.apiKey) {
           throw new Error(`Chave de API do provedor ${selectedProvider} não encontrada.`);
         }
-        imageUrl = await generateOpenAIImage({
-          apiKey: activeProv.apiKey,
-          baseUrl: activeProv.baseUrl,
-          prompt: refinedPrompt,
-          size: request.size,
-        });
+        try {
+          imageUrl = await generateOpenAIImage({
+            apiKey: activeProv.apiKey,
+            baseUrl: activeProv.baseUrl,
+            model: request.model,
+            prompt: refinedPrompt,
+            size: request.size,
+          });
+        } catch (customErr) {
+          // Se o servidor customizado não aceita /images/generations, tenta fallback em OpenAI/Gemini se disponíveis
+          if (providers.openai?.apiKey) {
+            logs.push(`Servidor customizado falhou na rota de imagens. Tentando fallback via OpenAI (DALL-E 3)...`);
+            imageUrl = await generateOpenAIImage({
+              apiKey: providers.openai.apiKey,
+              baseUrl: providers.openai.baseUrl,
+              prompt: refinedPrompt,
+              size: request.size,
+            });
+          } else if (providers.google?.apiKey) {
+            logs.push(`Servidor customizado falhou na rota de imagens. Tentando fallback via Google Gemini (Imagen 3)...`);
+            imageUrl = await generateGeminiImage({
+              apiKey: providers.google.apiKey,
+              baseUrl: providers.google.baseUrl,
+              prompt: refinedPrompt,
+              size: request.size,
+            });
+          } else {
+            throw new Error(`O servidor no modelo "${textLlm.model}" não possui suporte a geração de imagens (/images/generations). Configure uma chave OpenAI ou Gemini Imagen 3 nas Configurações de IA.`);
+          }
+        }
       } else {
         throw new Error(`Provedor de imagem desconhecido: ${selectedProvider}`);
       }

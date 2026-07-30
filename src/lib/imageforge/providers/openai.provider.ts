@@ -3,6 +3,7 @@ import { ImageSize } from "../types";
 export interface OpenAIImageParams {
   apiKey: string;
   baseUrl?: string;
+  model?: string;
   prompt: string;
   size?: ImageSize;
   quality?: "standard" | "hd";
@@ -37,13 +38,13 @@ function mapSizeToOpenAI(size: ImageSize = "1:1"): string {
 }
 
 /**
- * Realiza a chamada direta à API da OpenAI para gerar uma imagem usando DALL-E 3.
+ * Realiza a chamada à API da OpenAI / Proxies Compatíveis para gerar uma imagem.
  */
 export async function generateOpenAIImage(params: OpenAIImageParams): Promise<string> {
-  const { apiKey, baseUrl, prompt, size, quality } = params;
+  const { apiKey, baseUrl, model, prompt, size, quality } = params;
 
   if (!apiKey) {
-    throw new Error("Chave de API da OpenAI não fornecida.");
+    throw new Error("Chave de API do provedor de imagem não fornecida.");
   }
 
   // Permite custom baseUrl, como proxies ou gateways de terceiros
@@ -51,6 +52,7 @@ export async function generateOpenAIImage(params: OpenAIImageParams): Promise<st
   const endpoint = `${cleanBaseUrl}/images/generations`;
 
   const sizeString = mapSizeToOpenAI(size);
+  const targetModel = model || "dall-e-3";
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -59,7 +61,7 @@ export async function generateOpenAIImage(params: OpenAIImageParams): Promise<st
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "dall-e-3",
+      model: targetModel,
       prompt: prompt,
       n: 1,
       size: sizeString,
@@ -70,7 +72,7 @@ export async function generateOpenAIImage(params: OpenAIImageParams): Promise<st
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
-    let errorMessage = `Erro ao chamar OpenAI DALL-E 3: ${response.status} ${response.statusText}`;
+    let errorMessage = `Erro na API de imagem (${targetModel}): ${response.status} ${response.statusText}`;
     try {
       const parsed = JSON.parse(errorText);
       if (parsed.error?.message) {
@@ -82,10 +84,10 @@ export async function generateOpenAIImage(params: OpenAIImageParams): Promise<st
 
   const data = await response.json();
   const url = data.data?.[0]?.url;
+  const b64 = data.data?.[0]?.b64_json;
 
-  if (!url) {
-    throw new Error("A API da OpenAI não retornou nenhuma URL de imagem válida.");
-  }
+  if (url) return url;
+  if (b64) return `data:image/png;base64,${b64}`;
 
-  return url;
+  throw new Error(`A API (${targetModel}) não retornou Nenhuma URL ou dados Base64 de imagem válidos.`);
 }

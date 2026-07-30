@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { loadProviders } from "@/lib/llm-providers";
+import { loadProviders, listEnabledModels, type ModelSelection } from "@/lib/llm-providers";
 import { ImageService } from "@/services/imageService";
 import { 
   ImageStyle, 
@@ -44,6 +44,17 @@ export function ImageForgePanel() {
   const [selectedSize, setSelectedSize] = useState("1:1");
   const [customWidth, setCustomWidth] = useState(1024);
   const [customHeight, setCustomHeight] = useState(1024);
+
+  // Modelos de IA Habilitados
+  const [enabledModels, setEnabledModels] = useState<ModelSelection[]>([]);
+  const [selectedModelKey, setSelectedModelKey] = useState<string>("");
+
+  useEffect(() => {
+    setEnabledModels(listEnabledModels());
+    const handler = () => setEnabledModels(listEnabledModels());
+    window.addEventListener("omniforge.llm.providers-changed", handler);
+    return () => window.removeEventListener("omniforge.llm.providers-changed", handler);
+  }, []);
 
   // Detector de Marca
   const [brandName, setBrandName] = useState("");
@@ -106,8 +117,19 @@ export function ImageForgePanel() {
       ? `${customWidth || 1024}x${customHeight || 1024}`
       : (selectedSize as ImageSize);
 
+    let chosenProvider: string | undefined = undefined;
+    let chosenModel: string | undefined = undefined;
+
+    if (selectedModelKey && selectedModelKey.includes("::")) {
+      const [p, m] = selectedModelKey.split("::");
+      chosenProvider = p;
+      chosenModel = m;
+    }
+
     const requestPayload = {
       prompt: activePrompt,
+      provider: chosenProvider,
+      model: chosenModel,
       size,
       style: selectedStyle as ImageStyle,
       brandTheme,
@@ -180,6 +202,24 @@ export function ImageForgePanel() {
               className="resize-none text-xs bg-background/50 h-20"
               disabled={loading || history.length > 0}
             />
+          </div>
+
+          {/* Seletor de Modelo de IA e Configurações Visuais */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Modelo de IA (Direção de Arte / LLM)</Label>
+            <select
+              value={selectedModelKey}
+              onChange={(e) => setSelectedModelKey(e.target.value)}
+              className="w-full text-xs bg-background/50 rounded-lg border border-border p-2 focus:ring-1 focus:ring-primary focus:outline-none"
+              disabled={loading}
+            >
+              <option value="">✨ Automático (IA Seleciona o Melhor Modelo)</option>
+              {enabledModels.map((m) => (
+                <option key={`${m.provider}::${m.model}`} value={`${m.provider}::${m.model}`}>
+                  {m.model} ({m.provider === "custom" ? "Personalizado" : m.provider})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Estilo Visual e Tamanho da Imagem */}
