@@ -13,4 +13,15 @@ export default defineConfig({
     server: { entry: "server" },
   },
   nitro: true,
+  vite: {
+    server: {
+      proxy: {
+        "/api-proxy": {
+          target: "http://localhost:8080",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api-proxy/, ""),
+        },
+      },
+    },
+  },
 });

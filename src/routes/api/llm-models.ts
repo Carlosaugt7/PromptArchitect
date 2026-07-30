@@ -94,9 +94,13 @@ function buildModelUrls(provider: Provider, base: URL, apiKey: string) {
     return [`${rootClean}/api/tags`, `${clean}/v1/models`, `${clean}/models`];
   }
   if (/\/models$/i.test(base.pathname)) return [clean];
-  const urls = new Set<string>([`${clean}/models`]);
-  if (!/\/v\d+(beta)?$/i.test(base.pathname)) urls.add(`${clean}/v1/models`);
-  return [...urls];
+  
+  const urls: string[] = [];
+  if (!/\/v\d+(beta)?$/i.test(base.pathname)) {
+    urls.push(`${clean}/v1/models`);
+  }
+  urls.push(`${clean}/models`);
+  return [...new Set(urls)];
 }
 
 function buildHeaders(provider: Provider, apiKey: string): Record<string, string> {

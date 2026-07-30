@@ -112,11 +112,23 @@ function normalizeBase(url: string): string {
     .replace(/\/+$/, "");
 }
 
+function resolveOpenAIEndpoint(baseUrl: string): string {
+  const clean = baseUrl.trim().replace(/\/+$/, "");
+  if (/\/chat\/completions$/i.test(clean)) return clean;
+  if (/\/v1$/i.test(clean)) return `${clean}/chat/completions`;
+  if (!/\/v\d+(\/|$)/i.test(clean)) {
+    return `${clean}/v1/chat/completions`;
+  }
+  return `${clean}/chat/completions`;
+}
+
 async function nonStream(body: Body): Promise<Response> {
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = normalizeBase(baseUrl);
   const isAnthropic =
-    provider === "anthropic" || /anthropic\.com/i.test(base) || /^claude[-_.]/i.test(model);
+    provider === "anthropic" ||
+    /anthropic\.com/i.test(base) ||
+    (provider === "custom" && /^claude[-_.]/i.test(model));
   const isGoogle =
     provider === "google" ||
     /generativelanguage\.googleapis\.com/i.test(base) ||
@@ -187,18 +199,28 @@ async function nonStream(body: Body): Promise<Response> {
   if (apiKey && apiKey !== "undefined" && apiKey !== "ollama") {
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
-  const endpoint =
-    provider === "ollama"
-      ? base.endsWith("/v1")
-        ? `${base}/chat/completions`
-        : `${base}/v1/chat/completions`
-      : `${base}/chat/completions`;
+  
+  const endpoint = provider === "ollama"
+    ? (base.endsWith("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`)
+    : resolveOpenAIEndpoint(baseUrl);
 
-  const r = await fetch(endpoint, {
+  let r = await fetch(endpoint, {
     method: "POST",
     headers,
     body: JSON.stringify({ model, messages: all }),
   });
+
+  if (r.status === 404 && provider !== "ollama" && !baseUrl.endsWith("/chat/completions")) {
+    const fallbackEndpoint = `${base}/chat/completions`;
+    if (fallbackEndpoint !== endpoint) {
+      r = await fetch(fallbackEndpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ model, messages: all }),
+      });
+    }
+  }
+
   const d = await r.json();
   if (!r.ok) return json({ error: d?.error?.message ?? `${r.status}` }, r.status);
   return json({ text: d.choices?.[0]?.message?.content ?? "", usage: openaiUsage(d.usage) });
@@ -226,7 +248,9 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
   const { provider, apiKey, baseUrl, model, system, messages } = body;
   const base = normalizeBase(baseUrl);
   const isAnthropic =
-    provider === "anthropic" || /anthropic\.com/i.test(base) || /^claude[-_.]/i.test(model);
+    provider === "anthropic" ||
+    /anthropic\.com/i.test(base) ||
+    (provider === "custom" && /^claude[-_.]/i.test(model));
   const isGoogle =
     provider === "google" ||
     /generativelanguage\.googleapis\.com/i.test(base) ||
@@ -331,7 +355,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
             ? base.endsWith("/v1")
               ? `${base}/chat/completions`
               : `${base}/v1/chat/completions`
-            : `${base}/chat/completions`;
+            : resolveOpenAIEndpoint(baseUrl);
 
         const requestBody: Record<string, any> = {
           model,

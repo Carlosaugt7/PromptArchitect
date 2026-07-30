@@ -30,7 +30,7 @@ async function callChat(params: {
     .replace(/\/+$/, "");
 
   const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(cleanBase) || /^gemini[-_.]/i.test(model);
-  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(cleanBase) || /^claude[-_.]/i.test(model);
+  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(cleanBase) || (provider === "custom" && /^claude[-_.]/i.test(model));
 
   if (isGoogle) {
     const url = `${cleanBase}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -128,13 +128,29 @@ async function callChat(params: {
   if (apiKey && apiKey !== "undefined") {
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
-  const endpoint = `${cleanBase}/chat/completions`;
+  
+  let endpoint = `${cleanBase}/chat/completions`;
+  if (!cleanBase.endsWith("/v1") && !cleanBase.includes("/v1/") && !cleanBase.endsWith("/chat/completions")) {
+    endpoint = `${cleanBase}/v1/chat/completions`;
+  }
 
-  const res = await fetch(endpoint, {
+  let res = await fetch(endpoint, {
     method: "POST",
     headers,
     body: JSON.stringify({ model, messages: oaiMessages }),
   });
+
+  if (res.status === 404 && !cleanBase.endsWith("/chat/completions")) {
+    const fallbackEndpoint = `${cleanBase}/chat/completions`;
+    if (fallbackEndpoint !== endpoint) {
+      res = await fetch(fallbackEndpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ model, messages: oaiMessages }),
+      });
+    }
+  }
+
   const d = await res.json();
   if (!res.ok) throw new Error(d?.error?.message ?? `Erro OpenAI API: ${res.status}`);
   return d.choices?.[0]?.message?.content ?? "";
@@ -149,7 +165,7 @@ function getActiveTextModel(providers: ProvidersState): { provider: ProviderId; 
       provider: "google",
       apiKey: providers.google.apiKey,
       baseUrl: providers.google.baseUrl || "https://generativelanguage.googleapis.com/v1beta",
-      model: "gemini-2.5-flash",
+      model: providers.google.enabled?.[0] || providers.google.models?.[0] || "gemini-2.5-flash",
     };
   }
   if (providers.openai?.apiKey) {
@@ -157,7 +173,7 @@ function getActiveTextModel(providers: ProvidersState): { provider: ProviderId; 
       provider: "openai",
       apiKey: providers.openai.apiKey,
       baseUrl: providers.openai.baseUrl || "https://api.openai.com/v1",
-      model: "gpt-4o-mini",
+      model: providers.openai.enabled?.[0] || providers.openai.models?.[0] || "gpt-4o-mini",
     };
   }
   if (providers.openrouter?.apiKey) {
@@ -165,10 +181,34 @@ function getActiveTextModel(providers: ProvidersState): { provider: ProviderId; 
       provider: "openrouter",
       apiKey: providers.openrouter.apiKey,
       baseUrl: providers.openrouter.baseUrl || "https://openrouter.ai/api/v1",
-      model: "google/gemini-2.5-flash",
+      model: providers.openrouter.enabled?.[0] || providers.openrouter.models?.[0] || "google/gemini-2.5-flash",
     };
   }
-  throw new Error("Nenhum provedor de texto (Gemini/OpenAI) com chave de API ativa foi encontrado para rodar o Diretor de Artes.");
+  if (providers.custom?.apiKey) {
+    return {
+      provider: "custom",
+      apiKey: providers.custom.apiKey,
+      baseUrl: providers.custom.baseUrl,
+      model: providers.custom.enabled?.[0] || providers.custom.models?.[0] || "custom-model",
+    };
+  }
+  if (providers.anthropic?.apiKey) {
+    return {
+      provider: "anthropic",
+      apiKey: providers.anthropic.apiKey,
+      baseUrl: providers.anthropic.baseUrl || "https://api.anthropic.com/v1",
+      model: providers.anthropic.enabled?.[0] || providers.anthropic.models?.[0] || "claude-3-5-sonnet-latest",
+    };
+  }
+  if (providers.deepseek?.apiKey) {
+    return {
+      provider: "deepseek",
+      apiKey: providers.deepseek.apiKey,
+      baseUrl: providers.deepseek.baseUrl || "https://api.deepseek.com/v1",
+      model: providers.deepseek.enabled?.[0] || providers.deepseek.models?.[0] || "deepseek-chat",
+    };
+  }
+  throw new Error("Nenhum provedor de texto ativo com chave de API foi encontrado para rodar o Diretor de Artes.");
 }
 
 /**

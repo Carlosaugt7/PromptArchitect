@@ -219,6 +219,7 @@ function ProviderForm({
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(false);
   const [models, setModels] = useState<string[]>(saved?.models ?? []);
+  const [customModelInput, setCustomModelInput] = useState("");
 
   useEffect(() => {
     const s = state[providerId];
@@ -226,6 +227,35 @@ function ProviderForm({
     setBaseUrl(s?.baseUrl ?? provider.defaultBaseUrl);
     setModels(s?.models ?? []);
   }, [providerId, state, provider.defaultBaseUrl]);
+
+  function handleAddManualModel() {
+    const name = customModelInput.trim();
+    if (!name) return;
+    if (models.includes(name)) {
+      toast.info("Este modelo já está na lista.");
+      return;
+    }
+    const nextModels = [...models, name];
+    setModels(nextModels);
+    setCustomModelInput("");
+    if (apiKey.trim()) {
+      const base = saved ?? { models: [], enabled: [] };
+      const nextEnabled = Array.from(new Set([...(base.enabled ?? []), name]));
+      const nextState: ProvidersState = {
+        ...state,
+        [providerId]: {
+          ...base,
+          apiKey: apiKey.trim(),
+          baseUrl: baseUrl.trim() || provider.defaultBaseUrl,
+          models: nextModels,
+          enabled: nextEnabled,
+          updatedAt: Date.now(),
+        },
+      };
+      onChange(nextState);
+    }
+    toast.success(`Modelo "${name}" adicionado!`);
+  }
 
   async function handleTest() {
     if (!apiKey.trim()) {
@@ -331,6 +361,28 @@ function ProviderForm({
             Padrão do provedor. Altere apenas para usar um proxy compatível.
           </p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${providerId}-manual-model`}>Adicionar modelo manualmente</Label>
+        <div className="flex gap-2">
+          <Input
+            id={`${providerId}-manual-model`}
+            value={customModelInput}
+            onChange={(e) => setCustomModelInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddManualModel();
+              }
+            }}
+            placeholder="ex: llama-3, gpt-4o, my-custom-model"
+            className="font-mono text-xs"
+          />
+          <Button type="button" variant="secondary" onClick={handleAddManualModel} className="text-xs">
+            + Adicionar
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">

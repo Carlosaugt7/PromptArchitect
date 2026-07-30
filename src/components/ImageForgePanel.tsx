@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { loadProviders } from "@/lib/llm-providers";
+import { ImageService } from "@/services/imageService";
 import { 
   ImageStyle, 
   ImageSize, 
@@ -32,7 +33,7 @@ import {
   DesignState, 
   ProfessionalSettings, 
   ImageGenerationResponse 
-} from "@/lib/imageforge/types";
+} from "@/types";
 import { NICHES, ADVANCED_STYLES, BRAND_THEMES, TEMPLATES } from "@/lib/imageforge/promptArchitect";
 
 export function ImageForgePanel() {
@@ -93,12 +94,10 @@ export function ImageForgePanel() {
     }
 
     const providers = loadProviders();
-    const hasOpenAI = !!providers.openai?.apiKey;
-    const hasGemini = !!providers.google?.apiKey;
-    const hasOpenRouter = !!providers.openrouter?.apiKey;
+    const hasAnyActiveKey = Object.values(providers).some((p) => !!p?.apiKey);
 
-    if (!hasOpenAI && !hasGemini && !hasOpenRouter) {
-      toast.error("Configure sua chave de API da OpenAI, Google Gemini ou OpenRouter nas Configurações de IA primeiro.");
+    if (!hasAnyActiveKey) {
+      toast.error("Configure ao menos um provedor de IA com chave de API nas Configurações primeiro.");
       return;
     }
 
@@ -128,36 +127,25 @@ export function ImageForgePanel() {
     // Respeita o template para obter a proporção da imagem
     const size = (TEMPLATES.find(t => t.id === selectedTemplate)?.size as ImageSize) ?? "1:1";
 
-    const payload = {
-      request: {
-        prompt: activePrompt,
-        provider: provider || undefined,
-        size,
-        style: selectedStyle as ImageStyle,
-        niche: selectedNiche,
-        template: selectedTemplate,
-        brandTheme,
-        designState: currentDesignState || undefined,
-        professionalMode,
-        history: isIteration ? history : [], // Envia o histórico se for uma iteração
-      },
-      providers,
+    const requestPayload = {
+      prompt: activePrompt,
+      provider: provider || undefined,
+      size,
+      style: selectedStyle as ImageStyle,
+      niche: selectedNiche,
+      template: selectedTemplate,
+      brandTheme,
+      designState: currentDesignState || undefined,
+      professionalMode,
+      history: isIteration ? history : [], // Envia o histórico se for uma iteração
     };
 
     try {
-      const response = await fetch("/api/imageforge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const res = await ImageService.generateImage(requestPayload, providers, {
+        maxRetries: 3,
+        onProgressLog: (log) => toast.info(log),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(data.error ?? "Erro ao gerar imagem");
-      }
-
-      const res = data as ImageGenerationResponse;
       setLastResponse(res);
       setCurrentDesignState(res.designState);
       
