@@ -21,10 +21,23 @@ async function callChat(params: {
   system?: string;
   messages: { role: "user" | "assistant" | "system"; content: string | any[] }[];
 }): Promise<string> {
-  const { provider, apiKey, baseUrl, model, system, messages } = params;
+  const { provider, apiKey, model, system, messages } = params;
+  
+  // Garante um baseUrl válido — se vier vazio, usa o default do provedor
+  let rawBase = params.baseUrl;
+  if (!rawBase || !rawBase.startsWith("http")) {
+    const defaults: Record<string, string> = {
+      openai: "https://api.openai.com/v1",
+      google: "https://generativelanguage.googleapis.com/v1beta",
+      anthropic: "https://api.anthropic.com/v1",
+      deepseek: "https://api.deepseek.com/v1",
+      openrouter: "https://openrouter.ai/api/v1",
+    };
+    rawBase = defaults[provider] || "https://api.openai.com/v1";
+  }
   
   // Limpa o baseUrl de possíveis sufixos
-  const cleanBase = baseUrl
+  const cleanBase = rawBase
     .replace(/\/+$/, "")
     .replace(/\/(chat\/completions|messages|generateContent)$/i, "")
     .replace(/\/+$/, "");
