@@ -278,35 +278,7 @@ export async function sendChat(
   messages: WireMessage[],
   opts: { system?: string; signal?: AbortSignal } = {},
 ): Promise<ChatResult> {
-  const state = loadProviders();
-  const saved = state[selection.provider];
-  if (!saved?.apiKey) throw new Error("Configure o provedor em Configurações → LLM");
-
-  try {
-    const res = await fetch("/api/llm-chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: opts.signal,
-      body: JSON.stringify({
-        provider: selection.provider,
-        apiKey: saved.apiKey,
-        baseUrl: saved.baseUrl,
-        model: selection.model,
-        system: opts.system,
-        messages,
-      }),
-    });
-    if (res.status === 524 || res.status === 504) {
-      throw new Error("Erro 524 (Timeout Cloudflare): O provedor de IA demorou mais de 100s para responder. Verifique se a URL e a chave estão corretas em Configurações → LLM.");
-    }
-    const data = (await res.json().catch(() => ({}))) as Partial<ChatResult> & { error?: string };
-    if (!res.ok || data.error) throw new Error(data.error ?? `${res.status} ${res.statusText}`);
-    return { text: data.text ?? "", usage: data.usage ?? { prompt: 0, completion: 0, total: 0 } };
-  } catch (e) {
-    if ((e as Error).name === "AbortError")
-      return { text: "", usage: { prompt: 0, completion: 0, total: 0 } };
-    throw e;
-  }
+  return sendChatStream(selection, messages, () => {}, opts);
 }
 
 /** Versão streaming. Suporta AbortSignal para cancelamento. */

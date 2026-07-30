@@ -280,7 +280,27 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
+      // 1. Envia uma quebra de linha inicial para forçar o Cloudflare Worker a emitir os cabeçalhos 200 OK imediatamente.
+      // Isso desarma o timer de timeout (Erro 524) do Cloudflare Gateway.
+      try {
+        controller.enqueue(enc.encode("\n"));
+      } catch {}
+
+      // 2. Transmite comentários de heartbeat a cada 10s para manter o socket HTTP ativo durante chamadas longas
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(enc.encode(":\n"));
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, 10_000);
+
+      const send = (obj: unknown) => {
+        try {
+          controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
+        } catch {}
+      };
+
       try {
         if (isAnthropic) {
           const anthropicBase = /\/v\d+$/.test(base) ? base : `${base}/v1`;
@@ -304,7 +324,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
           });
           if (!r.ok || !r.body) {
             send({ error: `${r.status} ${await r.text()}` });
-            return controller.close();
+            return;
           }
           const usage = { prompt: 0, completion: 0, total: 0 };
           await readSSE(r.body, (evt) => {
@@ -320,7 +340,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
             } catch {}
           });
           send({ usage });
-          return controller.close();
+          return;
         }
 
         if (isGoogle) {
@@ -343,7 +363,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
           });
           if (!r.ok || !r.body) {
             send({ error: `${r.status} ${await r.text()}` });
-            return controller.close();
+            return;
           }
           let usage = { prompt: 0, completion: 0, total: 0 };
           await readSSE(r.body, (evt) => {
@@ -358,7 +378,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
             } catch {}
           });
           send({ usage });
-          return controller.close();
+          return;
         }
 
         const all = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
@@ -421,11 +441,11 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
         if (!r.ok || !r.body) {
           const errText = await r.text().catch(() => "");
           if (r.status === 524 || r.status === 504) {
-            send({ error: `Tempo limite de conexão excedido no provedor de IA (Erro ${r.status}). O modelo demorou para responder.` });
+            send({ error: `Tempo limite de conexão excedido no provedor de IA (Erro ${r.status}). Verifique a URL do servidor e a chave API nas Configurações.` });
           } else {
             send({ error: `${r.status} ${errText || r.statusText}` });
           }
-          return controller.close();
+          return;
         }
 
         let usage = { prompt: 0, completion: 0, total: 0 };
@@ -439,12 +459,15 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
           } catch {}
         });
         send({ usage });
-        controller.close();
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
           send({ error: e instanceof Error ? e.message : "Erro no streaming de resposta" });
         }
-        controller.close();
+      } finally {
+        clearInterval(heartbeat);
+        try {
+          controller.close();
+        } catch {}
       }
     },
   });
