@@ -326,14 +326,19 @@ export async function sendChatStream(
       while ((i = buf.indexOf("\n")) >= 0) {
         const line = buf.slice(0, i).trim();
         buf = buf.slice(i + 1);
-        if (!line) continue;
-        const j = JSON.parse(line) as { delta?: string; usage?: ChatUsage; error?: string };
-        if (j.error) throw new Error(j.error);
-        if (j.delta) {
-          text += j.delta;
-          onDelta(j.delta);
+        if (!line || line.startsWith(":")) continue;
+        try {
+          const j = JSON.parse(line) as { delta?: string; usage?: ChatUsage; error?: string };
+          if (j.error) throw new Error(j.error);
+          if (j.delta) {
+            text += j.delta;
+            onDelta(j.delta);
+          }
+          if (j.usage) usage = j.usage;
+        } catch (err) {
+          if (err instanceof SyntaxError) continue;
+          throw err;
         }
-        if (j.usage) usage = j.usage;
       }
     }
   } catch (e) {
