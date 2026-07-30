@@ -5,25 +5,33 @@
 
 // Estilos visuais suportados no ImageForge
 export type ImageStyle =
+  | "auto"
   | "ultra-realista"
   | "fotografico"
-  | "ilustracao"
-  | "3d"
+  | "pixel-art"
+  | "gibi-hq"
+  | "anime"
+  | "ilustracao-digital"
   | "flat"
   | "aquarela"
-  | "anime"
   | "cyberpunk"
+  | "3d-render"
   | "minimalista"
-  | "vintage";
+  | "vintage"
+  | "apple-keynote"
+  | string;
 
-// Proporções de imagem suportadas
+// Proporções e formatos de imagem suportados
 export type ImageSize =
   | "1:1"    // Quadrado (1024x1024)
+  | "16:9"   // Widescreen / Banner (1344x768)
+  | "9:16"   // Stories / Reels / TikTok (768x1344)
+  | "4:5"    // Retrato Feed Instagram (1080x1350)
   | "3:2"    // Paisagem Clássica (1152x768)
   | "2:3"    // Retrato Clássico (768x1152)
-  | "16:9"   // Banner/Widescreen (1344x768)
-  | "9:16"   // Story/Reels (768x1344)
-  | "21:9";  // Ultrawide (1536x656)
+  | "21:9"   // Ultrawide (1536x656)
+  | "custom" // Personalizado (Largura x Altura)
+  | string;
 
 // Identidade visual e marca
 export interface BrandTheme {
@@ -71,6 +79,8 @@ export interface ImageGenerationRequest {
   prompt: string;
   provider?: "openai" | "google" | "custom" | string;
   size?: ImageSize;
+  customWidth?: number;
+  customHeight?: number;
   style?: ImageStyle;
   niche?: string;
   template?: string;

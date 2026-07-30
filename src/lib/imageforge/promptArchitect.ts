@@ -14,17 +14,22 @@ export const NICHES = [
   { id: "church", name: "Eventos & Comunidades", description: "Acolhedor, iluminação suave, foco em pessoas e emoção." },
 ];
 
-// Biblioteca de Estilos Premium Avançados
+// Biblioteca de Estilos Visuais da Arte
 export const ADVANCED_STYLES = [
-  { id: "apple-keynote", name: "Apple Keynote", prompt: "Estilo clean de apresentação Apple, design minimalista e moderno, iluminação suave de estúdio, paleta sóbria, tipografia sofisticada, ultra limpo." },
-  { id: "nike-campaign", name: "Nike Campaign", prompt: "Estilo campanha esportiva da Nike, iluminação dramática de alto contraste, foco em ação e dinamismo, cores vibrantes pontuais, texturas realistas e energia crua." },
-  { id: "coca-cola", name: "Coca-Cola Classic", prompt: "Estilo comercial clássico Coca-Cola, iluminação de verão quente e alegre, cores vibrantes dominadas pelo vermelho e branco, foco em refrescância, gotas de condensação, sorrisos naturais." },
-  { id: "tesla", name: "Tesla Electric", prompt: "Estilo futurista minimalista Tesla, iluminação fria e tecnológica, ângulos de câmera dramáticos, reflexos metálicos limpos, paisagens aerodinâmicas modernas e design sustentável." },
-  { id: "national-geographic", name: "National Geographic", prompt: "Estilo fotografia National Geographic, cores naturais ultra-realistas, iluminação solar natural, lentes profissionais de campo profundo, texturas detalhadas da vida real, foco no tema." },
-  { id: "pixar", name: "Pixar / Disney 3D", prompt: "Estilo animação 3D Pixar, formas arredondadas amigáveis, iluminação mágica e volumétrica, cores ricas e saturadas, texturas detalhadas de materiais estilizados e grande expressividade." },
-  { id: "scandinavian-minimal", name: "Minimalista Escandinavo", prompt: "Estilo nórdico minimalista, tons pastéis e terrosos claros, madeira clara, iluminação natural indireta de janelas grandes, organização geométrica simples e atmosfera acolhedora." },
-  { id: "dark-premium", name: "Dark Premium", prompt: "Estilo dark luxuoso, fundo escuro texturizado com materiais como mármore preto ou fibra de carbono, iluminação dourada ou neon pontual, altíssimo contraste e sofisticação." },
-  { id: "medical-premium", name: "Medical Premium", prompt: "Estilo profissional de clínica premium, tons azul-bebê, branco e prata, iluminação clara e difusa sem sombras duras, visual de assepsia e equipamentos de alta tecnologia médica." },
+  { id: "auto", name: "✨ Automático (IA Seleciona)", prompt: "Melhor estilo estético adaptado ao briefing, direção artística livre e harmoniosa." },
+  { id: "ultra-realista", name: "📸 Ultra-Realista / 8K", prompt: "Hyper-realistic photography, 8k resolution, ultra detailed textures, professional cinematic camera lighting, depth of field, sharp focus, masterwork." },
+  { id: "fotografico", name: "📷 Realista / Estúdio", prompt: "Professional studio photography, clean lighting, soft shadows, natural skin/material textures, commercial photography, neutral background." },
+  { id: "pixel-art", name: "👾 Pixel Art / 16-bit", prompt: "Classic 16-bit pixel art style, crisp pixels, vibrant color palette, retro arcade aesthetic, game art design." },
+  { id: "gibi-hq", name: "🎨 Estilo Gibi / HQ / Comic", prompt: "Classic comic book art style, bold ink outlines, halftone dot patterns, dramatic graphic novel shading, pop art aesthetic." },
+  { id: "anime", name: "⛩️ Anime / Mangá", prompt: "Japanese anime animation style, Makoto Shinkai aesthetic, vibrant cel shading, expressive characters, detailed anime backgrounds, cinematic lighting." },
+  { id: "ilustracao-digital", name: "🖌️ Ilustração Digital", prompt: "Modern digital concept illustration, rich brushwork, painterly textures, balanced composition, artistic color grading." },
+  { id: "flat", name: "📐 Flat Design Vector", prompt: "Clean flat vector illustration, minimal geometric shapes, bold solid colors, modern graphic design, no shadows or gradients." },
+  { id: "aquarela", name: "🎨 Pintura em Aquarela", prompt: "Soft watercolor painting, delicate water washes, artistic paper texture, bleeding color edges, gentle painterly atmosphere." },
+  { id: "cyberpunk", name: "🌃 Cyberpunk & Neon", prompt: "Cyberpunk aesthetic, glowing neon lights, dark rainy city atmosphere, cyan and magenta contrast, futuristic reflections." },
+  { id: "3d-render", name: "🧊 3D Render (C4D/Blender)", prompt: "3D digital render, Octane Render style, smooth clay and glass materials, soft studio volumetric lighting, Cinema 4D aesthetic." },
+  { id: "minimalista", name: "🔳 Minimalista & Clean", prompt: "Minimalist design, ample negative space, elegant simple shapes, subtle color palette, sophisticated clean aesthetic." },
+  { id: "vintage", name: "📻 Vintage / Retrô", prompt: "Retro vintage 1970s film photo, warm sepia and faded grain, nostalgic color grading, classic film texture." },
+  { id: "apple-keynote", name: "🍏 Apple Keynote Premium", prompt: "Clean Apple presentation style, minimal modern design, soft studio lighting, sober color palette, ultra clean." },
 ];
 
 // Biblioteca de Brand Themes (Branding)

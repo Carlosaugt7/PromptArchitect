@@ -40,21 +40,10 @@ export function ImageForgePanel() {
   // Inputs Principais
   const [prompt, setPrompt] = useState("");
   const [chatInput, setChatInput] = useState("");
-  const [selectedNiche, setSelectedNiche] = useState("corporate");
-  const [selectedStyle, setSelectedStyle] = useState("apple-keynote");
-  const [selectedTemplate, setSelectedTemplate] = useState("instagram-feed");
-  const [provider, setProvider] = useState<"openai" | "google" | "">("");
-
-  // Modo Profissional
-  const [showProfessional, setShowProfessional] = useState(false);
-  const [lens, setLens] = useState("50mm f/1.8");
-  const [iso, setIso] = useState("100");
-  const [hdr, setHdr] = useState(true);
-  const [dof, setDof] = useState("Shallow");
-  const [lighting, setLighting] = useState("Soft Studio Light");
-  const [negativePrompt, setNegativePrompt] = useState("");
-  const [seed, setSeed] = useState<number | undefined>(undefined);
-  const [cfg, setCfg] = useState(7.5);
+  const [selectedStyle, setSelectedStyle] = useState("ultra-realista");
+  const [selectedSize, setSelectedSize] = useState("1:1");
+  const [customWidth, setCustomWidth] = useState(1024);
+  const [customHeight, setCustomHeight] = useState(1024);
 
   // Detector de Marca
   const [brandName, setBrandName] = useState("");
@@ -112,32 +101,18 @@ export function ImageForgePanel() {
       toneOfVoice: brandVoice.trim(),
     } : undefined;
 
-    // Configurações manuais
-    const professionalMode: ProfessionalSettings | undefined = showProfessional ? {
-      lens,
-      iso,
-      hdr,
-      dof,
-      lighting,
-      negativePrompt,
-      seed,
-      cfg,
-    } : undefined;
-
-    // Respeita o template para obter a proporção da imagem
-    const size = (TEMPLATES.find(t => t.id === selectedTemplate)?.size as ImageSize) ?? "1:1";
+    // Define o tamanho da imagem (preset ou resolução customizada WxH)
+    const size = selectedSize === "custom"
+      ? `${customWidth || 1024}x${customHeight || 1024}`
+      : (selectedSize as ImageSize);
 
     const requestPayload = {
       prompt: activePrompt,
-      provider: provider || undefined,
       size,
       style: selectedStyle as ImageStyle,
-      niche: selectedNiche,
-      template: selectedTemplate,
       brandTheme,
       designState: currentDesignState || undefined,
-      professionalMode,
-      history: isIteration ? history : [], // Envia o histórico se for uma iteração
+      history: isIteration ? history : [],
     };
 
     try {
@@ -207,42 +182,10 @@ export function ImageForgePanel() {
             />
           </div>
 
-          {/* Escolha do Provedor */}
+          {/* Estilo Visual e Tamanho da Imagem */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Provedor de Imagem / IA</Label>
-              <select
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-                className="w-full text-xs bg-background/50 rounded-lg border border-border p-2 focus:ring-1 focus:ring-primary focus:outline-none"
-                disabled={loading}
-              >
-                <option value="">Roteamento Inteligente (Auto)</option>
-                <option value="google">Google Gemini Imagen 3</option>
-                <option value="openai">OpenAI DALL-E 3</option>
-                <option value="openrouter">OpenRouter API</option>
-                <option value="custom">Servidor Customizado / Proxy</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Nicho Comercial</Label>
-              <select
-                value={selectedNiche}
-                onChange={(e) => setSelectedNiche(e.target.value)}
-                className="w-full text-xs bg-background/50 rounded-lg border border-border p-2 focus:ring-1 focus:ring-primary focus:outline-none"
-                disabled={loading}
-              >
-                {NICHES.map(n => (
-                  <option key={n.id} value={n.id}>{n.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Estilo e Template */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Estilo Premium</Label>
+              <Label className="text-xs font-semibold">Estilo da Imagem</Label>
               <select
                 value={selectedStyle}
                 onChange={(e) => setSelectedStyle(e.target.value)}
@@ -255,21 +198,59 @@ export function ImageForgePanel() {
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Formato / Redes</Label>
+              <Label className="text-xs font-semibold">Tamanho da Imagem</Label>
               <select
-                value={selectedTemplate}
-                onChange={(e) => setSelectedTemplate(e.target.value)}
+                value={selectedSize}
+                onChange={(e) => setSelectedSize(e.target.value)}
                 className="w-full text-xs bg-background/50 rounded-lg border border-border p-2 focus:ring-1 focus:ring-primary focus:outline-none"
                 disabled={loading}
               >
-                {TEMPLATES.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
+                <option value="1:1">Quadrado (1024 x 1024)</option>
+                <option value="16:9">Widescreen / Banner (1344 x 768)</option>
+                <option value="9:16">Stories / Reels / TikTok (768 x 1344)</option>
+                <option value="4:5">Retrato Feed Instagram (1080 x 1350)</option>
+                <option value="3:2">Paisagem Fotográfica (1152 x 768)</option>
+                <option value="2:3">Retrato Poster (768 x 1152)</option>
+                <option value="21:9">Ultrawide Hero (1536 x 656)</option>
+                <option value="custom">📐 Dimensões Personalizadas (WxH)</option>
               </select>
             </div>
           </div>
 
-          {/* Accordion: Detector de Marca (Branding) */}
+          {/* Resolução Personalizada (Quando selecionado custom) */}
+          {selectedSize === "custom" && (
+            <div className="border border-primary/30 bg-primary/5 rounded-xl p-3 space-y-2 animate-fade-in">
+              <span className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                <Sliders className="h-3.5 w-3.5" /> Dimensões Personalizadas (em pixels)
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Largura (px)</Label>
+                  <Input
+                    type="number"
+                    value={customWidth}
+                    onChange={(e) => setCustomWidth(parseInt(e.target.value, 10) || 1024)}
+                    placeholder="1024"
+                    className="h-8 text-xs bg-background/60"
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Altura (px)</Label>
+                  <Input
+                    type="number"
+                    value={customHeight}
+                    onChange={(e) => setCustomHeight(parseInt(e.target.value, 10) || 1024)}
+                    placeholder="1024"
+                    className="h-8 text-xs bg-background/60"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Accordion: Identidade de Marca (Branding Opcional) */}
           <div className="border border-border/60 bg-background/30 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between pointer-events-auto">
               <span className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground">
@@ -298,50 +279,6 @@ export function ImageForgePanel() {
                 />
               </div>
             </div>
-          </div>
-
-          {/* Accordion: Modo Profissional */}
-          <div className="border border-border/60 bg-background/30 rounded-xl p-3 space-y-2">
-            <button 
-              type="button"
-              onClick={() => setShowProfessional(!showProfessional)}
-              className="w-full flex items-center justify-between text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <span className="flex items-center gap-1.5">
-                <Sliders className="h-3.5 w-3.5" /> Configurações de Câmera / Manual
-              </span>
-              <ChevronRight className={`h-3 w-3 transform transition-transform ${showProfessional ? "rotate-90" : ""}`} />
-            </button>
-            
-            {showProfessional && (
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40 animate-fade-in">
-                <div className="space-y-1">
-                  <Label className="text-[10px]">Lente / Lente Objetiva</Label>
-                  <Input value={lens} onChange={e => setLens(e.target.value)} className="h-7 text-[10px] bg-background/40" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px]">Sensibilidade ISO</Label>
-                  <Input value={iso} onChange={e => setIso(e.target.value)} className="h-7 text-[10px] bg-background/40" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px]">Iluminação Adicional</Label>
-                  <Input value={lighting} onChange={e => setLighting(e.target.value)} className="h-7 text-[10px] bg-background/40" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px]">Profundidade de Campo</Label>
-                  <Input value={dof} onChange={e => setDof(e.target.value)} className="h-7 text-[10px] bg-background/40" />
-                </div>
-                <div className="col-span-2 space-y-1">
-                  <Label className="text-[10px]">Filtro Negativo (Negative Prompt)</Label>
-                  <Input 
-                    value={negativePrompt} 
-                    onChange={e => setNegativePrompt(e.target.value)} 
-                    placeholder="mutated hands, blurry, bad anatomy" 
-                    className="h-7 text-[10px] bg-background/40" 
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Botão de Ação */}

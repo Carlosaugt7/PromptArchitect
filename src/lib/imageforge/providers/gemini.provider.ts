@@ -11,16 +11,26 @@ export interface GeminiImageParams {
  * Mapeia as proporções de tela do ImageForge para as resoluções de aspecto do Imagen 3.
  */
 function mapSizeToGemini(size: ImageSize = "1:1"): string {
+  if (typeof size === "string" && size.includes("x")) {
+    const [w, h] = size.split("x").map((n) => parseInt(n.trim(), 10));
+    if (w && h) {
+      if (w > h * 1.15) return "16:9";
+      if (h > w * 1.15) return "9:16";
+      return "1:1";
+    }
+  }
+
   switch (size) {
     case "16:9":
     case "21:9":
       return "16:9";
     case "9:16":
       return "9:16";
-    case "3:2":
-      return "4:3"; // Proporção mais próxima
+    case "4:5":
     case "2:3":
-      return "3:4"; // Proporção mais próxima
+      return "3:4";
+    case "3:2":
+      return "4:3";
     case "1:1":
     default:
       return "1:1";

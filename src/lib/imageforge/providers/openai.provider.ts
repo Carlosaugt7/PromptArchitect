@@ -12,6 +12,15 @@ export interface OpenAIImageParams {
  * Mapeia as proporções de tela do ImageForge para as resoluções aceitas pelo DALL-E 3.
  */
 function mapSizeToOpenAI(size: ImageSize = "1:1"): string {
+  if (typeof size === "string" && size.includes("x")) {
+    const [w, h] = size.split("x").map((n) => parseInt(n.trim(), 10));
+    if (w && h) {
+      if (w > h * 1.15) return "1792x1024";
+      if (h > w * 1.15) return "1024x1792";
+      return "1024x1024";
+    }
+  }
+
   switch (size) {
     case "16:9":
     case "21:9":
@@ -19,6 +28,7 @@ function mapSizeToOpenAI(size: ImageSize = "1:1"): string {
       return "1792x1024"; // Landscape
     case "9:16":
     case "2:3":
+    case "4:5":
       return "1024x1792"; // Portrait
     case "1:1":
     default:
