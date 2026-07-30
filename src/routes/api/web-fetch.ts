@@ -117,7 +117,6 @@ export const Route = createFileRoute("/api/web-fetch")({
               "Accept": "text/html,application/xhtml+xml,text/plain,*/*",
               "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
             },
-            signal: AbortSignal.timeout(12_000),
           });
 
           if (!res.ok) {

@@ -44,7 +44,6 @@ async function duckduckgo(query: string): Promise<SearchResult[]> {
       "User-Agent": "PromptArchitect/1.0",
       "Accept": "application/json",
     },
-    signal: AbortSignal.timeout(10_000),
   });
 
   if (!res.ok) return [];
@@ -100,7 +99,6 @@ async function searchGitHub(query: string, max: number): Promise<SearchResult[]>
   const params = new URLSearchParams({ q: query, per_page: String(max), sort: "stars" });
   const res = await fetch(`https://api.github.com/search/repositories?${params}`, {
     headers: { Accept: "application/vnd.github.v3+json", "User-Agent": "PromptArchitect/1.0" },
-    signal: AbortSignal.timeout(8_000),
   });
   if (!res.ok) return [];
   const data = await res.json() as { items?: Array<{ full_name: string; html_url: string; description?: string; stargazers_count?: number; language?: string }> };

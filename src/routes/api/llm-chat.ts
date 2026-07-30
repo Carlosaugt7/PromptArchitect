@@ -45,9 +45,17 @@ export const Route = createFileRoute("/api/llm-chat")({
           ) {
             return json({ error: "Parâmetros obrigatórios ausentes" }, 400);
           }
-          return body.stream ? streamResponse(body, request.signal) : nonStream(body);
+          try {
+            return body.stream ? await streamResponse(body, request.signal) : await nonStream(body);
+          } catch (innerErr) {
+            const msg = innerErr instanceof Error ? innerErr.message : String(innerErr);
+            console.error("[llm-chat] Erro interno:", msg);
+            return json({ error: msg }, 502);
+          }
         } catch (err) {
-          return json({ error: err instanceof Error ? err.message : "Erro desconhecido" }, 500);
+          const msg = err instanceof Error ? err.message : "Erro desconhecido ao processar requisição";
+          console.error("[llm-chat] Erro fatal:", msg);
+          return json({ error: msg }, 500);
         }
       },
     },
@@ -114,6 +122,9 @@ function normalizeBase(url: string): string {
 
 function resolveOpenAIEndpoint(baseUrl: string): string {
   const clean = baseUrl.trim().replace(/\/+$/, "");
+  if (!clean || !clean.startsWith("http")) {
+    return "https://api.openai.com/v1/chat/completions";
+  }
   if (/\/chat\/completions$/i.test(clean)) return clean;
   if (/\/v1$/i.test(clean)) return `${clean}/chat/completions`;
   if (!/\/v\d+(\/|$)/i.test(clean)) {
@@ -204,17 +215,17 @@ async function nonStream(body: Body): Promise<Response> {
     ? (base.endsWith("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`)
     : resolveOpenAIEndpoint(baseUrl);
 
-  let r = await fetch(endpoint, {
-    method: "POST",
-    headers,
-    signal: AbortSignal.timeout(55000),
-    body: JSON.stringify({ model, messages: all }),
-  }).catch((err) => {
-    if (err?.name === "TimeoutError" || err?.name === "AbortError") {
-      throw new Error("Tempo limite excedido na resposta do modelo de IA (55s). Verifique as configurações da URL/provedor ou ative o modo streaming.");
-    }
-    throw err;
-  });
+  let r: Response;
+  try {
+    r = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ model, messages: all }),
+    });
+  } catch (fetchErr) {
+    const errMsg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+    return json({ error: `Falha na conexão com o provedor de IA: ${errMsg}` }, 502);
+  }
 
   if (r.status === 404 && provider !== "ollama" && !baseUrl.endsWith("/chat/completions")) {
     const fallbackEndpoint = `${base}/chat/completions`;
@@ -222,7 +233,6 @@ async function nonStream(body: Body): Promise<Response> {
       r = await fetch(fallbackEndpoint, {
         method: "POST",
         headers,
-        signal: AbortSignal.timeout(55000),
         body: JSON.stringify({ model, messages: all }),
       });
     }
