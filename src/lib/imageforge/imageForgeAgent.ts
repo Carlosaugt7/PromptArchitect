@@ -331,8 +331,20 @@ export async function generateImageWithDirector(
       }
     }
 
-    // 2. Determinar e rodar o gerador de imagem (DALL-E 3 ou Imagen 3)
+    // 2. Determinar e rodar o gerador de imagem (DALL-E 3, Imagen 3, OpenRouter ou Custom)
     let selectedProvider = request.provider;
+
+    // Se o provedor especificado não tiver chave configurada, faz fallback para outro ativo
+    if (selectedProvider === "openai" && !providers.openai?.apiKey) {
+      selectedProvider = undefined;
+    } else if (selectedProvider === "google" && !providers.google?.apiKey) {
+      selectedProvider = undefined;
+    } else if (selectedProvider === "openrouter" && !providers.openrouter?.apiKey) {
+      selectedProvider = undefined;
+    } else if (selectedProvider === "custom" && !providers.custom?.apiKey) {
+      selectedProvider = undefined;
+    }
+
     if (!selectedProvider) {
       // Regra inteligente: se tem texto na imagem e temos Gemini Imagen 3, preferimos Gemini.
       if (finalDesignState.text && providers.google?.apiKey) {
@@ -341,28 +353,51 @@ export async function generateImageWithDirector(
         selectedProvider = "openai";
       } else if (providers.google?.apiKey) {
         selectedProvider = "google";
+      } else if (providers.openrouter?.apiKey) {
+        selectedProvider = "openrouter";
+      } else if (providers.custom?.apiKey) {
+        selectedProvider = "custom";
       } else {
-        throw new Error("Nenhum provedor de imagem (OpenAI/Gemini) configurado.");
+        throw new Error("Nenhum provedor de imagem (OpenAI DALL-E, Google Imagen 3, OpenRouter ou Custom) possui chave de API configurada nas Configurações de IA.");
       }
     }
 
-    logs.push(`Gerando imagem via provedor: ${selectedProvider === "google" ? "Google Gemini (Imagen 3)" : "OpenAI (DALL-E 3)"}`);
+    logs.push(`Gerando imagem via provedor: ${selectedProvider}`);
 
     try {
       if (selectedProvider === "google") {
+        if (!providers.google?.apiKey) {
+          throw new Error("Chave de API do Google Gemini não encontrada.");
+        }
         imageUrl = await generateGeminiImage({
-          apiKey: providers.google!.apiKey,
-          baseUrl: providers.google?.baseUrl,
+          apiKey: providers.google.apiKey,
+          baseUrl: providers.google.baseUrl,
+          prompt: refinedPrompt,
+          size: request.size,
+        });
+      } else if (selectedProvider === "openai") {
+        if (!providers.openai?.apiKey) {
+          throw new Error("Chave de API da OpenAI não encontrada.");
+        }
+        imageUrl = await generateOpenAIImage({
+          apiKey: providers.openai.apiKey,
+          baseUrl: providers.openai.baseUrl,
+          prompt: refinedPrompt,
+          size: request.size,
+        });
+      } else if (selectedProvider === "openrouter" || selectedProvider === "custom") {
+        const activeProv = providers[selectedProvider] || providers.openai || providers.custom;
+        if (!activeProv?.apiKey) {
+          throw new Error(`Chave de API do provedor ${selectedProvider} não encontrada.`);
+        }
+        imageUrl = await generateOpenAIImage({
+          apiKey: activeProv.apiKey,
+          baseUrl: activeProv.baseUrl,
           prompt: refinedPrompt,
           size: request.size,
         });
       } else {
-        imageUrl = await generateOpenAIImage({
-          apiKey: providers.openai!.apiKey,
-          baseUrl: providers.openai?.baseUrl,
-          prompt: refinedPrompt,
-          size: request.size,
-        });
+        throw new Error(`Provedor de imagem desconhecido: ${selectedProvider}`);
       }
       logs.push(`Imagem gerada com sucesso!`);
     } catch (e) {

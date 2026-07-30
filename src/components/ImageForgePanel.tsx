@@ -210,16 +210,18 @@ export function ImageForgePanel() {
           {/* Escolha do Provedor */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Provedor de Imagem</Label>
+              <Label className="text-xs">Provedor de Imagem / IA</Label>
               <select
                 value={provider}
-                onChange={(e) => setProvider(e.target.value as any)}
+                onChange={(e) => setProvider(e.target.value)}
                 className="w-full text-xs bg-background/50 rounded-lg border border-border p-2 focus:ring-1 focus:ring-primary focus:outline-none"
                 disabled={loading}
               >
-                <option value="">Roteamento Inteligente</option>
-                <option value="google">Gemini Imagen 3 (Melhor p/ textos)</option>
-                <option value="openai">OpenAI DALL-E 3 (Mais rápido)</option>
+                <option value="">Roteamento Inteligente (Auto)</option>
+                <option value="google">Google Gemini Imagen 3</option>
+                <option value="openai">OpenAI DALL-E 3</option>
+                <option value="openrouter">OpenRouter API</option>
+                <option value="custom">Servidor Customizado / Proxy</option>
               </select>
             </div>
             <div className="space-y-1.5">
