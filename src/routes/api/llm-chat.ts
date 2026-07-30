@@ -207,7 +207,13 @@ async function nonStream(body: Body): Promise<Response> {
   let r = await fetch(endpoint, {
     method: "POST",
     headers,
+    signal: AbortSignal.timeout(55000),
     body: JSON.stringify({ model, messages: all }),
+  }).catch((err) => {
+    if (err?.name === "TimeoutError" || err?.name === "AbortError") {
+      throw new Error("Tempo limite excedido na resposta do modelo de IA (55s). Verifique as configurações da URL/provedor ou ative o modo streaming.");
+    }
+    throw err;
   });
 
   if (r.status === 404 && provider !== "ollama" && !baseUrl.endsWith("/chat/completions")) {
@@ -216,13 +222,18 @@ async function nonStream(body: Body): Promise<Response> {
       r = await fetch(fallbackEndpoint, {
         method: "POST",
         headers,
+        signal: AbortSignal.timeout(55000),
         body: JSON.stringify({ model, messages: all }),
       });
     }
   }
 
-  const d = await r.json();
-  if (!r.ok) return json({ error: d?.error?.message ?? `${r.status}` }, r.status);
+  if (r.status === 524 || r.status === 504) {
+    return json({ error: `Tempo limite de conexão excedido no provedor de IA (Erro ${r.status}). O servidor de IA demorou para responder.` }, 504);
+  }
+
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) return json({ error: d?.error?.message ?? `${r.status} ${r.statusText}` }, r.status);
   return json({ text: d.choices?.[0]?.message?.content ?? "", usage: openaiUsage(d.usage) });
 }
 
@@ -362,20 +373,51 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
           messages: all,
           stream: true,
         };
-        if (provider !== "ollama") {
+        if (provider !== "ollama" && provider !== "custom") {
           requestBody.stream_options = { include_usage: true };
         }
 
-        const r = await fetch(endpoint, {
+        let r = await fetch(endpoint, {
           method: "POST",
           signal,
           headers,
           body: JSON.stringify(requestBody),
         });
+
+        // Se falhar por erro do provedor quando enviado stream_options, tenta sem stream_options
+        if (!r.ok && requestBody.stream_options) {
+          delete requestBody.stream_options;
+          r = await fetch(endpoint, {
+            method: "POST",
+            signal,
+            headers,
+            body: JSON.stringify(requestBody),
+          });
+        }
+
+        // Se der 404 no endpoint primário, tenta o fallback em /chat/completions
+        if (r.status === 404 && provider !== "ollama") {
+          const fallbackEndpoint = `${base}/chat/completions`;
+          if (fallbackEndpoint !== endpoint) {
+            r = await fetch(fallbackEndpoint, {
+              method: "POST",
+              signal,
+              headers,
+              body: JSON.stringify(requestBody),
+            });
+          }
+        }
+
         if (!r.ok || !r.body) {
-          send({ error: `${r.status} ${await r.text()}` });
+          const errText = await r.text().catch(() => "");
+          if (r.status === 524 || r.status === 504) {
+            send({ error: `Tempo limite de conexão excedido no provedor de IA (Erro ${r.status}). O modelo demorou para responder.` });
+          } else {
+            send({ error: `${r.status} ${errText || r.statusText}` });
+          }
           return controller.close();
         }
+
         let usage = { prompt: 0, completion: 0, total: 0 };
         await readSSE(r.body, (evt) => {
           if (evt === "[DONE]") return;
@@ -390,7 +432,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
         controller.close();
       } catch (e) {
         if ((e as Error).name !== "AbortError") {
-          send({ error: e instanceof Error ? e.message : "stream error" });
+          send({ error: e instanceof Error ? e.message : "Erro no streaming de resposta" });
         }
         controller.close();
       }
@@ -398,7 +440,13 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
   });
 
   return new Response(stream, {
-    headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache", ...cors },
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+      "Connection": "keep-alive",
+      ...cors,
+    },
   });
 }
 

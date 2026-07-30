@@ -296,6 +296,9 @@ export async function sendChat(
         messages,
       }),
     });
+    if (res.status === 524 || res.status === 504) {
+      throw new Error("Erro 524 (Timeout Cloudflare): O provedor de IA demorou mais de 100s para responder. Verifique se a URL e a chave estão corretas em Configurações → LLM.");
+    }
     const data = (await res.json().catch(() => ({}))) as Partial<ChatResult> & { error?: string };
     if (!res.ok || data.error) throw new Error(data.error ?? `${res.status} ${res.statusText}`);
     return { text: data.text ?? "", usage: data.usage ?? { prompt: 0, completion: 0, total: 0 } };
@@ -330,6 +333,9 @@ export async function sendChatStream(
       stream: true,
     }),
   });
+  if (res.status === 524 || res.status === 504) {
+    throw new Error("Erro 524 (Timeout Cloudflare): O provedor de IA demorou mais de 100s para responder. Verifique se a URL e a chave estão corretas em Configurações → LLM.");
+  }
   if (!res.ok || !res.body) {
     const t = await res.text().catch(() => "");
     throw new Error(t || `${res.status} ${res.statusText}`);
