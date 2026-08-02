@@ -20,28 +20,40 @@ export class ImageService {
    */
   public static validateRequest(request: ImageGenerationRequest, providers: ProvidersState): void {
     if (!request || typeof request.prompt !== "string" || !request.prompt.trim()) {
-      throw new ImageServiceError("O prompt para a geração de imagem é obrigatório e não pode ser vazio.", {
-        isRetryable: false,
-      });
+      throw new ImageServiceError(
+        "O prompt para a geração de imagem é obrigatório e não pode ser vazio.",
+        {
+          isRetryable: false,
+        },
+      );
     }
 
     if (request.prompt.trim().length < 3) {
-      throw new ImageServiceError("O prompt é muito curto. Por favor, forneça mais detalhes sobre a imagem desejada.", {
-        isRetryable: false,
-      });
+      throw new ImageServiceError(
+        "O prompt é muito curto. Por favor, forneça mais detalhes sobre a imagem desejada.",
+        {
+          isRetryable: false,
+        },
+      );
     }
 
     if (!providers || Object.keys(providers).length === 0) {
-      throw new ImageServiceError("Nenhum provedor de IA está configurado. Acesse as Configurações de IA e adicione uma chave de API.", {
-        isRetryable: false,
-      });
+      throw new ImageServiceError(
+        "Nenhum provedor de IA está configurado. Acesse as Configurações de IA e adicione uma chave de API.",
+        {
+          isRetryable: false,
+        },
+      );
     }
 
     const hasAnyActiveKey = Object.values(providers).some((p) => !!p?.apiKey);
     if (!hasAnyActiveKey) {
-      throw new ImageServiceError("Nenhuma chave de API válida foi encontrada nos provedores configurados.", {
-        isRetryable: false,
-      });
+      throw new ImageServiceError(
+        "Nenhuma chave de API válida foi encontrada nos provedores configurados.",
+        {
+          isRetryable: false,
+        },
+      );
     }
   }
 
@@ -51,7 +63,7 @@ export class ImageService {
   public static async generateImage(
     request: ImageGenerationRequest,
     providers: ProvidersState,
-    options: ImageServiceOptions = {}
+    options: ImageServiceOptions = {},
   ): Promise<ImageGenerationResponse> {
     // 1. Validação prévia
     this.validateRequest(request, providers);
@@ -84,7 +96,9 @@ export class ImageService {
         // Aguarda com backoff exponencial simples antes da próxima tentativa
         const delay = retryDelay * Math.pow(2, attempt - 1);
         if (options.onProgressLog) {
-          options.onProgressLog(`Falha na tentativa ${attempt}. Aguardando ${delay}ms para tentar novamente...`);
+          options.onProgressLog(
+            `Falha na tentativa ${attempt}. Aguardando ${delay}ms para tentar novamente...`,
+          );
         }
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
@@ -92,7 +106,7 @@ export class ImageService {
 
     throw new ImageServiceError(
       `Falha na geração de imagem após ${maxRetries} tentativas. Último erro: ${lastError?.message}`,
-      { isRetryable: true }
+      { isRetryable: true },
     );
   }
 
@@ -102,7 +116,7 @@ export class ImageService {
   private static async executeFetch(
     request: ImageGenerationRequest,
     providers: ProvidersState,
-    timeoutMs?: number
+    timeoutMs?: number,
   ): Promise<ImageGenerationResponse> {
     const controller = new AbortController();
     const timeoutId = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -124,7 +138,7 @@ export class ImageService {
         const rawText = await response.text();
         throw new ImageServiceError(
           `Resposta inválida do servidor (${response.status}): ${rawText.slice(0, 150)}`,
-          { statusCode: response.status, isRetryable: response.status >= 500 }
+          { statusCode: response.status, isRetryable: response.status >= 500 },
         );
       }
 
@@ -146,14 +160,17 @@ export class ImageService {
       if (err instanceof ImageServiceError) throw err;
 
       if ((err as Error).name === "AbortError") {
-        throw new ImageServiceError("A requisição para o gerador de imagem excedeu o tempo limite (timeout).", {
-          isRetryable: true,
-        });
+        throw new ImageServiceError(
+          "A requisição para o gerador de imagem excedeu o tempo limite (timeout).",
+          {
+            isRetryable: true,
+          },
+        );
       }
 
       throw new ImageServiceError(
         `Erro de conexão/comunicação: ${err instanceof Error ? err.message : String(err)}`,
-        { isRetryable: true }
+        { isRetryable: true },
       );
     }
   }

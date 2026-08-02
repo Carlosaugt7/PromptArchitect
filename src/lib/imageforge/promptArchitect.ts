@@ -1,55 +1,237 @@
-import { ImageSize, ImageStyle, BrandTheme, DesignState, ProfessionalSettings, ImageGenerationRequest } from "./types";
+import {
+  ImageSize,
+  ImageStyle,
+  BrandTheme,
+  DesignState,
+  ProfessionalSettings,
+  ImageGenerationRequest,
+} from "./types";
 
 // Biblioteca de Nichos Especializados
 export const NICHES = [
-  { id: "healthcare", name: "Saúde & Medicina", description: "Foco em bem-estar, confiança, tons claros e limpos." },
-  { id: "education", name: "Educação & Cursos", description: "Inspirador, focado em futuro, crescimento e aprendizado." },
-  { id: "real-estate", name: "Mercado Imobiliário", description: "Sofisticado, focado em moradia, arquitetura e solidez." },
-  { id: "restaurant", name: "Restaurantes & Gastronomia", description: "Apetite appeal, cores vibrantes, iluminação quente e foco no produto." },
-  { id: "fashion", name: "Moda & Estilo de Vida", description: "Tendência, iluminação editorial de alta costura, foco em modelo e estética." },
-  { id: "corporate", name: "Corporativo & B2B", description: "Tons profissionais, gráficos limpos, liderança e tecnologia." },
-  { id: "technology", name: "Tecnologia & Inovação", description: "Futurista, luzes neon, tons escuros com contrastes e alta tecnologia." },
-  { id: "luxury", name: "Luxo & Alta Gama", description: "Minimalismo, preto/ouro/prata, iluminação dramática e exclusividade." },
-  { id: "politics", name: "Campanhas & Social", description: "Comunicação clara, cores institucionais e impacto visual." },
-  { id: "church", name: "Eventos & Comunidades", description: "Acolhedor, iluminação suave, foco em pessoas e emoção." },
+  {
+    id: "healthcare",
+    name: "Saúde & Medicina",
+    description: "Foco em bem-estar, confiança, tons claros e limpos.",
+  },
+  {
+    id: "education",
+    name: "Educação & Cursos",
+    description: "Inspirador, focado em futuro, crescimento e aprendizado.",
+  },
+  {
+    id: "real-estate",
+    name: "Mercado Imobiliário",
+    description: "Sofisticado, focado em moradia, arquitetura e solidez.",
+  },
+  {
+    id: "restaurant",
+    name: "Restaurantes & Gastronomia",
+    description: "Apetite appeal, cores vibrantes, iluminação quente e foco no produto.",
+  },
+  {
+    id: "fashion",
+    name: "Moda & Estilo de Vida",
+    description: "Tendência, iluminação editorial de alta costura, foco em modelo e estética.",
+  },
+  {
+    id: "corporate",
+    name: "Corporativo & B2B",
+    description: "Tons profissionais, gráficos limpos, liderança e tecnologia.",
+  },
+  {
+    id: "technology",
+    name: "Tecnologia & Inovação",
+    description: "Futurista, luzes neon, tons escuros com contrastes e alta tecnologia.",
+  },
+  {
+    id: "luxury",
+    name: "Luxo & Alta Gama",
+    description: "Minimalismo, preto/ouro/prata, iluminação dramática e exclusividade.",
+  },
+  {
+    id: "politics",
+    name: "Campanhas & Social",
+    description: "Comunicação clara, cores institucionais e impacto visual.",
+  },
+  {
+    id: "church",
+    name: "Eventos & Comunidades",
+    description: "Acolhedor, iluminação suave, foco em pessoas e emoção.",
+  },
 ];
 
 // Biblioteca de Estilos Visuais da Arte
 export const ADVANCED_STYLES = [
-  { id: "auto", name: "✨ Automático (IA Seleciona)", prompt: "Melhor estilo estético adaptado ao briefing, direção artística livre e harmoniosa." },
-  { id: "ultra-realista", name: "📸 Ultra-Realista / 8K", prompt: "Hyper-realistic photography, 8k resolution, ultra detailed textures, professional cinematic camera lighting, depth of field, sharp focus, masterwork." },
-  { id: "fotografico", name: "📷 Realista / Estúdio", prompt: "Professional studio photography, clean lighting, soft shadows, natural skin/material textures, commercial photography, neutral background." },
-  { id: "pixel-art", name: "👾 Pixel Art / 16-bit", prompt: "Classic 16-bit pixel art style, crisp pixels, vibrant color palette, retro arcade aesthetic, game art design." },
-  { id: "gibi-hq", name: "🎨 Estilo Gibi / HQ / Comic", prompt: "Classic comic book art style, bold ink outlines, halftone dot patterns, dramatic graphic novel shading, pop art aesthetic." },
-  { id: "anime", name: "⛩️ Anime / Mangá", prompt: "Japanese anime animation style, Makoto Shinkai aesthetic, vibrant cel shading, expressive characters, detailed anime backgrounds, cinematic lighting." },
-  { id: "ilustracao-digital", name: "🖌️ Ilustração Digital", prompt: "Modern digital concept illustration, rich brushwork, painterly textures, balanced composition, artistic color grading." },
-  { id: "flat", name: "📐 Flat Design Vector", prompt: "Clean flat vector illustration, minimal geometric shapes, bold solid colors, modern graphic design, no shadows or gradients." },
-  { id: "aquarela", name: "🎨 Pintura em Aquarela", prompt: "Soft watercolor painting, delicate water washes, artistic paper texture, bleeding color edges, gentle painterly atmosphere." },
-  { id: "cyberpunk", name: "🌃 Cyberpunk & Neon", prompt: "Cyberpunk aesthetic, glowing neon lights, dark rainy city atmosphere, cyan and magenta contrast, futuristic reflections." },
-  { id: "3d-render", name: "🧊 3D Render (C4D/Blender)", prompt: "3D digital render, Octane Render style, smooth clay and glass materials, soft studio volumetric lighting, Cinema 4D aesthetic." },
-  { id: "minimalista", name: "🔳 Minimalista & Clean", prompt: "Minimalist design, ample negative space, elegant simple shapes, subtle color palette, sophisticated clean aesthetic." },
-  { id: "vintage", name: "📻 Vintage / Retrô", prompt: "Retro vintage 1970s film photo, warm sepia and faded grain, nostalgic color grading, classic film texture." },
-  { id: "apple-keynote", name: "🍏 Apple Keynote Premium", prompt: "Clean Apple presentation style, minimal modern design, soft studio lighting, sober color palette, ultra clean." },
+  {
+    id: "auto",
+    name: "✨ Automático (IA Seleciona)",
+    prompt: "Melhor estilo estético adaptado ao briefing, direção artística livre e harmoniosa.",
+  },
+  {
+    id: "ultra-realista",
+    name: "📸 Ultra-Realista / 8K",
+    prompt:
+      "Hyper-realistic photography, 8k resolution, ultra detailed textures, professional cinematic camera lighting, depth of field, sharp focus, masterwork.",
+  },
+  {
+    id: "fotografico",
+    name: "📷 Realista / Estúdio",
+    prompt:
+      "Professional studio photography, clean lighting, soft shadows, natural skin/material textures, commercial photography, neutral background.",
+  },
+  {
+    id: "pixel-art",
+    name: "👾 Pixel Art / 16-bit",
+    prompt:
+      "Classic 16-bit pixel art style, crisp pixels, vibrant color palette, retro arcade aesthetic, game art design.",
+  },
+  {
+    id: "gibi-hq",
+    name: "🎨 Estilo Gibi / HQ / Comic",
+    prompt:
+      "Classic comic book art style, bold ink outlines, halftone dot patterns, dramatic graphic novel shading, pop art aesthetic.",
+  },
+  {
+    id: "anime",
+    name: "⛩️ Anime / Mangá",
+    prompt:
+      "Japanese anime animation style, Makoto Shinkai aesthetic, vibrant cel shading, expressive characters, detailed anime backgrounds, cinematic lighting.",
+  },
+  {
+    id: "ilustracao-digital",
+    name: "🖌️ Ilustração Digital",
+    prompt:
+      "Modern digital concept illustration, rich brushwork, painterly textures, balanced composition, artistic color grading.",
+  },
+  {
+    id: "flat",
+    name: "📐 Flat Design Vector",
+    prompt:
+      "Clean flat vector illustration, minimal geometric shapes, bold solid colors, modern graphic design, no shadows or gradients.",
+  },
+  {
+    id: "aquarela",
+    name: "🎨 Pintura em Aquarela",
+    prompt:
+      "Soft watercolor painting, delicate water washes, artistic paper texture, bleeding color edges, gentle painterly atmosphere.",
+  },
+  {
+    id: "cyberpunk",
+    name: "🌃 Cyberpunk & Neon",
+    prompt:
+      "Cyberpunk aesthetic, glowing neon lights, dark rainy city atmosphere, cyan and magenta contrast, futuristic reflections.",
+  },
+  {
+    id: "3d-render",
+    name: "🧊 3D Render (C4D/Blender)",
+    prompt:
+      "3D digital render, Octane Render style, smooth clay and glass materials, soft studio volumetric lighting, Cinema 4D aesthetic.",
+  },
+  {
+    id: "minimalista",
+    name: "🔳 Minimalista & Clean",
+    prompt:
+      "Minimalist design, ample negative space, elegant simple shapes, subtle color palette, sophisticated clean aesthetic.",
+  },
+  {
+    id: "vintage",
+    name: "📻 Vintage / Retrô",
+    prompt:
+      "Retro vintage 1970s film photo, warm sepia and faded grain, nostalgic color grading, classic film texture.",
+  },
+  {
+    id: "apple-keynote",
+    name: "🍏 Apple Keynote Premium",
+    prompt:
+      "Clean Apple presentation style, minimal modern design, soft studio lighting, sober color palette, ultra clean.",
+  },
 ];
 
 // Biblioteca de Brand Themes (Branding)
 export const BRAND_THEMES = [
-  { id: "minimalist", name: "Minimalista", modifiers: "Design limpo, muito espaço em branco, tipografia sem serifa fina, máximo de 2 cores sóbrias, composição centralizada e sem ruídos." },
-  { id: "premium", name: "Premium", modifiers: "Tons refinados de cinza escuro, dourado fosco e azul marinho, iluminação de estúdio profissional, acabamento metálico sutil, texturas de alta qualidade." },
-  { id: "luxo", name: "Luxo", modifiers: "Preto acetinado, detalhes em dourado brilhante ou bronze, iluminação dramática com contraste acentuado (chiaroscuro), foco na exclusividade do objeto central." },
-  { id: "neon-dark", name: "Neon Dark / Cyberpunk", modifiers: "Visual cyberpunk noturno, contrastes de azul neon, rosa choque e roxo, superfícies molhadas ou reflexivas de asfalto, iluminação vinda de letreiros e hologramas." },
-  { id: "apple", name: "Apple Inspired", modifiers: "Inspirado no visual de produtos Apple, fundo cinza ou branco gradiente suave, sombras perfeitamente suaves e difusas, visual clean e de alta engenharia tecnológica." },
-  { id: "netflix", name: "Netflix Dark", modifiers: "Visual dramático inspirado na Netflix, vermelho vibrante e preto profundo, iluminação de cinema com sombras marcadas, foco em narrativa e emoção cinematográfica." },
+  {
+    id: "minimalist",
+    name: "Minimalista",
+    modifiers:
+      "Design limpo, muito espaço em branco, tipografia sem serifa fina, máximo de 2 cores sóbrias, composição centralizada e sem ruídos.",
+  },
+  {
+    id: "premium",
+    name: "Premium",
+    modifiers:
+      "Tons refinados de cinza escuro, dourado fosco e azul marinho, iluminação de estúdio profissional, acabamento metálico sutil, texturas de alta qualidade.",
+  },
+  {
+    id: "luxo",
+    name: "Luxo",
+    modifiers:
+      "Preto acetinado, detalhes em dourado brilhante ou bronze, iluminação dramática com contraste acentuado (chiaroscuro), foco na exclusividade do objeto central.",
+  },
+  {
+    id: "neon-dark",
+    name: "Neon Dark / Cyberpunk",
+    modifiers:
+      "Visual cyberpunk noturno, contrastes de azul neon, rosa choque e roxo, superfícies molhadas ou reflexivas de asfalto, iluminação vinda de letreiros e hologramas.",
+  },
+  {
+    id: "apple",
+    name: "Apple Inspired",
+    modifiers:
+      "Inspirado no visual de produtos Apple, fundo cinza ou branco gradiente suave, sombras perfeitamente suaves e difusas, visual clean e de alta engenharia tecnológica.",
+  },
+  {
+    id: "netflix",
+    name: "Netflix Dark",
+    modifiers:
+      "Visual dramático inspirado na Netflix, vermelho vibrante e preto profundo, iluminação de cinema com sombras marcadas, foco em narrativa e emoção cinematográfica.",
+  },
 ];
 
 // Biblioteca de Templates Gráficos
 export const TEMPLATES = [
-  { id: "instagram-feed", name: "Instagram Feed (1:1)", size: "1:1", description: "Layout quadrado otimizado para feed do Instagram. Headline superior, imagem central, CTA na base." },
-  { id: "instagram-story", name: "Instagram Story (9:16)", size: "9:16", description: "Layout vertical esticado para Stories/Reels. Muito espaço para elementos verticais, headline no topo e CTA claro no terço inferior." },
-  { id: "linkedin-banner", name: "LinkedIn Banner (16:9)", size: "16:9", description: "Banner horizontal corporativo. Layout equilibrado onde o lado esquerdo é mais limpo (para a foto do perfil) e as informações ficam à direita." },
-  { id: "youtube-thumb", name: "YouTube Thumbnail (16:9)", size: "16:9", description: "Miniatura chamativa para YouTube. Cores de alta saturação, headline com fonte grossa de alto impacto visual no lado esquerdo, foco no objeto/rosto no lado direito." },
-  { id: "landing-page", name: "Hero Banner Landing Page (21:9)", size: "21:9", description: "Banner panorâmico para topo de site. Visual limpo com espaço reservado para botões e textos HTML no lado esquerdo e a imagem principal deslocada para a direita." },
-  { id: "logo", name: "Logotipo / Identidade Visual (1:1)", size: "1:1", description: "Logo vetorial conceitual. Fundo de cor única sólida, símbolo centralizado simples e legível, tipografia corporativa harmoniosa." },
+  {
+    id: "instagram-feed",
+    name: "Instagram Feed (1:1)",
+    size: "1:1",
+    description:
+      "Layout quadrado otimizado para feed do Instagram. Headline superior, imagem central, CTA na base.",
+  },
+  {
+    id: "instagram-story",
+    name: "Instagram Story (9:16)",
+    size: "9:16",
+    description:
+      "Layout vertical esticado para Stories/Reels. Muito espaço para elementos verticais, headline no topo e CTA claro no terço inferior.",
+  },
+  {
+    id: "linkedin-banner",
+    name: "LinkedIn Banner (16:9)",
+    size: "16:9",
+    description:
+      "Banner horizontal corporativo. Layout equilibrado onde o lado esquerdo é mais limpo (para a foto do perfil) e as informações ficam à direita.",
+  },
+  {
+    id: "youtube-thumb",
+    name: "YouTube Thumbnail (16:9)",
+    size: "16:9",
+    description:
+      "Miniatura chamativa para YouTube. Cores de alta saturação, headline com fonte grossa de alto impacto visual no lado esquerdo, foco no objeto/rosto no lado direito.",
+  },
+  {
+    id: "landing-page",
+    name: "Hero Banner Landing Page (21:9)",
+    size: "21:9",
+    description:
+      "Banner panorâmico para topo de site. Visual limpo com espaço reservado para botões e textos HTML no lado esquerdo e a imagem principal deslocada para a direita.",
+  },
+  {
+    id: "logo",
+    name: "Logotipo / Identidade Visual (1:1)",
+    size: "1:1",
+    description:
+      "Logo vetorial conceitual. Fundo de cor única sólida, símbolo centralizado simples e legível, tipografia corporativa harmoniosa.",
+  },
 ];
 
 /**
@@ -111,13 +293,25 @@ IMPORTANTE: Responda APENAS o JSON puro. Não adicione markdown \`\`\`json ou ex
  * presets selecionados, marca do usuário e histórico.
  */
 export function buildDirectorUserMessage(req: ImageGenerationRequest): string {
-  const { prompt, size, style, niche, template, brandTheme, designState, professionalMode, history } = req;
+  const {
+    prompt,
+    size,
+    style,
+    niche,
+    template,
+    brandTheme,
+    designState,
+    professionalMode,
+    history,
+  } = req;
 
   // Resolve a descrição do nicho e estilo a partir das bibliotecas
-  const selectedNicheObj = NICHES.find(n => n.id === niche);
-  const selectedStyleObj = ADVANCED_STYLES.find(s => s.id === style);
-  const selectedThemeObj = BRAND_THEMES.find(t => t.id === style || t.id === (brandTheme?.name?.toLowerCase()));
-  const selectedTemplateObj = TEMPLATES.find(t => t.id === template);
+  const selectedNicheObj = NICHES.find((n) => n.id === niche);
+  const selectedStyleObj = ADVANCED_STYLES.find((s) => s.id === style);
+  const selectedThemeObj = BRAND_THEMES.find(
+    (t) => t.id === style || t.id === brandTheme?.name?.toLowerCase(),
+  );
+  const selectedTemplateObj = TEMPLATES.find((t) => t.id === template);
 
   let message = `### BRIEFING DO USUÁRIO:
 Pedido atual: "${prompt}"

@@ -213,29 +213,41 @@
 .dark .hljs-section,
 .dark .hljs-doctag,
 .dark .hljs-name,
-.dark .hljs-strong { color: #c792ea; }
+.dark .hljs-strong {
+  color: #c792ea;
+}
 
 .dark .hljs-string,
 .dark .hljs-attr,
 .dark .hljs-bullet,
-.dark .hljs-addition { color: #c3e88d; }
+.dark .hljs-addition {
+  color: #c3e88d;
+}
 
 .dark .hljs-comment,
 .dark .hljs-quote,
 .dark .hljs-deletion,
-.dark .hljs-meta { color: #546e7a; }
+.dark .hljs-meta {
+  color: #546e7a;
+}
 
 .dark .hljs-number,
 .dark .hljs-literal,
 .dark .hljs-variable,
-.dark .hljs-template-variable { color: #f78c6c; }
+.dark .hljs-template-variable {
+  color: #f78c6c;
+}
 
 .dark .hljs-type,
 .dark .hljs-built_in,
 .dark .hljs-builtin-name,
-.dark .hljs-symbol { color: #ffcb6b; }
+.dark .hljs-symbol {
+  color: #ffcb6b;
+}
 
-.dark pre code.hljs { color: #eeffff; }
+.dark pre code.hljs {
+  color: #eeffff;
+}
 
 /* Fundo dos blocos de código: escuro no dark, claro no light */
 .dark .prose pre {

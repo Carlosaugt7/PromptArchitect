@@ -94,7 +94,7 @@ function buildModelUrls(provider: Provider, base: URL, apiKey: string) {
     return [`${rootClean}/api/tags`, `${clean}/v1/models`, `${clean}/models`];
   }
   if (/\/models$/i.test(base.pathname)) return [clean];
-  
+
   const urls: string[] = [];
   if (!/\/v\d+(beta)?$/i.test(base.pathname)) {
     urls.push(`${clean}/v1/models`);

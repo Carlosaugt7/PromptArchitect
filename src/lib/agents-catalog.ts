@@ -57,7 +57,14 @@ export const AGENTS: AgentDefinition[] = [
     coordinator: true,
     description:
       "Especialista principal em engenharia de prompts. Transforma ideias em prompts precisos, PRDs executáveis e system prompts otimizados para LLMs. Domina Chain-of-Thought, few-shot, ReAct e técnicas avançadas de alinhamento.",
-    skills: ["prompt-engineering", "clean-code", "plan-writing", "brainstorming", "privacy-by-design", "data-mapping"],
+    skills: [
+      "prompt-engineering",
+      "clean-code",
+      "plan-writing",
+      "brainstorming",
+      "privacy-by-design",
+      "data-mapping",
+    ],
     triggers: ["prompt", "prd", "requisitos", "system prompt", "instrução", "agente", "llm"],
   },
   {
@@ -86,7 +93,13 @@ export const AGENTS: AgentDefinition[] = [
     description:
       "Projetista de arquiteturas multi-agente. Define papéis, protocolos de comunicação e system prompts para sistemas complexos com múltiplos agentes de IA cooperando. Especialista em orquestração, handoffs e prevenção de loops.",
     skills: ["prompt-engineering", "parallel-agents", "architecture", "plan-writing"],
-    triggers: ["multi-agente", "multiagente", "orquestração", "agentes cooperativos", "pipeline de agentes"],
+    triggers: [
+      "multi-agente",
+      "multiagente",
+      "orquestração",
+      "agentes cooperativos",
+      "pipeline de agentes",
+    ],
   },
   {
     id: "persona-designer",
@@ -115,7 +128,13 @@ export const AGENTS: AgentDefinition[] = [
     coordinator: true,
     description:
       "Coordena múltiplos agentes em paralelo. Sintetiza resultados de segurança, backend, frontend, testes e DevOps em uma solução coesa. Ideal para tarefas complexas multi-domínio.",
-    skills: ["parallel-agents", "coordinator-mode", "plan-writing", "architecture", "verify-changes"],
+    skills: [
+      "parallel-agents",
+      "coordinator-mode",
+      "plan-writing",
+      "architecture",
+      "verify-changes",
+    ],
     triggers: ["coordenar", "orquestrar", "tarefa complexa", "multi-domínio"],
   },
   {
@@ -165,7 +184,12 @@ export const AGENTS: AgentDefinition[] = [
     category: "frontend",
     description:
       "Arquiteto React/Next.js com foco em performance e manutenibilidade. UI/UX, estado, responsividade, Tailwind CSS e acessibilidade WCAG.",
-    skills: ["nextjs-react-expert", "tailwind-patterns", "frontend-design", "web-design-guidelines"],
+    skills: [
+      "nextjs-react-expert",
+      "tailwind-patterns",
+      "frontend-design",
+      "web-design-guidelines",
+    ],
     triggers: ["react", "component", "ui", "css", "tailwind", "next.js"],
   },
   {
@@ -240,7 +264,8 @@ export const AGENTS: AgentDefinition[] = [
     id: "penetration-tester",
     name: "Penetration Tester",
     category: "security",
-    description: "Operações ofensivas: pentest, red team e exploração controlada de vulnerabilidades.",
+    description:
+      "Operações ofensivas: pentest, red team e exploração controlada de vulnerabilidades.",
     skills: ["vulnerability-scanner", "red-team-tactics"],
     triggers: ["pentest", "exploit", "redteam"],
   },
@@ -266,7 +291,8 @@ export const AGENTS: AgentDefinition[] = [
     id: "debugger",
     name: "Debugger",
     category: "quality",
-    description: "Debug sistemático, RCA e investigação de crashes. Problemas complexos e bugs em produção.",
+    description:
+      "Debug sistemático, RCA e investigação de crashes. Problemas complexos e bugs em produção.",
     skills: ["systematic-debugging"],
     triggers: ["bug", "error", "crash", "fix", "broken"],
   },
@@ -306,7 +332,8 @@ export const AGENTS: AgentDefinition[] = [
     id: "mobile-developer",
     name: "Mobile Developer",
     category: "mobile",
-    description: "React Native e Flutter. Apps cross-platform, features nativas e padrões mobile-first.",
+    description:
+      "React Native e Flutter. Apps cross-platform, features nativas e padrões mobile-first.",
     skills: ["mobile-design"],
     triggers: ["mobile", "react native", "flutter", "ios", "android"],
   },
@@ -316,7 +343,8 @@ export const AGENTS: AgentDefinition[] = [
     id: "game-developer",
     name: "Game Developer",
     category: "game",
-    description: "Games em Unity, Godot, Unreal, Phaser e Three.js. Mecânicas, física, multiplayer e 2D/3D.",
+    description:
+      "Games em Unity, Godot, Unreal, Phaser e Three.js. Mecânicas, física, multiplayer e 2D/3D.",
     skills: ["game-development"],
     triggers: ["game", "unity", "godot", "unreal", "phaser"],
   },
@@ -337,7 +365,8 @@ export const AGENTS: AgentDefinition[] = [
     id: "documentation-writer",
     name: "Documentation Writer",
     category: "docs",
-    description: "README, API docs, changelog e guias técnicos sob demanda. Escrita clara, estruturada e útil.",
+    description:
+      "README, API docs, changelog e guias técnicos sob demanda. Escrita clara, estruturada e útil.",
     skills: ["documentation-templates"],
     triggers: ["docs", "readme", "documentação", "changelog"],
   },
@@ -347,7 +376,8 @@ export const AGENTS: AgentDefinition[] = [
     id: "explorer-agent",
     name: "Explorer",
     category: "research",
-    description: "Descoberta de codebase, análise arquitetural profunda e pesquisa proativa de padrões.",
+    description:
+      "Descoberta de codebase, análise arquitetural profunda e pesquisa proativa de padrões.",
     skills: ["architecture", "plan-writing", "systematic-debugging"],
     triggers: ["explorar", "analisar", "descobrir", "mapear codebase"],
   },
@@ -369,9 +399,22 @@ export const AGENTS: AgentDefinition[] = [
       "Assistente Executivo especializado em documentos administrativos e licitações públicas (Lei 14.133/2021). Redige DFD, ETP, Termo de Referência, Mapa de Risco, Pareceres Técnicos, Memorandos, Atas e gestão de contratos com linguagem jurídico-administrativa precisa.",
     skills: ["documentation-templates", "plan-writing", "brainstorming"],
     triggers: [
-      "dfd", "etp", "termo de referência", "mapa de risco", "parecer", "memorando",
-      "licitação", "contrato", "administrativo", "documento", "ata", "edital",
-      "compras públicas", "pc", "demanda", "formalização",
+      "dfd",
+      "etp",
+      "termo de referência",
+      "mapa de risco",
+      "parecer",
+      "memorando",
+      "licitação",
+      "contrato",
+      "administrativo",
+      "documento",
+      "ata",
+      "edital",
+      "compras públicas",
+      "pc",
+      "demanda",
+      "formalização",
     ],
   },
 ];
@@ -384,7 +427,8 @@ export interface AgentsState {
 }
 
 export function loadAgentsState(): AgentsState {
-  if (typeof window === "undefined") return { leadId: "prompt-architect", activeIds: ["prompt-architect"] };
+  if (typeof window === "undefined")
+    return { leadId: "prompt-architect", activeIds: ["prompt-architect"] };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { leadId: "prompt-architect", activeIds: ["prompt-architect"] };

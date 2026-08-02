@@ -38,10 +38,13 @@ export const Route = createFileRoute("/api/imageforge")({
         } catch (err) {
           console.error("Erro no endpoint /api/imageforge:", err);
           return json(
-            { 
-              error: err instanceof Error ? err.message : "Erro desconhecido ao processar direção de arte" 
-            }, 
-            500
+            {
+              error:
+                err instanceof Error
+                  ? err.message
+                  : "Erro desconhecido ao processar direção de arte",
+            },
+            500,
           );
         }
       },

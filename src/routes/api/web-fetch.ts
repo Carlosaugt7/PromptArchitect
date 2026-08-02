@@ -59,11 +59,11 @@ async function fetchGitHub(url: string): Promise<string | null> {
       headers: { Accept: "application/vnd.github.v3+json", "User-Agent": "PromptArchitect/1.0" },
     });
     if (!repoRes.ok) return null;
-    const data = await repoRes.json() as Record<string, unknown>;
+    const data = (await repoRes.json()) as Record<string, unknown>;
     return `# ${data.full_name}\n\n${data.description ?? "Sem descrição."}\n\nStars: ${data.stargazers_count} | Forks: ${data.forks_count} | Linguagem: ${data.language}\n\nURL: ${data.html_url}`;
   }
 
-  const data = await res.json() as { content?: string; encoding?: string; name?: string };
+  const data = (await res.json()) as { content?: string; encoding?: string; name?: string };
   if (data.encoding === "base64" && data.content) {
     const decoded = atob(data.content.replace(/\n/g, ""));
     return `# README — ${repo}\n\n${decoded}`;
@@ -106,15 +106,20 @@ export const Route = createFileRoute("/api/web-fetch")({
           if (hostname === "github.com") {
             const ghContent = await fetchGitHub(targetUrl.toString());
             if (ghContent) {
-              return json({ text: ghContent.slice(0, MAX_CHARS), url: targetUrl.toString(), source: "github-api" });
+              return json({
+                text: ghContent.slice(0, MAX_CHARS),
+                url: targetUrl.toString(),
+                source: "github-api",
+              });
             }
           }
 
           // Fetch genérico
           const res = await fetch(targetUrl.toString(), {
             headers: {
-              "User-Agent": "Mozilla/5.0 (compatible; PromptArchitect/1.0; +https://promptarchitect.rsconsultoria.pro)",
-              "Accept": "text/html,application/xhtml+xml,text/plain,*/*",
+              "User-Agent":
+                "Mozilla/5.0 (compatible; PromptArchitect/1.0; +https://promptarchitect.rsconsultoria.pro)",
+              Accept: "text/html,application/xhtml+xml,text/plain,*/*",
               "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
             },
           });

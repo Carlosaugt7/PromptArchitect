@@ -1,22 +1,22 @@
 import { useState, useEffect, useRef } from "react";
-import { 
-  Sparkles, 
-  Image as ImageIcon, 
-  Layers, 
-  Target, 
-  Copy, 
-  Check, 
-  ChevronRight, 
-  Info, 
-  Sliders, 
-  RefreshCw, 
-  Download, 
-  Star, 
-  ShieldAlert, 
-  MessageSquare, 
+import {
+  Sparkles,
+  Image as ImageIcon,
+  Layers,
+  Target,
+  Copy,
+  Check,
+  ChevronRight,
+  Info,
+  Sliders,
+  RefreshCw,
+  Download,
+  Star,
+  ShieldAlert,
+  MessageSquare,
   Send,
   Camera,
-  Paintbrush
+  Paintbrush,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,15 +24,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { loadProviders, listEnabledModels, IMAGE_MODELS, type ModelSelection, type ProviderId } from "@/lib/llm-providers";
+import {
+  loadProviders,
+  listEnabledModels,
+  IMAGE_MODELS,
+  type ModelSelection,
+  type ProviderId,
+} from "@/lib/llm-providers";
 import { ImageService } from "@/services/imageService";
-import { 
-  ImageStyle, 
-  ImageSize, 
-  BrandTheme, 
-  DesignState, 
-  ProfessionalSettings, 
-  ImageGenerationResponse 
+import {
+  ImageStyle,
+  ImageSize,
+  BrandTheme,
+  DesignState,
+  ProfessionalSettings,
+  ImageGenerationResponse,
 } from "@/types";
 import { NICHES, ADVANCED_STYLES, BRAND_THEMES, TEMPLATES } from "@/lib/imageforge/promptArchitect";
 
@@ -60,7 +66,9 @@ export function ImageForgePanel() {
       // Escolhe automaticamente o primeiro provedor com chave configurada que também gere imagem
       setImageProvider((prev) => {
         if (prev && providers[prev]?.apiKey && IMAGE_MODELS[prev]) return prev;
-        const firstAvailable = (Object.keys(IMAGE_MODELS) as ProviderId[]).find((p) => providers[p]?.apiKey);
+        const firstAvailable = (Object.keys(IMAGE_MODELS) as ProviderId[]).find(
+          (p) => providers[p]?.apiKey,
+        );
         return firstAvailable ?? "";
       });
     };
@@ -93,7 +101,7 @@ export function ImageForgePanel() {
   const [ocrFailedNotice, setOcrFailedNotice] = useState(false);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     if (logsEndRef.current) {
       logsEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -109,7 +117,7 @@ export function ImageForgePanel() {
 
   const handleGenerate = async (isIteration = false, directPrompt = "") => {
     const activePrompt = isIteration ? directPrompt : prompt;
-    
+
     if (!activePrompt.trim()) {
       toast.error("Por favor, digite o que você deseja criar.");
       return;
@@ -119,7 +127,9 @@ export function ImageForgePanel() {
     const hasAnyActiveKey = Object.values(providers).some((p) => !!p?.apiKey);
 
     if (!hasAnyActiveKey) {
-      toast.error("Configure ao menos um provedor de IA com chave de API nas Configurações primeiro.");
+      toast.error(
+        "Configure ao menos um provedor de IA com chave de API nas Configurações primeiro.",
+      );
       return;
     }
 
@@ -127,17 +137,20 @@ export function ImageForgePanel() {
     setOcrFailedNotice(false);
 
     // Estrutura a marca se preenchida
-    const brandTheme: BrandTheme | undefined = brandName.trim() ? {
-      name: brandName.trim(),
-      colors: brandColors.split(",").map(c => c.trim()),
-      fonts: brandFonts.split(",").map(f => f.trim()),
-      toneOfVoice: brandVoice.trim(),
-    } : undefined;
+    const brandTheme: BrandTheme | undefined = brandName.trim()
+      ? {
+          name: brandName.trim(),
+          colors: brandColors.split(",").map((c) => c.trim()),
+          fonts: brandFonts.split(",").map((f) => f.trim()),
+          toneOfVoice: brandVoice.trim(),
+        }
+      : undefined;
 
     // Define o tamanho da imagem (preset ou resolução customizada WxH)
-    const size = selectedSize === "custom"
-      ? `${customWidth || 1024}x${customHeight || 1024}`
-      : (selectedSize as ImageSize);
+    const size =
+      selectedSize === "custom"
+        ? `${customWidth || 1024}x${customHeight || 1024}`
+        : (selectedSize as ImageSize);
 
     let chosenProvider: string | undefined = undefined;
     let chosenModel: string | undefined = undefined;
@@ -149,7 +162,9 @@ export function ImageForgePanel() {
     }
 
     if (!imageProvider || !providers[imageProvider]?.apiKey) {
-      toast.error("Selecione um Modelo de Imagem válido (com chave de API configurada) antes de gerar.");
+      toast.error(
+        "Selecione um Modelo de Imagem válido (com chave de API configurada) antes de gerar.",
+      );
       setLoading(false);
       return;
     }
@@ -175,18 +190,24 @@ export function ImageForgePanel() {
 
       setLastResponse(res);
       setCurrentDesignState(res.designState);
-      
+
       // Se for a primeira geração, cria o histórico
       if (!isIteration) {
         setHistory([
           { role: "user", content: activePrompt },
-          { role: "assistant", content: `Arte forjada com sucesso. Adotei o estilo "${res.designState.style}" e a paleta: ${res.designState.palette.join(", ")}.` }
+          {
+            role: "assistant",
+            content: `Arte forjada com sucesso. Adotei o estilo "${res.designState.style}" e a paleta: ${res.designState.palette.join(", ")}.`,
+          },
         ]);
       } else {
-        setHistory(prev => [
+        setHistory((prev) => [
           ...prev,
           { role: "user", content: activePrompt },
-          { role: "assistant", content: `Arte atualizada. Mudanças aplicadas no layout e na composição.` }
+          {
+            role: "assistant",
+            content: `Arte atualizada. Mudanças aplicadas no layout e na composição.`,
+          },
         ]);
       }
 
@@ -205,7 +226,7 @@ export function ImageForgePanel() {
   const handleSendChatMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    
+
     const message = chatInput;
     setChatInput("");
     handleGenerate(true, message);
@@ -236,7 +257,9 @@ export function ImageForgePanel() {
 
           {/* Seletor de Modelo de IA (Texto) e Configurações Visuais */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Modelo de Texto (Diretor de Artes / Copy)</Label>
+            <Label className="text-xs font-semibold">
+              Modelo de Texto (Diretor de Artes / Copy)
+            </Label>
             <select
               value={selectedModelKey}
               onChange={(e) => setSelectedModelKey(e.target.value)}
@@ -269,7 +292,13 @@ export function ImageForgePanel() {
               >
                 <option value="">Selecione…</option>
                 {(Object.keys(IMAGE_MODELS) as ProviderId[]).map((p) => (
-                  <option key={p} value={p} disabled={!enabledModels.some((m) => m.provider === p) && !loadProviders()[p]?.apiKey}>
+                  <option
+                    key={p}
+                    value={p}
+                    disabled={
+                      !enabledModels.some((m) => m.provider === p) && !loadProviders()[p]?.apiKey
+                    }
+                  >
                     {p === "openai" ? "OpenAI" : "Google Gemini"}
                   </option>
                 ))}
@@ -294,7 +323,8 @@ export function ImageForgePanel() {
           </div>
           {imageProvider && !loadProviders()[imageProvider]?.apiKey && (
             <p className="text-[10px] text-destructive flex items-center gap-1">
-              <ShieldAlert className="h-3 w-3" /> Configure uma chave de API para {imageProvider === "openai" ? "OpenAI" : "Google Gemini"} nas Configurações.
+              <ShieldAlert className="h-3 w-3" /> Configure uma chave de API para{" "}
+              {imageProvider === "openai" ? "OpenAI" : "Google Gemini"} nas Configurações.
             </p>
           )}
 
@@ -308,8 +338,10 @@ export function ImageForgePanel() {
                 className="w-full text-xs bg-background/50 rounded-lg border border-border p-2 focus:ring-1 focus:ring-primary focus:outline-none"
                 disabled={loading}
               >
-                {ADVANCED_STYLES.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
+                {ADVANCED_STYLES.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -376,20 +408,20 @@ export function ImageForgePanel() {
             <div className="grid grid-cols-2 gap-2 pt-1">
               <div className="space-y-1">
                 <Label className="text-[10px]">Nome da Marca</Label>
-                <Input 
+                <Input
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
-                  placeholder="Ex: RS Consultoria" 
+                  placeholder="Ex: RS Consultoria"
                   className="h-7 text-[10px] bg-background/40"
                   disabled={loading}
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px]">Cores (HEX/Lista)</Label>
-                <Input 
+                <Input
                   value={brandColors}
                   onChange={(e) => setBrandColors(e.target.value)}
-                  placeholder="#0b0b14, #3b82f6" 
+                  placeholder="#0b0b14, #3b82f6"
                   className="h-7 text-[10px] bg-background/40"
                   disabled={loading}
                 />
@@ -441,15 +473,15 @@ export function ImageForgePanel() {
               <MessageSquare className="h-4 w-4 text-primary" />
               <h3 className="text-xs font-semibold">Memória de Design</h3>
             </div>
-            
+
             {/* Mensagens do chat */}
             <div className="flex-1 overflow-y-auto space-y-2.5 max-h-[160px] pr-1 scrollbar-thin">
               {history.map((h, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className={`flex flex-col p-2.5 rounded-xl text-xs max-w-[85%] ${
-                    h.role === "user" 
-                      ? "bg-primary/10 border border-primary/20 self-end ml-auto" 
+                    h.role === "user"
+                      ? "bg-primary/10 border border-primary/20 self-end ml-auto"
                       : "bg-muted/40 border border-border/50 self-start"
                   }`}
                 >
@@ -470,7 +502,12 @@ export function ImageForgePanel() {
                 className="text-xs bg-background/50 h-9"
                 disabled={loading}
               />
-              <Button type="submit" disabled={loading} size="icon" className="h-9 w-9 bg-primary glow">
+              <Button
+                type="submit"
+                disabled={loading}
+                size="icon"
+                className="h-9 w-9 bg-primary glow"
+              >
                 <Send className="h-4 w-4" />
               </Button>
             </form>
@@ -483,16 +520,27 @@ export function ImageForgePanel() {
         {/* Placeholder quando não gerado */}
         {!lastResponse && (
           <div className="flex-1 min-h-[400px] flex flex-col items-center justify-center border border-dashed border-border bg-card/20 rounded-2xl p-8 text-center relative overflow-hidden">
-            <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "var(--gradient-glow)" }} />
+            <div
+              className="absolute inset-0 opacity-60"
+              style={{ backgroundImage: "var(--gradient-glow)" }}
+            />
             <div className="relative mb-4">
-              <div className="absolute inset-0 rounded-2xl blur-2xl opacity-50 animate-pulse" style={{ background: "var(--gradient-brand)" }} />
+              <div
+                className="absolute inset-0 rounded-2xl blur-2xl opacity-50 animate-pulse"
+                style={{ background: "var(--gradient-brand)" }}
+              />
               <div className="relative grid h-16 w-16 place-items-center rounded-2xl border border-border bg-background shadow-lg">
                 <ImageIcon className="h-7 w-7 text-primary" />
               </div>
             </div>
-            <h3 className="relative font-display font-semibold text-base">Nenhuma imagem forjada ainda</h3>
+            <h3 className="relative font-display font-semibold text-base">
+              Nenhuma imagem forjada ainda
+            </h3>
             <p className="relative text-xs text-muted-foreground mt-1.5 max-w-sm leading-relaxed">
-              Configure as opções no painel à esquerda — incluindo o <strong className="text-foreground/80">Modelo de Imagem</strong> — e clique em <strong className="text-foreground/80">Forjar Nova Arte</strong>. O Diretor de Artes criará o design e a copy para você.
+              Configure as opções no painel à esquerda — incluindo o{" "}
+              <strong className="text-foreground/80">Modelo de Imagem</strong> — e clique em{" "}
+              <strong className="text-foreground/80">Forjar Nova Arte</strong>. O Diretor de Artes
+              criará o design e a copy para você.
             </p>
           </div>
         )}
@@ -524,7 +572,11 @@ export function ImageForgePanel() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-background/80 backdrop-blur-md shadow-md border border-border">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="h-8 w-8 bg-background/80 backdrop-blur-md shadow-md border border-border"
+                      >
                         <Download className="h-4 w-4 text-foreground" />
                       </Button>
                     </a>
@@ -534,7 +586,10 @@ export function ImageForgePanel() {
                   {ocrFailedNotice && (
                     <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground p-2 text-xs flex items-center justify-center gap-2 backdrop-blur-sm">
                       <ShieldAlert className="h-4 w-4" />
-                      <span>O Inspetor de Visão detectou possíveis distorções no texto. Você pode pedir correções no chat de design.</span>
+                      <span>
+                        O Inspetor de Visão detectou possíveis distorções no texto. Você pode pedir
+                        correções no chat de design.
+                      </span>
                     </div>
                   )}
                 </div>
@@ -542,7 +597,10 @@ export function ImageForgePanel() {
             </div>
 
             {/* Quality Score & OCR QA Report */}
-            <div className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden" style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}>
+            <div
+              className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden"
+              style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}
+            >
               <div className="absolute inset-0 bg-background/50 mix-blend-overlay group-hover:opacity-0 transition-opacity duration-500" />
               <div className="relative rounded-[15px] bg-card/95 backdrop-blur-xl p-5 space-y-4 h-full">
                 <div className="flex items-center justify-between pb-3 border-b border-border">
@@ -553,7 +611,9 @@ export function ImageForgePanel() {
                     >
                       <Star className="h-3.5 w-3.5 text-primary-foreground" fill="currentColor" />
                     </div>
-                    <h3 className="text-sm font-semibold font-display">Inspetor de Visão (Vision QA)</h3>
+                    <h3 className="text-sm font-semibold font-display">
+                      Inspetor de Visão (Vision QA)
+                    </h3>
                   </div>
                   <div className="flex items-center gap-0.5">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -568,18 +628,48 @@ export function ImageForgePanel() {
 
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
                   {[
-                    { name: "Legibilidade", score: lastResponse.score.text, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
-                    { name: "Composição", score: lastResponse.score.composition, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
-                    { name: "Fotografia", score: lastResponse.score.photography, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
-                    { name: "Copy/Marketing", score: lastResponse.score.marketing, color: "text-rose-500 bg-rose-500/10 border-rose-500/20" },
-                    { name: "Branding", score: lastResponse.score.branding, color: "text-purple-500 bg-purple-500/10 border-purple-500/20" },
+                    {
+                      name: "Legibilidade",
+                      score: lastResponse.score.text,
+                      color: "text-blue-500 bg-blue-500/10 border-blue-500/20",
+                    },
+                    {
+                      name: "Composição",
+                      score: lastResponse.score.composition,
+                      color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+                    },
+                    {
+                      name: "Fotografia",
+                      score: lastResponse.score.photography,
+                      color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+                    },
+                    {
+                      name: "Copy/Marketing",
+                      score: lastResponse.score.marketing,
+                      color: "text-rose-500 bg-rose-500/10 border-rose-500/20",
+                    },
+                    {
+                      name: "Branding",
+                      score: lastResponse.score.branding,
+                      color: "text-teal-500 bg-teal-500/10 border-teal-500/20",
+                    },
                   ].map((s, idx) => (
-                    <div key={idx} className="border border-border/50 bg-background/40 hover:bg-background/60 transition-colors p-2.5 rounded-xl space-y-2 shadow-sm">
-                      <span className="text-[10px] text-muted-foreground block font-medium">{s.name}</span>
+                    <div
+                      key={idx}
+                      className="border border-border/50 bg-background/40 hover:bg-background/60 transition-colors p-2.5 rounded-xl space-y-2 shadow-sm"
+                    >
+                      <span className="text-[10px] text-muted-foreground block font-medium">
+                        {s.name}
+                      </span>
                       <div className={`h-1.5 w-full rounded-full bg-muted/50 overflow-hidden`}>
-                        <div className={`h-full rounded-full shadow-[0_0_10px_currentColor] ${s.color.split(" ")[0].replace("text-", "bg-")}`} style={{ width: `${s.score}%` }} />
+                        <div
+                          className={`h-full rounded-full shadow-[0_0_10px_currentColor] ${s.color.split(" ")[0].replace("text-", "bg-")}`}
+                          style={{ width: `${s.score}%` }}
+                        />
                       </div>
-                      <div className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${s.color}`}>
+                      <div
+                        className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${s.color}`}
+                      >
                         {s.score}%
                       </div>
                     </div>
@@ -589,7 +679,10 @@ export function ImageForgePanel() {
             </div>
 
             {/* Copywriter de Marketing & CTA */}
-            <div className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden" style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}>
+            <div
+              className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden"
+              style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}
+            >
               <div className="absolute inset-0 bg-background/50 mix-blend-overlay group-hover:opacity-0 transition-opacity duration-500" />
               <div className="relative rounded-[15px] bg-card/95 backdrop-blur-xl p-5 space-y-4 h-full">
                 <div className="flex items-center gap-2 pb-3 border-b border-border">
@@ -605,28 +698,42 @@ export function ImageForgePanel() {
                 <div className="space-y-4">
                   {/* Headline */}
                   <div className="space-y-1 relative group/item">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Headline</span>
+                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">
+                      Headline
+                    </span>
                     <div className="flex items-center justify-between bg-background/60 hover:bg-background/80 transition-colors border border-border/60 p-3 rounded-xl text-[13px] font-semibold shadow-sm">
                       <p className="text-foreground">{lastResponse.copy.headline}</p>
-                      <button 
-                        onClick={() => handleCopy(lastResponse.copy.headline, "hl")} 
+                      <button
+                        onClick={() => handleCopy(lastResponse.copy.headline, "hl")}
                         className="text-muted-foreground hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors"
                       >
-                        {copiedText === "hl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedText === "hl" ? (
+                          <Check className="h-3.5 w-3.5 text-success" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>
 
                   {/* Subheadline */}
                   <div className="space-y-1 relative group/item">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Subheadline</span>
+                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">
+                      Subheadline
+                    </span>
                     <div className="flex items-center justify-between bg-background/60 hover:bg-background/80 transition-colors border border-border/60 p-3 rounded-xl text-xs shadow-sm">
-                      <p className="text-muted-foreground leading-relaxed pr-2">{lastResponse.copy.subheadline}</p>
-                      <button 
-                        onClick={() => handleCopy(lastResponse.copy.subheadline, "shl")} 
+                      <p className="text-muted-foreground leading-relaxed pr-2">
+                        {lastResponse.copy.subheadline}
+                      </p>
+                      <button
+                        onClick={() => handleCopy(lastResponse.copy.subheadline, "shl")}
                         className="text-muted-foreground hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors"
                       >
-                        {copiedText === "shl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedText === "shl" ? (
+                          <Check className="h-3.5 w-3.5 text-success" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -634,7 +741,9 @@ export function ImageForgePanel() {
                   {/* Bullet Points */}
                   {lastResponse.copy.bullets.length > 0 && (
                     <div className="space-y-1 relative group/item">
-                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Pontos Fortes (Bullets)</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">
+                        Pontos Fortes (Bullets)
+                      </span>
                       <div className="bg-background/60 hover:bg-background/80 transition-colors border border-border/60 p-3.5 rounded-xl text-xs space-y-2 relative shadow-sm">
                         {lastResponse.copy.bullets.map((b, idx) => (
                           <div key={idx} className="flex items-start gap-2">
@@ -642,11 +751,15 @@ export function ImageForgePanel() {
                             <p className="text-foreground/90 leading-relaxed">{b}</p>
                           </div>
                         ))}
-                        <button 
-                          onClick={() => handleCopy(lastResponse.copy.bullets.join("\n"), "bl")} 
+                        <button
+                          onClick={() => handleCopy(lastResponse.copy.bullets.join("\n"), "bl")}
                           className="absolute right-2 top-2 text-muted-foreground hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors"
                         >
-                          {copiedText === "bl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copiedText === "bl" ? (
+                            <Check className="h-3.5 w-3.5 text-success" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -655,26 +768,40 @@ export function ImageForgePanel() {
                   {/* CTA & Hashtags */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1 relative group/item">
-                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Call to Action (CTA)</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">
+                        Call to Action (CTA)
+                      </span>
                       <div className="flex items-center justify-between bg-primary/10 border border-primary/20 hover:border-primary/40 transition-colors p-3 rounded-xl text-[13px] font-bold text-primary shadow-sm">
                         <span>{lastResponse.copy.cta}</span>
-                        <button 
-                          onClick={() => handleCopy(lastResponse.copy.cta, "cta")} 
+                        <button
+                          onClick={() => handleCopy(lastResponse.copy.cta, "cta")}
                           className="text-primary/70 hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors"
                         >
-                          {copiedText === "cta" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copiedText === "cta" ? (
+                            <Check className="h-3.5 w-3.5 text-success" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
                         </button>
                       </div>
                     </div>
                     <div className="space-y-1 relative group/item">
-                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Hashtags</span>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">
+                        Hashtags
+                      </span>
                       <div className="flex items-center justify-between bg-background/60 hover:bg-background/80 transition-colors border border-border/60 p-3 rounded-xl text-[11px] font-mono text-muted-foreground shadow-sm">
-                        <span className="truncate pr-2">{lastResponse.copy.hashtags.join(" ")}</span>
-                        <button 
-                          onClick={() => handleCopy(lastResponse.copy.hashtags.join(" "), "tags")} 
+                        <span className="truncate pr-2">
+                          {lastResponse.copy.hashtags.join(" ")}
+                        </span>
+                        <button
+                          onClick={() => handleCopy(lastResponse.copy.hashtags.join(" "), "tags")}
                           className="text-muted-foreground hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors flex-shrink-0"
                         >
-                          {copiedText === "tags" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copiedText === "tags" ? (
+                            <Check className="h-3.5 w-3.5 text-success" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -684,18 +811,29 @@ export function ImageForgePanel() {
             </div>
 
             {/* Logs Detalhados do Diretor de Artes */}
-            <div className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden" style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}>
+            <div
+              className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden"
+              style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}
+            >
               <div className="absolute inset-0 bg-background/50 mix-blend-overlay group-hover:opacity-0 transition-opacity duration-500" />
               <div className="relative rounded-[15px] bg-card/95 backdrop-blur-xl p-4 space-y-3 h-full">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Logs do Diretor de Artes</span>
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5 text-primary border-primary/30 bg-primary/10">
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                    Logs do Diretor de Artes
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] h-4 px-1.5 text-primary border-primary/30 bg-primary/10"
+                  >
                     {lastResponse.logs.length} eventos
                   </Badge>
                 </div>
                 <div className="bg-background/60 shadow-inner font-mono text-[10px] p-3 rounded-xl max-h-[140px] overflow-y-auto space-y-1.5 border border-border/60 text-muted-foreground leading-relaxed scrollbar-thin">
                   {lastResponse.logs.map((log, idx) => (
-                    <div key={idx} className={`flex items-start gap-1.5 ${log.includes("Erro") || log.includes("falhou") ? "text-destructive" : log.includes("sucesso") ? "text-success" : ""}`}>
+                    <div
+                      key={idx}
+                      className={`flex items-start gap-1.5 ${log.includes("Erro") || log.includes("falhou") ? "text-destructive" : log.includes("sucesso") ? "text-success" : ""}`}
+                    >
                       <span className="opacity-50 mt-0.5">{">"}</span>
                       <span>{log}</span>
                     </div>

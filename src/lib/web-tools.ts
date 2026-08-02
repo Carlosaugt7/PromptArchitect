@@ -55,11 +55,13 @@ async function fetchUrl(url: string): Promise<string | null> {
       body: JSON.stringify({ url }),
     });
     if (!res.ok) {
-      const err = await res.json() as { error?: string };
+      const err = (await res.json()) as { error?: string };
       return `[Erro ao acessar ${url}: ${err.error ?? res.statusText}]`;
     }
-    const data = await res.json() as { text?: string; truncated?: boolean; url?: string };
-    const truncNote = data.truncated ? "\n[Conteúdo truncado — exibindo primeiros 24.000 caracteres]" : "";
+    const data = (await res.json()) as { text?: string; truncated?: boolean; url?: string };
+    const truncNote = data.truncated
+      ? "\n[Conteúdo truncado — exibindo primeiros 24.000 caracteres]"
+      : "";
     return `**Conteúdo de ${data.url ?? url}:**\n\n${data.text ?? ""}${truncNote}`;
   } catch (err) {
     return `[Falha ao buscar ${url}: ${err instanceof Error ? err.message : "erro desconhecido"}]`;
@@ -74,14 +76,14 @@ async function searchWeb(query: string): Promise<string | null> {
       body: JSON.stringify({ query, maxResults: 6 }),
     });
     if (!res.ok) return null;
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       results?: Array<{ title: string; url: string; snippet: string }>;
       count?: number;
     };
     if (!data.results?.length) return `[Busca por "${query}" não retornou resultados]`;
 
-    const lines = data.results.map((r, i) =>
-      `${i + 1}. **${r.title}**\n   ${r.snippet}\n   🔗 ${r.url}`
+    const lines = data.results.map(
+      (r, i) => `${i + 1}. **${r.title}**\n   ${r.snippet}\n   🔗 ${r.url}`,
     );
     return `**Resultados da busca por "${query}":**\n\n${lines.join("\n\n")}`;
   } catch {

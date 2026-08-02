@@ -53,7 +53,8 @@ export const Route = createFileRoute("/api/llm-chat")({
             return json({ error: msg }, 502);
           }
         } catch (err) {
-          const msg = err instanceof Error ? err.message : "Erro desconhecido ao processar requisição";
+          const msg =
+            err instanceof Error ? err.message : "Erro desconhecido ao processar requisição";
           console.error("[llm-chat] Erro fatal:", msg);
           return json({ error: msg }, 500);
         }
@@ -210,10 +211,13 @@ async function nonStream(body: Body): Promise<Response> {
   if (apiKey && apiKey !== "undefined" && apiKey !== "ollama") {
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
-  
-  const endpoint = provider === "ollama"
-    ? (base.endsWith("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`)
-    : resolveOpenAIEndpoint(baseUrl);
+
+  const endpoint =
+    provider === "ollama"
+      ? base.endsWith("/v1")
+        ? `${base}/chat/completions`
+        : `${base}/v1/chat/completions`
+      : resolveOpenAIEndpoint(baseUrl);
 
   let r: Response;
   try {
@@ -239,7 +243,12 @@ async function nonStream(body: Body): Promise<Response> {
   }
 
   if (r.status === 524 || r.status === 504) {
-    return json({ error: `Tempo limite de conexão excedido no provedor de IA (Erro ${r.status}). O servidor de IA demorou para responder.` }, 504);
+    return json(
+      {
+        error: `Tempo limite de conexão excedido no provedor de IA (Erro ${r.status}). O servidor de IA demorou para responder.`,
+      },
+      504,
+    );
   }
 
   const d = await r.json().catch(() => ({}));
@@ -441,7 +450,9 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
         if (!r.ok || !r.body) {
           const errText = await r.text().catch(() => "");
           if (r.status === 524 || r.status === 504) {
-            send({ error: `Tempo limite de conexão excedido no provedor de IA (Erro ${r.status}). Verifique a URL do servidor e a chave API nas Configurações.` });
+            send({
+              error: `Tempo limite de conexão excedido no provedor de IA (Erro ${r.status}). Verifique a URL do servidor e a chave API nas Configurações.`,
+            });
           } else {
             send({ error: `${r.status} ${errText || r.statusText}` });
           }
@@ -477,7 +488,7 @@ async function streamResponse(body: Body, signal: AbortSignal): Promise<Response
       "Content-Type": "application/x-ndjson",
       "Cache-Control": "no-cache, no-transform",
       "X-Accel-Buffering": "no",
-      "Connection": "keep-alive",
+      Connection: "keep-alive",
       ...cors,
     },
   });

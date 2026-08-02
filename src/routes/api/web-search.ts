@@ -42,13 +42,13 @@ async function duckduckgo(query: string): Promise<SearchResult[]> {
   const res = await fetch(`https://api.duckduckgo.com/?${params}`, {
     headers: {
       "User-Agent": "PromptArchitect/1.0",
-      "Accept": "application/json",
+      Accept: "application/json",
     },
   });
 
   if (!res.ok) return [];
 
-  const data = await res.json() as {
+  const data = (await res.json()) as {
     AbstractText?: string;
     AbstractURL?: string;
     AbstractSource?: string;
@@ -86,7 +86,11 @@ async function duckduckgo(query: string): Promise<SearchResult[]> {
     // Sub-tópicos
     for (const sub of t.Topics ?? []) {
       if (sub.Text && sub.FirstURL) {
-        results.push({ title: sub.Text.split(" - ")[0] ?? sub.Text, url: sub.FirstURL, snippet: sub.Text });
+        results.push({
+          title: sub.Text.split(" - ")[0] ?? sub.Text,
+          url: sub.FirstURL,
+          snippet: sub.Text,
+        });
       }
     }
   }
@@ -101,7 +105,15 @@ async function searchGitHub(query: string, max: number): Promise<SearchResult[]>
     headers: { Accept: "application/vnd.github.v3+json", "User-Agent": "PromptArchitect/1.0" },
   });
   if (!res.ok) return [];
-  const data = await res.json() as { items?: Array<{ full_name: string; html_url: string; description?: string; stargazers_count?: number; language?: string }> };
+  const data = (await res.json()) as {
+    items?: Array<{
+      full_name: string;
+      html_url: string;
+      description?: string;
+      stargazers_count?: number;
+      language?: string;
+    }>;
+  };
   return (data.items ?? []).map((i) => ({
     title: i.full_name,
     url: i.html_url,
@@ -126,7 +138,11 @@ export const Route = createFileRoute("/api/web-search")({
           // Busca em paralelo: DDG + GitHub (se relevante)
           const [ddgResults, ghResults] = await Promise.all([
             duckduckgo(q).catch(() => [] as SearchResult[]),
-            isGitHubSearch ? searchGitHub(q.replace(/github/i, "").trim() || q, 5).catch(() => [] as SearchResult[]) : Promise.resolve([] as SearchResult[]),
+            isGitHubSearch
+              ? searchGitHub(q.replace(/github/i, "").trim() || q, 5).catch(
+                  () => [] as SearchResult[],
+                )
+              : Promise.resolve([] as SearchResult[]),
           ]);
 
           const combined = [...ddgResults, ...ghResults].slice(0, maxResults);

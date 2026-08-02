@@ -60,9 +60,13 @@ function mapAspectRatio(size: ImageSize = "1:1"): string {
  * Gera uma imagem usando o modelo Gemini "Nano Banana" (gemini-2.5-flash-image / 3.1-flash-image)
  * através do endpoint padrão generateContent, retornando a imagem embutida (inlineData) na resposta.
  */
-async function generateWithNanoBanana(params: Required<Pick<GeminiImageParams, "apiKey" | "prompt">> & GeminiImageParams): Promise<string> {
+async function generateWithNanoBanana(
+  params: Required<Pick<GeminiImageParams, "apiKey" | "prompt">> & GeminiImageParams,
+): Promise<string> {
   const { apiKey, baseUrl, prompt, size, model } = params;
-  const cleanBaseUrl = baseUrl ? baseUrl.replace(/\/+$/, "") : "https://generativelanguage.googleapis.com/v1beta";
+  const cleanBaseUrl = baseUrl
+    ? baseUrl.replace(/\/+$/, "")
+    : "https://generativelanguage.googleapis.com/v1beta";
   const endpoint = `${cleanBaseUrl}/models/${encodeURIComponent(model!)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const response = await fetch(endpoint, {
@@ -90,7 +94,7 @@ async function generateWithNanoBanana(params: Required<Pick<GeminiImageParams, "
     // Se o modelo recusou (safety) ou só devolveu texto, o motivo geralmente vem no texto
     const textPart = parts.find((p: any) => p.text)?.text;
     throw new Error(
-      `O modelo Gemini "${model}" não retornou dados de imagem.${textPart ? ` Resposta: ${textPart.slice(0, 200)}` : ""}`
+      `O modelo Gemini "${model}" não retornou dados de imagem.${textPart ? ` Resposta: ${textPart.slice(0, 200)}` : ""}`,
     );
   }
 
@@ -101,9 +105,13 @@ async function generateWithNanoBanana(params: Required<Pick<GeminiImageParams, "
 /**
  * Gera uma imagem usando um modelo Imagen dedicado (imagen-4/imagen-3) através do endpoint :predict.
  */
-async function generateWithImagen(params: Required<Pick<GeminiImageParams, "apiKey" | "prompt">> & GeminiImageParams): Promise<string> {
+async function generateWithImagen(
+  params: Required<Pick<GeminiImageParams, "apiKey" | "prompt">> & GeminiImageParams,
+): Promise<string> {
   const { apiKey, baseUrl, prompt, size, model } = params;
-  const cleanBaseUrl = baseUrl ? baseUrl.replace(/\/+$/, "") : "https://generativelanguage.googleapis.com/v1beta";
+  const cleanBaseUrl = baseUrl
+    ? baseUrl.replace(/\/+$/, "")
+    : "https://generativelanguage.googleapis.com/v1beta";
   const endpoint = `${cleanBaseUrl}/models/${encodeURIComponent(model!)}:predict?key=${encodeURIComponent(apiKey)}`;
 
   const response = await fetch(endpoint, {

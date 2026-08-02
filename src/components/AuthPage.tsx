@@ -94,11 +94,11 @@ export function AuthPage() {
       toast.success("Conectado com Google!");
     } catch (err: unknown) {
       const code = (err as { code?: string }).code;
-      if (
-        code === "auth/unauthorized-domain"
-      ) {
+      if (code === "auth/unauthorized-domain") {
         toast.error(
-          "Domínio não autorizado. Adicione " + window.location.hostname + " no Firebase Console → Authentication → Authorized domains",
+          "Domínio não autorizado. Adicione " +
+            window.location.hostname +
+            " no Firebase Console → Authentication → Authorized domains",
           { duration: 8000 },
         );
       } else if (
@@ -134,7 +134,9 @@ export function AuthPage() {
               <Sparkles className="h-7 w-7 text-primary-foreground" strokeWidth={2.5} />
             </div>
           </div>
-          <h1 className="font-display text-2xl font-bold tracking-tight gradient-text">PromptArchitect</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight gradient-text">
+            PromptArchitect
+          </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "login" ? "Acesse sua conta" : "Crie sua conta"}
           </p>

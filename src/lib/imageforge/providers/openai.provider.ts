@@ -16,7 +16,12 @@ export interface OpenAIImageParams {
  * A família "GPT Image" é a substituta oficial recomendada pela OpenAI.
  * https://developers.openai.com/api/docs/deprecations
  */
-const GPT_IMAGE_MODELS = new Set(["gpt-image-1", "gpt-image-1-mini", "gpt-image-1.5", "gpt-image-2"]);
+const GPT_IMAGE_MODELS = new Set([
+  "gpt-image-1",
+  "gpt-image-1-mini",
+  "gpt-image-1.5",
+  "gpt-image-2",
+]);
 const LEGACY_DALLE_MODELS = new Set(["dall-e-2", "dall-e-3"]);
 const DEFAULT_IMAGE_MODEL = "gpt-image-1";
 
@@ -111,7 +116,8 @@ export async function generateOpenAIImage(params: OpenAIImageParams): Promise<st
     // Modelos GPT Image: NÃO aceitam response_format (sempre retornam base64) e usam
     // quality low/medium/high/auto, e tamanhos fixos 1024x1024 / 1536x1024 / 1024x1536 / auto.
     body.size = mapSizeToGptImage(size);
-    body.quality = quality && ["low", "medium", "high", "auto"].includes(quality) ? quality : "auto";
+    body.quality =
+      quality && ["low", "medium", "high", "auto"].includes(quality) ? quality : "auto";
   }
 
   const response = await fetch(endpoint, {
@@ -149,5 +155,7 @@ export async function generateOpenAIImage(params: OpenAIImageParams): Promise<st
   if (url) return url;
   if (b64) return `data:image/png;base64,${b64}`;
 
-  throw new Error(`A API (${targetModel}) não retornou nenhuma URL ou dado Base64 de imagem válido.`);
+  throw new Error(
+    `A API (${targetModel}) não retornou nenhuma URL ou dado Base64 de imagem válido.`,
+  );
 }

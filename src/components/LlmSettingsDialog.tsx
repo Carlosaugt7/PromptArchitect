@@ -379,7 +379,12 @@ function ProviderForm({
             placeholder="ex: llama-3, gpt-4o, my-custom-model"
             className="font-mono text-xs"
           />
-          <Button type="button" variant="secondary" onClick={handleAddManualModel} className="text-xs">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleAddManualModel}
+            className="text-xs"
+          >
             + Adicionar
           </Button>
         </div>

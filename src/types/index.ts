@@ -23,13 +23,13 @@ export type ImageStyle =
 
 // Proporções e formatos de imagem suportados
 export type ImageSize =
-  | "1:1"    // Quadrado (1024x1024)
-  | "16:9"   // Widescreen / Banner (1344x768)
-  | "9:16"   // Stories / Reels / TikTok (768x1344)
-  | "4:5"    // Retrato Feed Instagram (1080x1350)
-  | "3:2"    // Paisagem Clássica (1152x768)
-  | "2:3"    // Retrato Clássico (768x1152)
-  | "21:9"   // Ultrawide (1536x656)
+  | "1:1" // Quadrado (1024x1024)
+  | "16:9" // Widescreen / Banner (1344x768)
+  | "9:16" // Stories / Reels / TikTok (768x1344)
+  | "4:5" // Retrato Feed Instagram (1080x1350)
+  | "3:2" // Paisagem Clássica (1152x768)
+  | "2:3" // Retrato Clássico (768x1152)
+  | "21:9" // Ultrawide (1536x656)
   | "custom" // Personalizado (Largura x Altura)
   | string;
 
@@ -109,11 +109,11 @@ export interface MarketingCopy {
 // Avaliação de qualidade e validação por Visão Computacional (Vision QA)
 export interface QualityScore {
   stars: number;
-  text: number;         // 0 a 100
-  composition: number;  // 0 a 100
-  photography: number;  // 0 a 100
-  marketing: number;    // 0 a 100
-  branding: number;     // 0 a 100
+  text: number; // 0 a 100
+  composition: number; // 0 a 100
+  photography: number; // 0 a 100
+  marketing: number; // 0 a 100
+  branding: number; // 0 a 100
 }
 
 // Resposta final da geração de imagem
@@ -142,7 +142,10 @@ export class ImageServiceError extends Error {
   public statusCode?: number;
   public isRetryable: boolean;
 
-  constructor(message: string, options?: { provider?: string; statusCode?: number; isRetryable?: boolean }) {
+  constructor(
+    message: string,
+    options?: { provider?: string; statusCode?: number; isRetryable?: boolean },
+  ) {
     super(message);
     this.name = "ImageServiceError";
     this.provider = options?.provider;

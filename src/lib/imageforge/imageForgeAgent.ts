@@ -1,9 +1,9 @@
-import { 
-  ImageGenerationRequest, 
-  ImageGenerationResponse, 
-  DesignState, 
-  MarketingCopy, 
-  QualityScore 
+import {
+  ImageGenerationRequest,
+  ImageGenerationResponse,
+  DesignState,
+  MarketingCopy,
+  QualityScore,
 } from "./types";
 import { buildDirectorSystemPrompt, buildDirectorUserMessage } from "./promptArchitect";
 import { generateOpenAIImage, resolveOpenAIImageModel } from "./providers/openai.provider";
@@ -22,7 +22,7 @@ async function callChat(params: {
   messages: { role: "user" | "assistant" | "system"; content: string | any[] }[];
 }): Promise<string> {
   const { provider, apiKey, model, system, messages } = params;
-  
+
   // Garante um baseUrl válido — se vier vazio, usa o default do provedor
   let rawBase = params.baseUrl;
   if (!rawBase || !rawBase.startsWith("http")) {
@@ -35,15 +35,21 @@ async function callChat(params: {
     };
     rawBase = defaults[provider] || "https://api.openai.com/v1";
   }
-  
+
   // Limpa o baseUrl de possíveis sufixos
   const cleanBase = rawBase
     .replace(/\/+$/, "")
     .replace(/\/(chat\/completions|messages|generateContent)$/i, "")
     .replace(/\/+$/, "");
 
-  const isGoogle = provider === "google" || /generativelanguage\.googleapis\.com/i.test(cleanBase) || /^gemini[-_.]/i.test(model);
-  const isAnthropic = provider === "anthropic" || /anthropic\.com/i.test(cleanBase) || (provider === "custom" && /^claude[-_.]/i.test(model));
+  const isGoogle =
+    provider === "google" ||
+    /generativelanguage\.googleapis\.com/i.test(cleanBase) ||
+    /^gemini[-_.]/i.test(model);
+  const isAnthropic =
+    provider === "anthropic" ||
+    /anthropic\.com/i.test(cleanBase) ||
+    (provider === "custom" && /^claude[-_.]/i.test(model));
 
   if (isGoogle) {
     const url = `${cleanBase}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -52,11 +58,11 @@ async function callChat(params: {
       if (typeof m.content === "string") {
         parts = [{ text: m.content }];
       } else {
-        parts = m.content.map(p => {
+        parts = m.content.map((p) => {
           if (p.type === "text") return { text: p.text };
           if (p.type === "image_url") {
             const mData = /^data:([^;]+);base64,(.+)$/.exec(p.image_url.url);
-            return mData 
+            return mData
               ? { inline_data: { mime_type: mData[1], data: mData[2] } }
               : { text: p.image_url.url };
           }
@@ -91,12 +97,15 @@ async function callChat(params: {
         if (typeof m.content === "string") {
           contentArr = [{ type: "text", text: m.content }];
         } else {
-          contentArr = m.content.map(p => {
+          contentArr = m.content.map((p) => {
             if (p.type === "text") return { type: "text", text: p.text };
             if (p.type === "image_url") {
               const mData = /^data:([^;]+);base64,(.+)$/.exec(p.image_url.url);
               if (mData) {
-                return { type: "image", source: { type: "base64", media_type: mData[1], data: mData[2] } };
+                return {
+                  type: "image",
+                  source: { type: "base64", media_type: mData[1], data: mData[2] },
+                };
               }
             }
             return { type: "text", text: "[Unsupported part]" };
@@ -125,13 +134,16 @@ async function callChat(params: {
   }
 
   // Padrão OpenAI / APIs Compatíveis
-  const allMessages = system ? [{ role: "system" as const, content: system }, ...messages] : messages;
-  const oaiMessages = allMessages.map(m => {
+  const allMessages = system
+    ? [{ role: "system" as const, content: system }, ...messages]
+    : messages;
+  const oaiMessages = allMessages.map((m) => {
     if (typeof m.content === "string") return m;
     // Visão na OpenAI
-    const content = m.content.map(p => {
+    const content = m.content.map((p) => {
       if (p.type === "text") return { type: "text" as const, text: p.text };
-      if (p.type === "image_url") return { type: "image_url" as const, image_url: { url: p.image_url.url } };
+      if (p.type === "image_url")
+        return { type: "image_url" as const, image_url: { url: p.image_url.url } };
       return p;
     });
     return { role: m.role, content };
@@ -141,9 +153,13 @@ async function callChat(params: {
   if (apiKey && apiKey !== "undefined") {
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
-  
+
   let endpoint = `${cleanBase}/chat/completions`;
-  if (!cleanBase.endsWith("/v1") && !cleanBase.includes("/v1/") && !cleanBase.endsWith("/chat/completions")) {
+  if (
+    !cleanBase.endsWith("/v1") &&
+    !cleanBase.includes("/v1/") &&
+    !cleanBase.endsWith("/chat/completions")
+  ) {
     endpoint = `${cleanBase}/v1/chat/completions`;
   }
 
@@ -172,7 +188,12 @@ async function callChat(params: {
 /**
  * Tenta selecionar uma LLM ativa e robusta para tarefas de Diretor de Arte (texto)
  */
-function getActiveTextModel(providers: ProvidersState): { provider: ProviderId; apiKey: string; baseUrl: string; model: string } {
+function getActiveTextModel(providers: ProvidersState): {
+  provider: ProviderId;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+} {
   if (providers.google?.apiKey) {
     return {
       provider: "google",
@@ -194,7 +215,10 @@ function getActiveTextModel(providers: ProvidersState): { provider: ProviderId; 
       provider: "openrouter",
       apiKey: providers.openrouter.apiKey,
       baseUrl: providers.openrouter.baseUrl || "https://openrouter.ai/api/v1",
-      model: providers.openrouter.enabled?.[0] || providers.openrouter.models?.[0] || "google/gemini-2.5-flash",
+      model:
+        providers.openrouter.enabled?.[0] ||
+        providers.openrouter.models?.[0] ||
+        "google/gemini-2.5-flash",
     };
   }
   if (providers.custom?.apiKey) {
@@ -210,7 +234,10 @@ function getActiveTextModel(providers: ProvidersState): { provider: ProviderId; 
       provider: "anthropic",
       apiKey: providers.anthropic.apiKey,
       baseUrl: providers.anthropic.baseUrl || "https://api.anthropic.com/v1",
-      model: providers.anthropic.enabled?.[0] || providers.anthropic.models?.[0] || "claude-3-5-sonnet-latest",
+      model:
+        providers.anthropic.enabled?.[0] ||
+        providers.anthropic.models?.[0] ||
+        "claude-3-5-sonnet-latest",
     };
   }
   if (providers.deepseek?.apiKey) {
@@ -221,13 +248,17 @@ function getActiveTextModel(providers: ProvidersState): { provider: ProviderId; 
       model: providers.deepseek.enabled?.[0] || providers.deepseek.models?.[0] || "deepseek-chat",
     };
   }
-  throw new Error("Nenhum provedor de texto ativo com chave de API foi encontrado para rodar o Diretor de Artes.");
+  throw new Error(
+    "Nenhum provedor de texto ativo com chave de API foi encontrado para rodar o Diretor de Artes.",
+  );
 }
 
 /**
  * Tenta selecionar um modelo de Visão computacional ativo para o QA
  */
-function getActiveVisionModel(providers: ProvidersState): { provider: ProviderId; apiKey: string; baseUrl: string; model: string } | null {
+function getActiveVisionModel(
+  providers: ProvidersState,
+): { provider: ProviderId; apiKey: string; baseUrl: string; model: string } | null {
   try {
     const textConfig = getActiveTextModel(providers);
     // gpt-4o-mini e gemini-2.5-flash suportam visão nativamente, então reutilizamos o mesmo seletor
@@ -261,12 +292,12 @@ function cleanJsonString(raw: string): string {
  */
 export async function generateImageWithDirector(
   request: ImageGenerationRequest,
-  providers: ProvidersState
+  providers: ProvidersState,
 ): Promise<ImageGenerationResponse> {
   const logs: string[] = [];
   logs.push(`Iniciando fluxo ImageForge para o prompt: "${request.prompt}"`);
 
-  let currentRequest = { ...request };
+  const currentRequest = { ...request };
   let attempts = 0;
   const maxAttempts = 2;
 
@@ -315,7 +346,9 @@ export async function generateImageWithDirector(
 
   while (attempts < maxAttempts) {
     attempts++;
-    logs.push(`\n[Tentativa ${attempts}/${maxAttempts}] Executando Diretor de Artes (PromptArchitect)...`);
+    logs.push(
+      `\n[Tentativa ${attempts}/${maxAttempts}] Executando Diretor de Artes (PromptArchitect)...`,
+    );
 
     // 1. Chamar o PromptArchitect para detalhar a arte e copy
     const sysPrompt = buildDirectorSystemPrompt();
@@ -329,7 +362,9 @@ export async function generateImageWithDirector(
         messages: [{ role: "user", content: userMsg }],
       });
     } catch (e) {
-      logs.push(`Erro na chamada da LLM do Diretor de Artes: ${e instanceof Error ? e.message : String(e)}`);
+      logs.push(
+        `Erro na chamada da LLM do Diretor de Artes: ${e instanceof Error ? e.message : String(e)}`,
+      );
       throw e;
     }
 
@@ -339,10 +374,14 @@ export async function generateImageWithDirector(
       refinedPrompt = parsed.refinedPrompt;
       finalDesignState = parsed.designState;
       finalCopy = parsed.copy;
-      logs.push(`Direção de arte formulada com sucesso. Estilo: "${finalDesignState.style}". Texto solicitado: "${finalDesignState.text}"`);
+      logs.push(
+        `Direção de arte formulada com sucesso. Estilo: "${finalDesignState.style}". Texto solicitado: "${finalDesignState.text}"`,
+      );
       logs.push(`Prompt refinado gerado em inglês: "${refinedPrompt}"`);
     } catch (e) {
-      logs.push(`Falha ao fazer parse do JSON do Diretor de Artes. Resposta bruta: ${llmResponse.slice(0, 300)}...`);
+      logs.push(
+        `Falha ao fazer parse do JSON do Diretor de Artes. Resposta bruta: ${llmResponse.slice(0, 300)}...`,
+      );
       if (attempts === 1) {
         logs.push(`Tentando recuperação simples no primeiro erro...`);
         // Fallback básico para não quebrar a primeira tentativa
@@ -375,7 +414,9 @@ export async function generateImageWithDirector(
       } else if (providers.custom?.apiKey) {
         selectedProvider = "custom";
       } else {
-        throw new Error("Nenhum provedor com chave de API configurada foi encontrado nas Configurações de IA.");
+        throw new Error(
+          "Nenhum provedor com chave de API configurada foi encontrado nas Configurações de IA.",
+        );
       }
     }
 
@@ -409,7 +450,8 @@ export async function generateImageWithDirector(
           size: request.size,
         });
       } else if (selectedProvider === "openrouter" || selectedProvider === "custom") {
-        const activeProv = providers[selectedProvider as ProviderId] || providers.openai || providers.custom;
+        const activeProv =
+          providers[selectedProvider as ProviderId] || providers.openai || providers.custom;
         if (!activeProv?.apiKey) {
           throw new Error(`Chave de API do provedor ${selectedProvider} não encontrada.`);
         }
@@ -424,7 +466,9 @@ export async function generateImageWithDirector(
         } catch (customErr) {
           // Se o servidor customizado não aceita /images/generations, tenta fallback em OpenAI/Gemini se disponíveis
           if (providers.openai?.apiKey) {
-            logs.push(`Servidor customizado falhou na rota de imagens. Tentando fallback via OpenAI (GPT Image)...`);
+            logs.push(
+              `Servidor customizado falhou na rota de imagens. Tentando fallback via OpenAI (GPT Image)...`,
+            );
             imageUrl = await generateOpenAIImage({
               apiKey: providers.openai.apiKey,
               baseUrl: providers.openai.baseUrl,
@@ -433,7 +477,9 @@ export async function generateImageWithDirector(
               size: request.size,
             });
           } else if (providers.google?.apiKey) {
-            logs.push(`Servidor customizado falhou na rota de imagens. Tentando fallback via Google Gemini (Imagen 3)...`);
+            logs.push(
+              `Servidor customizado falhou na rota de imagens. Tentando fallback via Google Gemini (Imagen 3)...`,
+            );
             imageUrl = await generateGeminiImage({
               apiKey: providers.google.apiKey,
               baseUrl: providers.google.baseUrl,
@@ -441,7 +487,9 @@ export async function generateImageWithDirector(
               size: request.size,
             });
           } else {
-            throw new Error(`O servidor no modelo "${textLlm.model}" não possui suporte a geração de imagens (/images/generations). Configure uma chave OpenAI ou Gemini Imagen 3 nas Configurações de IA.`);
+            throw new Error(
+              `O servidor no modelo "${textLlm.model}" não possui suporte a geração de imagens (/images/generations). Configure uma chave OpenAI ou Gemini Imagen 3 nas Configurações de IA.`,
+            );
           }
         }
       } else {
@@ -456,11 +504,15 @@ export async function generateImageWithDirector(
     // 3. Sistema de Validação por Visão (Vision QA) e Score
     const visionLlm = getActiveVisionModel(providers);
     if (!visionLlm) {
-      logs.push(`Aviso: Nenhuma chave de modelo multimodal de visão disponível. Pulando QA de imagem.`);
-      break; 
+      logs.push(
+        `Aviso: Nenhuma chave de modelo multimodal de visão disponível. Pulando QA de imagem.`,
+      );
+      break;
     }
 
-    logs.push(`Iniciando Validação de Qualidade Visual com Vision LLM: ${visionLlm.provider} (${visionLlm.model})`);
+    logs.push(
+      `Iniciando Validação de Qualidade Visual com Vision LLM: ${visionLlm.provider} (${visionLlm.model})`,
+    );
 
     const visionSystemPrompt = `Você é o "Vision QA", o Inspetor de Qualidade de Imagem do OmniForge IDE.
 Sua tarefa é auditar a imagem gerada a partir do prompt de imagem fornecido e do texto comercial solicitado.
@@ -481,8 +533,11 @@ Você deve responder rigorosamente no formato JSON com o seguinte esquema:
 }`;
 
     const visionUserMessageContent = [
-      { type: "text", text: `TEXTO COMERCIAL SOLICITADO: "${finalDesignState.text}"\nPROMPT USADO: "${refinedPrompt}"\nAqui está a imagem gerada:` },
-      { type: "image_url", image_url: { url: imageUrl } }
+      {
+        type: "text",
+        text: `TEXTO COMERCIAL SOLICITADO: "${finalDesignState.text}"\nPROMPT USADO: "${refinedPrompt}"\nAqui está a imagem gerada:`,
+      },
+      { type: "image_url", image_url: { url: imageUrl } },
     ];
 
     try {
@@ -497,8 +552,12 @@ Você deve responder rigorosamente no formato JSON com o seguinte esquema:
       ocrValid = parsedVision.ocrValid;
 
       logs.push(`[Vision QA Feedback]: ${parsedVision.feedback}`);
-      logs.push(`[Vision QA Score]: Texto: ${finalScore.text}/100 | Composição: ${finalScore.composition}/100 | Stars: ${finalScore.stars} estrelas`);
-      logs.push(`Texto lido por OCR na imagem: "${parsedVision.ocrText}" (Válido? ${ocrValid ? "SIM" : "NÃO"})`);
+      logs.push(
+        `[Vision QA Score]: Texto: ${finalScore.text}/100 | Composição: ${finalScore.composition}/100 | Stars: ${finalScore.stars} estrelas`,
+      );
+      logs.push(
+        `Texto lido por OCR na imagem: "${parsedVision.ocrText}" (Válido? ${ocrValid ? "SIM" : "NÃO"})`,
+      );
 
       if (ocrValid || !finalDesignState.text) {
         // Se o texto estiver correto (ou não houver texto solicitado), terminamos com sucesso
@@ -510,15 +569,17 @@ Você deve responder rigorosamente no formato JSON com o seguinte esquema:
           // Adiciona feedback de erro no histórico do request para forçar o PromptArchitect a reforçar a escrita no próximo prompt
           currentRequest.history = currentRequest.history ?? [];
           currentRequest.history.push({ role: "user", content: request.prompt });
-          currentRequest.history.push({ 
-            role: "assistant", 
-            content: `O prompt anterior gerou o texto com erros. O leitor automático detectou "${parsedVision.ocrText}" em vez de "${finalDesignState.text}".`
+          currentRequest.history.push({
+            role: "assistant",
+            content: `O prompt anterior gerou o texto com erros. O leitor automático detectou "${parsedVision.ocrText}" em vez de "${finalDesignState.text}".`,
           });
           currentRequest.prompt = `${request.prompt}. CERTIFIQUE-SE de escrever EXATAMENTE as palavras "${finalDesignState.text}". O texto anterior saiu errado como "${parsedVision.ocrText}". Corrija as letras e a ortografia no prompt de imagem.`;
         }
       }
     } catch (e) {
-      logs.push(`Falha ao executar ou fazer parse da validação visual: ${e instanceof Error ? e.message : String(e)}`);
+      logs.push(
+        `Falha ao executar ou fazer parse da validação visual: ${e instanceof Error ? e.message : String(e)}`,
+      );
       // Não trava o fluxo principal se a validação falhar, apenas assume score padrão
       break;
     }
