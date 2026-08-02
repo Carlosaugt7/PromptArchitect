@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { loadProviders, listEnabledModels, type ModelSelection } from "@/lib/llm-providers";
+import { loadProviders, listEnabledModels, IMAGE_MODELS, type ModelSelection, type ProviderId } from "@/lib/llm-providers";
 import { ImageService } from "@/services/imageService";
 import { 
   ImageStyle, 
@@ -45,16 +45,38 @@ export function ImageForgePanel() {
   const [customWidth, setCustomWidth] = useState(1024);
   const [customHeight, setCustomHeight] = useState(1024);
 
-  // Modelos de IA Habilitados
+  // Modelos de IA Habilitados (Diretor de Artes — texto)
   const [enabledModels, setEnabledModels] = useState<ModelSelection[]>([]);
   const [selectedModelKey, setSelectedModelKey] = useState<string>("");
 
+  // Modelo de IMAGEM (gerador final) — independente do modelo de texto acima
+  const [imageProvider, setImageProvider] = useState<ProviderId | "">("");
+  const [imageModel, setImageModel] = useState<string>("");
+
   useEffect(() => {
-    setEnabledModels(listEnabledModels());
-    const handler = () => setEnabledModels(listEnabledModels());
-    window.addEventListener("omniforge.llm.providers-changed", handler);
-    return () => window.removeEventListener("omniforge.llm.providers-changed", handler);
+    const refresh = () => {
+      setEnabledModels(listEnabledModels());
+      const providers = loadProviders();
+      // Escolhe automaticamente o primeiro provedor com chave configurada que também gere imagem
+      setImageProvider((prev) => {
+        if (prev && providers[prev]?.apiKey && IMAGE_MODELS[prev]) return prev;
+        const firstAvailable = (Object.keys(IMAGE_MODELS) as ProviderId[]).find((p) => providers[p]?.apiKey);
+        return firstAvailable ?? "";
+      });
+    };
+    refresh();
+    window.addEventListener("omniforge.llm.providers-changed", refresh);
+    return () => window.removeEventListener("omniforge.llm.providers-changed", refresh);
   }, []);
+
+  // Sempre que o provedor de imagem mudar, seleciona o modelo padrão (recomendado) dessa lista
+  useEffect(() => {
+    if (imageProvider && IMAGE_MODELS[imageProvider]?.length) {
+      setImageModel(IMAGE_MODELS[imageProvider]![0].id);
+    } else {
+      setImageModel("");
+    }
+  }, [imageProvider]);
 
   // Detector de Marca
   const [brandName, setBrandName] = useState("");
@@ -126,10 +148,18 @@ export function ImageForgePanel() {
       chosenModel = m;
     }
 
+    if (!imageProvider || !providers[imageProvider]?.apiKey) {
+      toast.error("Selecione um Modelo de Imagem válido (com chave de API configurada) antes de gerar.");
+      setLoading(false);
+      return;
+    }
+
     const requestPayload = {
       prompt: activePrompt,
       provider: chosenProvider,
       model: chosenModel,
+      imageProvider,
+      imageModel,
       size,
       style: selectedStyle as ImageStyle,
       brandTheme,
@@ -204,9 +234,9 @@ export function ImageForgePanel() {
             />
           </div>
 
-          {/* Seletor de Modelo de IA e Configurações Visuais */}
+          {/* Seletor de Modelo de IA (Texto) e Configurações Visuais */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Modelo de IA (Direção de Arte / LLM)</Label>
+            <Label className="text-xs font-semibold">Modelo de Texto (Diretor de Artes / Copy)</Label>
             <select
               value={selectedModelKey}
               onChange={(e) => setSelectedModelKey(e.target.value)}
@@ -220,7 +250,53 @@ export function ImageForgePanel() {
                 </option>
               ))}
             </select>
+            <p className="text-[10px] text-muted-foreground">
+              Escreve o prompt refinado e a copy de marketing. Não é usado para desenhar a imagem.
+            </p>
           </div>
+
+          {/* Seletor de Modelo de IMAGEM (gerador final) — independente do modelo de texto acima */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Camera className="h-3.5 w-3.5 text-primary" /> Provedor de Imagem
+              </Label>
+              <select
+                value={imageProvider}
+                onChange={(e) => setImageProvider(e.target.value as ProviderId)}
+                className="w-full text-xs bg-background/50 rounded-lg border border-border p-2 focus:ring-1 focus:ring-primary focus:outline-none"
+                disabled={loading}
+              >
+                <option value="">Selecione…</option>
+                {(Object.keys(IMAGE_MODELS) as ProviderId[]).map((p) => (
+                  <option key={p} value={p} disabled={!enabledModels.some((m) => m.provider === p) && !loadProviders()[p]?.apiKey}>
+                    {p === "openai" ? "OpenAI" : "Google Gemini"}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Modelo de Imagem</Label>
+              <select
+                value={imageModel}
+                onChange={(e) => setImageModel(e.target.value)}
+                className="w-full text-xs bg-background/50 rounded-lg border border-border p-2 focus:ring-1 focus:ring-primary focus:outline-none"
+                disabled={loading || !imageProvider}
+              >
+                {imageProvider &&
+                  IMAGE_MODELS[imageProvider]?.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+          {imageProvider && !loadProviders()[imageProvider]?.apiKey && (
+            <p className="text-[10px] text-destructive flex items-center gap-1">
+              <ShieldAlert className="h-3 w-3" /> Configure uma chave de API para {imageProvider === "openai" ? "OpenAI" : "Google Gemini"} nas Configurações.
+            </p>
+          )}
 
           {/* Estilo Visual e Tamanho da Imagem */}
           <div className="grid grid-cols-2 gap-3">
@@ -406,16 +482,17 @@ export function ImageForgePanel() {
       <div className="lg:col-span-7 flex flex-col gap-5">
         {/* Placeholder quando não gerado */}
         {!lastResponse && (
-          <div className="flex-1 min-h-[400px] flex flex-col items-center justify-center border border-dashed border-border bg-card/20 rounded-2xl p-8 text-center">
+          <div className="flex-1 min-h-[400px] flex flex-col items-center justify-center border border-dashed border-border bg-card/20 rounded-2xl p-8 text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-60" style={{ backgroundImage: "var(--gradient-glow)" }} />
             <div className="relative mb-4">
-              <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl opacity-40 animate-pulse" />
-              <div className="relative grid h-14 w-14 place-items-center rounded-2xl border border-border bg-background">
-                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+              <div className="absolute inset-0 rounded-2xl blur-2xl opacity-50 animate-pulse" style={{ background: "var(--gradient-brand)" }} />
+              <div className="relative grid h-16 w-16 place-items-center rounded-2xl border border-border bg-background shadow-lg">
+                <ImageIcon className="h-7 w-7 text-primary" />
               </div>
             </div>
-            <h3 className="font-semibold text-sm">Nenhuma imagem forjada</h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-              Configure as opções no painel da esquerda e clique em **Forjar Nova Arte**. O Diretor de Artes da IA criará o design e a copy para você.
+            <h3 className="relative font-display font-semibold text-base">Nenhuma imagem forjada ainda</h3>
+            <p className="relative text-xs text-muted-foreground mt-1.5 max-w-sm leading-relaxed">
+              Configure as opções no painel à esquerda — incluindo o <strong className="text-foreground/80">Modelo de Imagem</strong> — e clique em <strong className="text-foreground/80">Forjar Nova Arte</strong>. O Diretor de Artes criará o design e a copy para você.
             </p>
           </div>
         )}
@@ -423,147 +500,183 @@ export function ImageForgePanel() {
         {/* Exibição da Imagem & Detalhes */}
         {lastResponse && (
           <div className="space-y-5">
-            {/* Visualizador de Imagem */}
-            <div className="rounded-2xl border border-border bg-card/40 overflow-hidden relative group">
-              <img 
-                src={lastResponse.imageUrl} 
-                alt="Arte gerada com IA" 
-                className="w-full object-contain bg-background max-h-[500px]"
-              />
-              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                <a 
-                  href={lastResponse.imageUrl} 
-                  download="imageforge-art.jpg"
-                  target="_blank" 
-                  rel="noreferrer"
-                >
-                  <Button size="icon" variant="secondary" className="h-8 w-8 bg-background/80 backdrop-blur-md shadow-md border border-border">
-                    <Download className="h-4 w-4 text-foreground" />
-                  </Button>
-                </a>
-              </div>
+            {/* Faixa de destaque com a marca do OmniForge */}
+            <div
+              className="rounded-2xl p-[1px] shadow-lg"
+              style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}
+            >
+              <div className="rounded-[15px] bg-card/95 overflow-hidden">
+                {/* Visualizador de Imagem */}
+                <div className="relative group">
+                  <img
+                    src={lastResponse.imageUrl}
+                    alt="Arte gerada com IA"
+                    className="w-full object-contain bg-background max-h-[500px]"
+                  />
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-background/80 backdrop-blur-md border border-border rounded-full px-2.5 py-1 text-[10px] font-semibold text-foreground/80">
+                    <Camera className="h-3 w-3 text-primary" />
+                    {imageProvider === "google" ? "Gemini" : "OpenAI"} · {imageModel || "auto"}
+                  </div>
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <a
+                      href={lastResponse.imageUrl}
+                      download="imageforge-art.png"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Button size="icon" variant="secondary" className="h-8 w-8 bg-background/80 backdrop-blur-md shadow-md border border-border">
+                        <Download className="h-4 w-4 text-foreground" />
+                      </Button>
+                    </a>
+                  </div>
 
-              {/* Banner de Aviso de OCR */}
-              {ocrFailedNotice && (
-                <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground p-2 text-xs flex items-center justify-center gap-2 backdrop-blur-sm">
-                  <ShieldAlert className="h-4 w-4" />
-                  <span>O Inspetor de Visão detectou possíveis distorções no texto. Você pode pedir correções no chat de design.</span>
+                  {/* Banner de Aviso de OCR */}
+                  {ocrFailedNotice && (
+                    <div className="absolute bottom-0 inset-x-0 bg-destructive/90 text-destructive-foreground p-2 text-xs flex items-center justify-center gap-2 backdrop-blur-sm">
+                      <ShieldAlert className="h-4 w-4" />
+                      <span>O Inspetor de Visão detectou possíveis distorções no texto. Você pode pedir correções no chat de design.</span>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Quality Score & OCR QA Report */}
-            <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-xl p-5 space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-border">
-                <div className="flex items-center gap-1.5">
-                  <Star className="h-4.5 w-4.5 text-primary filled" fill="currentColor" />
-                  <h3 className="text-sm font-semibold font-display">Relatório do Inspetor de Visão (Vision QA)</h3>
-                </div>
-                <div className="flex items-center gap-0.5 text-primary font-bold text-sm">
-                  {lastResponse.score.stars}
-                  <span className="text-xs text-muted-foreground font-normal"> / 5 estrelas</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
-                {[
-                  { name: "Legibilidade", score: lastResponse.score.text, color: "text-blue-500 bg-blue-500/10" },
-                  { name: "Composição", score: lastResponse.score.composition, color: "text-emerald-500 bg-emerald-500/10" },
-                  { name: "Fotografia", score: lastResponse.score.photography, color: "text-amber-500 bg-amber-500/10" },
-                  { name: "Copy/Marketing", score: lastResponse.score.marketing, color: "text-rose-500 bg-rose-500/10" },
-                  { name: "Branding", score: lastResponse.score.branding, color: "text-purple-500 bg-purple-500/10" },
-                ].map((s, idx) => (
-                  <div key={idx} className="border border-border/50 bg-background/20 p-2.5 rounded-xl">
-                    <span className="text-[10px] text-muted-foreground block font-medium mb-1.5">{s.name}</span>
-                    <div className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-muted">
-                      {s.score}%
+            <div className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden" style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}>
+              <div className="absolute inset-0 bg-background/50 mix-blend-overlay group-hover:opacity-0 transition-opacity duration-500" />
+              <div className="relative rounded-[15px] bg-card/95 backdrop-blur-xl p-5 space-y-4 h-full">
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="grid h-7 w-7 place-items-center rounded-lg shadow-sm"
+                      style={{ background: "var(--gradient-brand)" }}
+                    >
+                      <Star className="h-3.5 w-3.5 text-primary-foreground" fill="currentColor" />
                     </div>
+                    <h3 className="text-sm font-semibold font-display">Inspetor de Visão (Vision QA)</h3>
                   </div>
-                ))}
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-3.5 w-3.5 ${i < lastResponse.score.stars ? "text-primary drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" : "text-muted-foreground/30"}`}
+                        fill="currentColor"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+                  {[
+                    { name: "Legibilidade", score: lastResponse.score.text, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
+                    { name: "Composição", score: lastResponse.score.composition, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
+                    { name: "Fotografia", score: lastResponse.score.photography, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
+                    { name: "Copy/Marketing", score: lastResponse.score.marketing, color: "text-rose-500 bg-rose-500/10 border-rose-500/20" },
+                    { name: "Branding", score: lastResponse.score.branding, color: "text-purple-500 bg-purple-500/10 border-purple-500/20" },
+                  ].map((s, idx) => (
+                    <div key={idx} className="border border-border/50 bg-background/40 hover:bg-background/60 transition-colors p-2.5 rounded-xl space-y-2 shadow-sm">
+                      <span className="text-[10px] text-muted-foreground block font-medium">{s.name}</span>
+                      <div className={`h-1.5 w-full rounded-full bg-muted/50 overflow-hidden`}>
+                        <div className={`h-full rounded-full shadow-[0_0_10px_currentColor] ${s.color.split(" ")[0].replace("text-", "bg-")}`} style={{ width: `${s.score}%` }} />
+                      </div>
+                      <div className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold border ${s.color}`}>
+                        {s.score}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Copywriter de Marketing & CTA */}
-            <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-xl p-5 space-y-4">
-              <div className="flex items-center gap-1.5 pb-2 border-b border-border">
-                <Target className="h-4.5 w-4.5 text-primary" />
-                <h3 className="text-sm font-semibold font-display">Copy de Marketing Sugerida</h3>
-              </div>
-
-              <div className="space-y-3.5">
-                {/* Headline */}
-                <div className="space-y-1 relative group">
-                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Headline</span>
-                  <div className="flex items-center justify-between bg-background/40 border border-border/60 p-2.5 rounded-xl text-xs font-medium">
-                    <p>{lastResponse.copy.headline}</p>
-                    <button 
-                      onClick={() => handleCopy(lastResponse.copy.headline, "hl")} 
-                      className="text-muted-foreground hover:text-foreground p-1 transition-colors"
-                    >
-                      {copiedText === "hl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                    </button>
+            <div className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden" style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}>
+              <div className="absolute inset-0 bg-background/50 mix-blend-overlay group-hover:opacity-0 transition-opacity duration-500" />
+              <div className="relative rounded-[15px] bg-card/95 backdrop-blur-xl p-5 space-y-4 h-full">
+                <div className="flex items-center gap-2 pb-3 border-b border-border">
+                  <div
+                    className="grid h-7 w-7 place-items-center rounded-lg shadow-sm"
+                    style={{ background: "var(--gradient-brand)" }}
+                  >
+                    <Target className="h-3.5 w-3.5 text-primary-foreground" />
                   </div>
+                  <h3 className="text-sm font-semibold font-display">Copy de Marketing Sugerida</h3>
                 </div>
 
-                {/* Subheadline */}
-                <div className="space-y-1 relative group">
-                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Subheadline</span>
-                  <div className="flex items-center justify-between bg-background/40 border border-border/60 p-2.5 rounded-xl text-xs">
-                    <p className="text-muted-foreground">{lastResponse.copy.subheadline}</p>
-                    <button 
-                      onClick={() => handleCopy(lastResponse.copy.subheadline, "shl")} 
-                      className="text-muted-foreground hover:text-foreground p-1 transition-colors"
-                    >
-                      {copiedText === "shl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bullet Points */}
-                {lastResponse.copy.bullets.length > 0 && (
-                  <div className="space-y-1 relative group">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Pontos Fortes (Bullets)</span>
-                    <div className="bg-background/40 border border-border/60 p-2.5 rounded-xl text-xs space-y-1 relative">
-                      {lastResponse.copy.bullets.map((b, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5">
-                          <span className="text-primary text-[10px] mt-0.5">•</span>
-                          <p>{b}</p>
-                        </div>
-                      ))}
+                <div className="space-y-4">
+                  {/* Headline */}
+                  <div className="space-y-1 relative group/item">
+                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Headline</span>
+                    <div className="flex items-center justify-between bg-background/60 hover:bg-background/80 transition-colors border border-border/60 p-3 rounded-xl text-[13px] font-semibold shadow-sm">
+                      <p className="text-foreground">{lastResponse.copy.headline}</p>
                       <button 
-                        onClick={() => handleCopy(lastResponse.copy.bullets.join("\n"), "bl")} 
-                        className="absolute right-2 top-2 text-muted-foreground hover:text-foreground p-1 transition-colors"
+                        onClick={() => handleCopy(lastResponse.copy.headline, "hl")} 
+                        className="text-muted-foreground hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors"
                       >
-                        {copiedText === "bl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedText === "hl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
                     </div>
                   </div>
-                )}
 
-                {/* CTA & Hashtags */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Call to Action (CTA)</span>
-                    <div className="flex items-center justify-between bg-background/40 border border-border/60 px-3 py-2 rounded-xl text-xs font-bold text-primary">
-                      <span>{lastResponse.copy.cta}</span>
+                  {/* Subheadline */}
+                  <div className="space-y-1 relative group/item">
+                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Subheadline</span>
+                    <div className="flex items-center justify-between bg-background/60 hover:bg-background/80 transition-colors border border-border/60 p-3 rounded-xl text-xs shadow-sm">
+                      <p className="text-muted-foreground leading-relaxed pr-2">{lastResponse.copy.subheadline}</p>
                       <button 
-                        onClick={() => handleCopy(lastResponse.copy.cta, "cta")} 
-                        className="text-muted-foreground hover:text-foreground p-1 transition-colors"
+                        onClick={() => handleCopy(lastResponse.copy.subheadline, "shl")} 
+                        className="text-muted-foreground hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors"
                       >
-                        {copiedText === "cta" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copiedText === "shl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                       </button>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Hashtags</span>
-                    <div className="flex items-center justify-between bg-background/40 border border-border/60 px-3 py-2 rounded-xl text-[11px] font-mono text-muted-foreground">
-                      <span className="truncate">{lastResponse.copy.hashtags.join(" ")}</span>
-                      <button 
-                        onClick={() => handleCopy(lastResponse.copy.hashtags.join(" "), "tags")} 
-                        className="text-muted-foreground hover:text-foreground p-1 transition-colors"
-                      >
-                        {copiedText === "tags" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
-                      </button>
+
+                  {/* Bullet Points */}
+                  {lastResponse.copy.bullets.length > 0 && (
+                    <div className="space-y-1 relative group/item">
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Pontos Fortes (Bullets)</span>
+                      <div className="bg-background/60 hover:bg-background/80 transition-colors border border-border/60 p-3.5 rounded-xl text-xs space-y-2 relative shadow-sm">
+                        {lastResponse.copy.bullets.map((b, idx) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <span className="text-primary text-[10px] mt-0.5">•</span>
+                            <p className="text-foreground/90 leading-relaxed">{b}</p>
+                          </div>
+                        ))}
+                        <button 
+                          onClick={() => handleCopy(lastResponse.copy.bullets.join("\n"), "bl")} 
+                          className="absolute right-2 top-2 text-muted-foreground hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors"
+                        >
+                          {copiedText === "bl" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CTA & Hashtags */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1 relative group/item">
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Call to Action (CTA)</span>
+                      <div className="flex items-center justify-between bg-primary/10 border border-primary/20 hover:border-primary/40 transition-colors p-3 rounded-xl text-[13px] font-bold text-primary shadow-sm">
+                        <span>{lastResponse.copy.cta}</span>
+                        <button 
+                          onClick={() => handleCopy(lastResponse.copy.cta, "cta")} 
+                          className="text-primary/70 hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors"
+                        >
+                          {copiedText === "cta" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1 relative group/item">
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider pl-1">Hashtags</span>
+                      <div className="flex items-center justify-between bg-background/60 hover:bg-background/80 transition-colors border border-border/60 p-3 rounded-xl text-[11px] font-mono text-muted-foreground shadow-sm">
+                        <span className="truncate pr-2">{lastResponse.copy.hashtags.join(" ")}</span>
+                        <button 
+                          onClick={() => handleCopy(lastResponse.copy.hashtags.join(" "), "tags")} 
+                          className="text-muted-foreground hover:text-primary bg-background/50 p-1.5 rounded-md transition-colors flex-shrink-0"
+                        >
+                          {copiedText === "tags" ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -571,15 +684,24 @@ export function ImageForgePanel() {
             </div>
 
             {/* Logs Detalhados do Diretor de Artes */}
-            <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-xl p-4 space-y-2">
-              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">Logs do Diretor de Artes</span>
-              <div className="bg-background/80 font-mono text-[10px] p-3 rounded-xl max-h-[140px] overflow-y-auto space-y-1 border border-border/50 text-muted-foreground leading-relaxed">
-                {lastResponse.logs.map((log, idx) => (
-                  <div key={idx} className={log.includes("Erro") || log.includes("falhou") ? "text-destructive" : log.includes("sucesso") ? "text-success" : ""}>
-                    {log}
-                  </div>
-                ))}
-                <div ref={logsEndRef} />
+            <div className="rounded-2xl p-[1px] shadow-lg relative group overflow-hidden" style={{ background: "var(--gradient-brand)", boxShadow: "var(--shadow-glow)" }}>
+              <div className="absolute inset-0 bg-background/50 mix-blend-overlay group-hover:opacity-0 transition-opacity duration-500" />
+              <div className="relative rounded-[15px] bg-card/95 backdrop-blur-xl p-4 space-y-3 h-full">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Logs do Diretor de Artes</span>
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5 text-primary border-primary/30 bg-primary/10">
+                    {lastResponse.logs.length} eventos
+                  </Badge>
+                </div>
+                <div className="bg-background/60 shadow-inner font-mono text-[10px] p-3 rounded-xl max-h-[140px] overflow-y-auto space-y-1.5 border border-border/60 text-muted-foreground leading-relaxed scrollbar-thin">
+                  {lastResponse.logs.map((log, idx) => (
+                    <div key={idx} className={`flex items-start gap-1.5 ${log.includes("Erro") || log.includes("falhou") ? "text-destructive" : log.includes("sucesso") ? "text-success" : ""}`}>
+                      <span className="opacity-50 mt-0.5">{">"}</span>
+                      <span>{log}</span>
+                    </div>
+                  ))}
+                  <div ref={logsEndRef} />
+                </div>
               </div>
             </div>
           </div>

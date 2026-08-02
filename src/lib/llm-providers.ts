@@ -79,6 +79,26 @@ export const DEFAULT_MODELS: Record<ProviderId, string[]> = {
   custom: [],
 };
 
+/**
+ * Modelos de IMAGEM válidos por provedor (Ago/2026), usados pelo seletor do ImageForge.
+ * Importante: são LISTAS SEPARADAS dos modelos de chat/texto acima. DALL-E 2/3 foram
+ * desativados pela OpenAI em 12/05/2026; a família GPT Image é a substituta oficial.
+ * O Gemini "Nano Banana" (gemini-2.5-flash-image) é o padrão recomendado pelo Google.
+ */
+export const IMAGE_MODELS: Partial<Record<ProviderId, { id: string; label: string }[]>> = {
+  openai: [
+    { id: "gpt-image-1", label: "GPT Image 1 (recomendado)" },
+    { id: "gpt-image-1-mini", label: "GPT Image 1 Mini (mais rápido/barato)" },
+    { id: "gpt-image-1.5", label: "GPT Image 1.5" },
+    { id: "gpt-image-2", label: "GPT Image 2 (resoluções customizadas)" },
+  ],
+  google: [
+    { id: "gemini-2.5-flash-image", label: "Nano Banana — Gemini 2.5 Flash Image (recomendado)" },
+    { id: "gemini-3.1-flash-image", label: "Nano Banana Pro — Gemini 3.1 Flash Image" },
+    { id: "imagen-4.0-generate-001", label: "Imagen 4 (fotorrealismo dedicado)" },
+  ],
+};
+
 export interface SavedProvider {
   apiKey: string;
   baseUrl: string;

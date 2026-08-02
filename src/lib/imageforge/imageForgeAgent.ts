@@ -6,8 +6,8 @@ import {
   QualityScore 
 } from "./types";
 import { buildDirectorSystemPrompt, buildDirectorUserMessage } from "./promptArchitect";
-import { generateOpenAIImage } from "./providers/openai.provider";
-import { generateGeminiImage } from "./providers/gemini.provider";
+import { generateOpenAIImage, resolveOpenAIImageModel } from "./providers/openai.provider";
+import { generateGeminiImage, resolveGeminiImageModel } from "./providers/gemini.provider";
 import { ProvidersState, ProviderId } from "../llm-providers";
 
 /**
@@ -353,8 +353,10 @@ export async function generateImageWithDirector(
       }
     }
 
-    // 2. Determinar e rodar o gerador de imagem (DALL-E 3, Imagen 3, OpenRouter ou Custom)
-    let selectedProvider = request.provider;
+    // 2. Determinar e rodar o gerador de imagem (GPT Image, Nano Banana/Imagen, OpenRouter ou Custom)
+    // Prioriza o provedor de IMAGEM explícito (imageProvider), que pode ser diferente do
+    // provedor usado pelo Diretor de Artes (texto).
+    let selectedProvider = request.imageProvider || request.provider;
 
     // Se o provedor especificado não tiver chave configurada, faz fallback para outro ativo
     if (selectedProvider && !providers[selectedProvider as ProviderId]?.apiKey) {
@@ -380,6 +382,10 @@ export async function generateImageWithDirector(
     logs.push(`Gerando imagem via provedor: ${selectedProvider}`);
 
     try {
+      // IMPORTANTE: request.model é o modelo de TEXTO escolhido para o Diretor de Artes
+      // (ex: "gpt-4o-mini"). Ele NUNCA deve ser reaproveitado como modelo de imagem — essa
+      // era a causa do erro "escolhi OpenAI e deu erro". Usamos request.imageModel (se o
+      // usuário escolheu um explicitamente) ou deixamos o resolver escolher um padrão seguro.
       if (selectedProvider === "google") {
         if (!providers.google?.apiKey) {
           throw new Error("Chave de API do Google Gemini não encontrada.");
@@ -387,6 +393,7 @@ export async function generateImageWithDirector(
         imageUrl = await generateGeminiImage({
           apiKey: providers.google.apiKey,
           baseUrl: providers.google.baseUrl,
+          model: resolveGeminiImageModel(request.imageModel),
           prompt: refinedPrompt,
           size: request.size,
         });
@@ -397,7 +404,7 @@ export async function generateImageWithDirector(
         imageUrl = await generateOpenAIImage({
           apiKey: providers.openai.apiKey,
           baseUrl: providers.openai.baseUrl,
-          model: request.model,
+          model: resolveOpenAIImageModel(request.imageModel),
           prompt: refinedPrompt,
           size: request.size,
         });
@@ -410,17 +417,18 @@ export async function generateImageWithDirector(
           imageUrl = await generateOpenAIImage({
             apiKey: activeProv.apiKey,
             baseUrl: activeProv.baseUrl,
-            model: request.model,
+            model: resolveOpenAIImageModel(request.imageModel),
             prompt: refinedPrompt,
             size: request.size,
           });
         } catch (customErr) {
           // Se o servidor customizado não aceita /images/generations, tenta fallback em OpenAI/Gemini se disponíveis
           if (providers.openai?.apiKey) {
-            logs.push(`Servidor customizado falhou na rota de imagens. Tentando fallback via OpenAI (DALL-E 3)...`);
+            logs.push(`Servidor customizado falhou na rota de imagens. Tentando fallback via OpenAI (GPT Image)...`);
             imageUrl = await generateOpenAIImage({
               apiKey: providers.openai.apiKey,
               baseUrl: providers.openai.baseUrl,
+              model: resolveOpenAIImageModel(request.imageModel),
               prompt: refinedPrompt,
               size: request.size,
             });

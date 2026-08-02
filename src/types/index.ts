@@ -77,7 +77,14 @@ export interface ChatHistoryMessage {
 // Requisição de geração de imagem
 export interface ImageGenerationRequest {
   prompt: string;
-  provider?: "openai" | "google" | "custom" | string;
+  /** Provedor usado tanto para o Diretor de Artes (texto) quanto, se imageModel não for definido, para a imagem */
+  provider?: "openai" | "google" | "openrouter" | "custom" | string;
+  /** Modelo de TEXTO (LLM) usado pelo Diretor de Artes — NUNCA deve ser usado para gerar a imagem final */
+  model?: string;
+  /** Modelo de IMAGEM explícito (ex: "gpt-image-1", "gemini-2.5-flash-image"). Se ausente, um padrão seguro por provedor é usado */
+  imageModel?: string;
+  /** Provedor usado especificamente para a geração da IMAGEM final (pode ser diferente do provedor de texto) */
+  imageProvider?: "openai" | "google" | "openrouter" | "custom" | string;
   size?: ImageSize;
   customWidth?: number;
   customHeight?: number;
