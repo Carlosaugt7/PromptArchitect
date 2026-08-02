@@ -134,6 +134,7 @@ export interface ImageServiceOptions {
   retryDelayMs?: number;
   timeoutMs?: number;
   onProgressLog?: (log: string) => void;
+  signal?: AbortSignal;
 }
 
 // Estrutura de erro padronizada para o módulo de imagem

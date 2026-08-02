@@ -79,7 +79,12 @@ export class ImageService {
           options.onProgressLog(`[Retry] Tentativa ${attempt}/${maxRetries} iniciada...`);
         }
 
-        const response = await this.executeFetch(request, providers, options.timeoutMs);
+        const response = await this.executeFetch(
+          request,
+          providers,
+          options.timeoutMs,
+          options.signal,
+        );
         return response;
       } catch (err) {
         lastError = err instanceof Error ? err : new Error(String(err));
@@ -117,9 +122,15 @@ export class ImageService {
     request: ImageGenerationRequest,
     providers: ProvidersState,
     timeoutMs?: number,
+    signal?: AbortSignal,
   ): Promise<ImageGenerationResponse> {
     const controller = new AbortController();
     const timeoutId = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+    if (signal) {
+      signal.addEventListener("abort", () => controller.abort());
+      if (signal.aborted) controller.abort();
+    }
 
     try {
       const response = await fetch("/api/imageforge", {

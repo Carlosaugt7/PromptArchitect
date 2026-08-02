@@ -101,6 +101,14 @@ export function ImageForgePanel() {
   const [ocrFailedNotice, setOcrFailedNotice] = useState(false);
 
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      toast.info("Processo de geração cancelado.");
+    }
+  };
 
   useEffect(() => {
     if (logsEndRef.current) {
@@ -182,10 +190,17 @@ export function ImageForgePanel() {
       history: isIteration ? history : [],
     };
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const res = await ImageService.generateImage(requestPayload, providers, {
         maxRetries: 3,
         onProgressLog: (log) => toast.info(log),
+        signal: controller.signal,
       });
 
       setLastResponse(res);
@@ -220,6 +235,7 @@ export function ImageForgePanel() {
       toast.error(err instanceof Error ? err.message : "Falha na comunicação com o servidor.");
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -431,21 +447,33 @@ export function ImageForgePanel() {
 
           {/* Botão de Ação */}
           {history.length === 0 && (
-            <Button
-              onClick={() => handleGenerate(false)}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-primary to-[var(--brand-glow)] text-primary-foreground font-semibold glow flex items-center justify-center gap-1.5"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" /> Forjando Direção de Arte...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" /> Forjar Nova Arte
-                </>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleGenerate(false)}
+                disabled={loading}
+                className="flex-1 bg-gradient-to-r from-primary to-[var(--brand-glow)] text-primary-foreground font-semibold glow flex items-center justify-center gap-1.5"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Forjando Direção de Arte...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" /> Forjar Nova Arte
+                  </>
+                )}
+              </Button>
+              {loading && (
+                <Button
+                  onClick={handleCancel}
+                  variant="destructive"
+                  className="px-3"
+                  title="Parar Processo"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               )}
-            </Button>
+            </div>
           )}
 
           {history.length > 0 && (
@@ -498,18 +526,35 @@ export function ImageForgePanel() {
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Solicite alterações (ex: 'deixe mais premium e dourado')"
+                placeholder={
+                  loading
+                    ? "Geração em andamento..."
+                    : "Solicite alterações (ex: 'deixe mais premium e dourado')"
+                }
                 className="text-xs bg-background/50 h-9"
                 disabled={loading}
               />
-              <Button
-                type="submit"
-                disabled={loading}
-                size="icon"
-                className="h-9 w-9 bg-primary glow"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+              {loading ? (
+                <Button
+                  type="button"
+                  onClick={handleCancel}
+                  variant="destructive"
+                  size="icon"
+                  className="h-9 w-9"
+                  title="Parar Processo"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  size="icon"
+                  className="h-9 w-9 bg-primary glow"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
             </form>
           </div>
         )}
