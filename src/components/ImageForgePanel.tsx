@@ -86,6 +86,31 @@ export function ImageForgePanel() {
     }
   }, [imageProvider]);
 
+  // Quando o modelo de texto selecionado mudar (ou ao carregar/atualizar provedores),
+  // ajusta automaticamente o Provedor de Imagem para corresponder à API selecionada
+  useEffect(() => {
+    const providers = loadProviders();
+    let targetProvider: ProviderId | "" = "";
+
+    if (selectedModelKey && selectedModelKey.includes("::")) {
+      const [p] = selectedModelKey.split("::") as [ProviderId, string];
+      if (IMAGE_MODELS[p] && providers[p]?.apiKey) {
+        targetProvider = p;
+      }
+    }
+
+    if (!targetProvider) {
+      const firstAvailable = (Object.keys(IMAGE_MODELS) as ProviderId[]).find(
+        (p) => providers[p]?.apiKey,
+      );
+      targetProvider = firstAvailable ?? "";
+    }
+
+    if (targetProvider && targetProvider !== imageProvider) {
+      setImageProvider(targetProvider);
+    }
+  }, [selectedModelKey, enabledModels, imageProvider]);
+
   // Detector de Marca
   const [brandName, setBrandName] = useState("");
   const [brandColors, setBrandColors] = useState("#0b0b14, #3b82f6");
