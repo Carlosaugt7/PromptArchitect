@@ -651,10 +651,9 @@ function PromptArchitect() {
 
       {/* ── Main Area ── */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-        {activeView === "chat" ? (
-          <>
-            {/* Top bar */}
-            <header className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-background/80 backdrop-blur-sm shrink-0">
+        <>
+          {/* Top bar */}
+          <header className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-background/80 backdrop-blur-sm shrink-0">
               <button
                 onClick={() => setSidebarOpen((v) => !v)}
                 title="Alternar sidebar"
@@ -926,7 +925,7 @@ function PromptArchitect() {
               </div>
             </div>
           </>
-
+        )}
       </div>
 
       <LlmSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
