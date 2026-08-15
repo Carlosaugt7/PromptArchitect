@@ -925,7 +925,6 @@ function PromptArchitect() {
               </div>
             </div>
           </>
-        )}
       </div>
 
       <LlmSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
