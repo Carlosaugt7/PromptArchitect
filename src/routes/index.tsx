@@ -32,10 +32,8 @@ import {
   ScrollText,
   Users,
   Globe,
-  Image as ImageIcon,
 } from "lucide-react";
 import { LlmSettingsDialog } from "@/components/LlmSettingsDialog";
-import { ImageForgePanel } from "@/components/ImageForgePanel";
 import { AgentsDialog } from "@/components/AgentsDialog";
 import { CompareDialog } from "@/components/CompareDialog";
 import { TokenMeter } from "@/components/TokenMeter";
@@ -130,7 +128,6 @@ function PromptArchitect() {
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"chat" | "imageforge">("chat");
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -541,34 +538,6 @@ function PromptArchitect() {
             </button>
           </div>
 
-          {/* Segmented Control */}
-          <div className="px-3 pt-3 shrink-0">
-            <div className="flex rounded-lg bg-card/40 border border-border/50 p-1">
-              <button
-                onClick={() => setActiveView("chat")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  activeView === "chat"
-                    ? "bg-primary text-primary-foreground shadow"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                Chat
-              </button>
-              <button
-                onClick={() => setActiveView("imageforge")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  activeView === "imageforge"
-                    ? "bg-primary text-primary-foreground shadow"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <ImageIcon className="h-3.5 w-3.5" />
-                Artes
-              </button>
-            </div>
-          </div>
-
           {/* Search */}
           <div className="px-3 py-2 shrink-0">
             <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/30 px-3 py-1.5">
@@ -957,27 +926,7 @@ function PromptArchitect() {
               </div>
             </div>
           </>
-        ) : (
-          <>
-            {/* Top bar for ImageForge */}
-            <header className="flex items-center gap-2 px-4 py-3 border-b border-border/30 bg-background/80 backdrop-blur-sm shrink-0">
-              <button
-                onClick={() => setSidebarOpen((v) => !v)}
-                title="Alternar sidebar"
-                className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors shrink-0"
-              >
-                <PanelLeft className="h-4 w-4" />
-              </button>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">Diretor de Artes (ImageForge)</p>
-              </div>
-            </header>
 
-            <div className="flex-1 overflow-y-auto bg-background">
-              <ImageForgePanel />
-            </div>
-          </>
-        )}
       </div>
 
       <LlmSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
